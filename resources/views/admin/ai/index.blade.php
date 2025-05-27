@@ -86,7 +86,7 @@
 
     <!-- Generate Quiz Modal -->
     <div id="generateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-2xl bg-white">
+        <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
             <div class="mt-3">
                 <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                     <span class="bg-purple-100 p-3 rounded-full">🪄</span>
@@ -131,12 +131,51 @@
                     <div class="bg-blue-50 rounded-xl p-6">
                         <h4 class="font-bold text-lg mb-4 text-gray-700">نص القراءة (اختياري)</h4>
                         <div class="flex items-center mb-4">
-                            <input type="checkbox" id="include_passage" name="include_passage" class="ml-2 w-4 h-4 text-purple-600">
+                            <input type="checkbox" id="include_passage" name="include_passage" value="1" class="ml-2 w-4 h-4 text-purple-600">
                             <label for="include_passage" class="text-gray-700">تضمين نص قراءة في بداية الاختبار</label>
                         </div>
-                        <div id="passageOptions" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">موضوع النص (اختياري)</label>
-                            <input type="text" name="passage_topic" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="اتركه فارغاً لاستخدام الموضوع الرئيسي">
+                        <div id="passageOptions" class="hidden space-y-4">
+                            <div class="bg-white rounded-lg p-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">طريقة إضافة النص</label>
+                                <div class="flex gap-4 mb-4">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="passage_method" value="ai" checked class="ml-2">
+                                        <span>توليد بالذكاء الاصطناعي</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="passage_method" value="manual" class="ml-2">
+                                        <span>إضافة يدوية</span>
+                                    </label>
+                                </div>
+                                
+                                <!-- AI Passage Options -->
+                                <div id="aiPassageOptions" class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">موضوع النص (اختياري)</label>
+                                        <input type="text" name="passage_topic" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="اتركه فارغاً لاستخدام الموضوع الرئيسي">
+                                    </div>
+                                </div>
+                                
+                                <!-- Manual Passage Options -->
+                                <div id="manualPassageOptions" class="hidden space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">عنوان النص</label>
+                                        <input type="text" name="manual_passage_title" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500" placeholder="مثال: قصة الأسد والفأر">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">النص</label>
+                                        <textarea name="manual_passage" 
+                                                  id="passageEditor"
+                                                  class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500" 
+                                                  rows="8"
+                                                  placeholder="اكتب أو الصق النص هنا..."></textarea>
+                                        <div class="mt-2 flex justify-between text-sm text-gray-600">
+                                            <span>يُنصح بنص من 150-250 كلمة</span>
+                                            <span id="wordCount">0 كلمة</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -217,6 +256,29 @@ document.getElementById('include_passage').addEventListener('change', function()
     document.getElementById('passageOptions').classList.toggle('hidden', !this.checked);
 });
 
+// Toggle between AI and manual passage
+const passageMethodRadios = document.querySelectorAll('input[name="passage_method"]');
+passageMethodRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+        if (this.value === 'ai') {
+            document.getElementById('aiPassageOptions').classList.remove('hidden');
+            document.getElementById('manualPassageOptions').classList.add('hidden');
+        } else {
+            document.getElementById('aiPassageOptions').classList.add('hidden');
+            document.getElementById('manualPassageOptions').classList.remove('hidden');
+        }
+    });
+});
+
+// Word counter for manual passage
+const passageEditor = document.getElementById('passageEditor');
+const wordCount = document.getElementById('wordCount');
+
+passageEditor.addEventListener('input', function() {
+    const words = this.value.trim().split(/\s+/).filter(word => word.length > 0);
+    wordCount.textContent = words.length + ' كلمة';
+});
+
 // Handle form submission
 document.getElementById('generateForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -243,14 +305,34 @@ document.getElementById('generateForm').addEventListener('submit', async functio
             alert('تم توليد الاختبار بنجاح!');
             window.location.href = data.redirect;
         } else {
-            alert('خطأ: ' + data.message);
+            let errorMsg = 'خطأ: ' + data.message;
+            if (data.debug) {
+                errorMsg += '\n\nDebug: ' + data.debug;
+            }
+            alert(errorMsg);
+            console.error('Generation error:', data);
         }
     } catch (error) {
         alert('حدث خطأ في الاتصال');
+        console.error(error);
     } finally {
         submitButton.innerHTML = originalText;
         submitButton.disabled = false;
     }
 });
 </script>
+
+<style>
+#passageEditor {
+    font-family: 'Tahoma', 'Arial', sans-serif;
+    line-height: 1.8;
+    direction: rtl;
+    text-align: right;
+}
+
+#passageEditor:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+}
+</style>
 @endsection
