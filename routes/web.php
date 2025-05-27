@@ -54,6 +54,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Additional admin routes
     Route::get('reports', [DashboardController::class, 'reports'])->name('reports');
     Route::get('settings', [DashboardController::class, 'settings'])->name('settings');
+
+    // AI Management Routes
+    Route::prefix('ai')->name('ai.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\AiManagementController::class, 'index'])->name('index');
+        Route::post('/generate', [App\Http\Controllers\Admin\AiManagementController::class, 'generate'])->name('generate');
+        Route::post('/quiz/{quiz}/report', [App\Http\Controllers\Admin\AiManagementController::class, 'generateReport'])->name('generateReport');
+  
 });
+
+
 
 require __DIR__ . '/auth.php';
