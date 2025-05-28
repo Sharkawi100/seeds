@@ -62,6 +62,10 @@ Route::middleware(['auth'])->group(function () {
     // Quiz management
     Route::resource('quizzes', QuizController::class);
     Route::resource('quizzes.questions', QuestionController::class)->except(['show']);
+
+    Route::post('quizzes/{quiz}/questions/{question}/update-text', [QuestionController::class, 'updateText'])
+        ->name('quizzes.questions.update-text')
+        ->middleware('auth');
 });
 
 /*

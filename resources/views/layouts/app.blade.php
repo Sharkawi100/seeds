@@ -32,5 +32,21 @@
             @yield('content')
         </main>
     </div>
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+tinymce.init({
+    selector: '.tinymce-editor',
+    plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+    language: 'ar',
+    directionality: 'rtl',
+    height: 300,
+    menubar: false,
+    content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; direction: rtl; text-align: right; }',
+    entity_encoding: 'raw',
+    forced_root_block: 'div',
+    branding: false
+});
+</script>
 </body>
 </html>

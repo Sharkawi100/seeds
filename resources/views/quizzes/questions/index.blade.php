@@ -17,6 +17,12 @@
                         </div>
                     </div>
                     <div class="flex gap-3">
+                        <button onclick="toggleBulkEdit()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            تحديد متعدد
+                        </button>
                         <a href="{{ route('quiz.take', $quiz) }}" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -41,19 +47,19 @@
                         $rootCounts = $quiz->questions->groupBy('root_type')->map->count();
                         $depthCounts = $quiz->questions->groupBy('depth_level')->map->count();
                     @endphp
-                    <div class="bg-red-50 rounded-lg p-3 text-center">
+                    <div class="bg-red-50 rounded-lg p-3 text-center border border-red-200">
                         <div class="text-2xl font-bold text-red-600">{{ $rootCounts['jawhar'] ?? 0 }}</div>
                         <div class="text-sm text-gray-600">🎯 جَوْهَر</div>
                     </div>
-                    <div class="bg-cyan-50 rounded-lg p-3 text-center">
+                    <div class="bg-cyan-50 rounded-lg p-3 text-center border border-cyan-200">
                         <div class="text-2xl font-bold text-cyan-600">{{ $rootCounts['zihn'] ?? 0 }}</div>
                         <div class="text-sm text-gray-600">🧠 ذِهْن</div>
                     </div>
-                    <div class="bg-yellow-50 rounded-lg p-3 text-center">
+                    <div class="bg-yellow-50 rounded-lg p-3 text-center border border-yellow-200">
                         <div class="text-2xl font-bold text-yellow-600">{{ $rootCounts['waslat'] ?? 0 }}</div>
                         <div class="text-sm text-gray-600">🔗 وَصَلات</div>
                     </div>
-                    <div class="bg-purple-50 rounded-lg p-3 text-center">
+                    <div class="bg-purple-50 rounded-lg p-3 text-center border border-purple-200">
                         <div class="text-2xl font-bold text-purple-600">{{ $rootCounts['roaya'] ?? 0 }}</div>
                         <div class="text-sm text-gray-600">👁️ رُؤْيَة</div>
                     </div>
@@ -61,32 +67,75 @@
             </div>
         </div>
 
+        <!-- Bulk Actions Bar -->
+        <div id="bulkActionsBar" class="hidden bg-blue-600 text-white rounded-lg p-4 mb-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="w-5 h-5">
+                <span>تحديد الكل</span>
+                <span id="selectedCount">0 محدد</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="bulkDelete()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    حذف المحدد
+                </button>
+            </div>
+        </div>
+
         <!-- Reading Passage Section (if exists) -->
         @if($quiz->questions->where('passage', '!=', null)->first())
         <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 mb-6">
-            <div class="flex items-start gap-3">
+            <div class="flex items-start gap-3 mb-4">
                 <span class="text-3xl">📄</span>
                 <div class="flex-1">
                     <h3 class="font-bold text-lg text-blue-900 mb-2">
                         {{ $quiz->questions->first()->passage_title ?? 'نص القراءة' }}
                     </h3>
-                    <div class="text-gray-700 bg-white/50 rounded-lg p-4">
+                    <div class="text-gray-700 bg-white/50 rounded-lg p-4" id="passageContent">
                         {!! nl2br(e($quiz->questions->first()->passage)) !!}
                     </div>
                 </div>
+                <button onclick="editPassage()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm">
+                    تعديل النص
+                </button>
             </div>
         </div>
         @endif
 
         <!-- Questions List -->
         <div class="bg-white rounded-2xl shadow-xl p-6">
+            <div class="mb-4 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-gray-800">الأسئلة</h3>
+                <div class="flex gap-2">
+                    <select id="filterRoot" onchange="filterQuestions()" class="px-3 py-2 border rounded-lg text-sm">
+                        <option value="">جميع الجذور</option>
+                        <option value="jawhar">جَوْهَر</option>
+                        <option value="zihn">ذِهْن</option>
+                        <option value="waslat">وَصَلات</option>
+                        <option value="roaya">رُؤْيَة</option>
+                    </select>
+                    <select id="filterDepth" onchange="filterQuestions()" class="px-3 py-2 border rounded-lg text-sm">
+                        <option value="">جميع المستويات</option>
+                        <option value="1">مستوى 1</option>
+                        <option value="2">مستوى 2</option>
+                        <option value="3">مستوى 3</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="space-y-4">
                 @foreach($quiz->questions as $index => $question)
-                <div class="border-2 border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition group">
+                <div class="question-item border-2 border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-md transition group" 
+                     data-root="{{ $question->root_type }}" 
+                     data-depth="{{ $question->depth_level }}"
+                     data-question-id="{{ $question->id }}">
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <!-- Question Header -->
                             <div class="flex items-center gap-3 mb-3">
+                                <input type="checkbox" class="question-checkbox hidden w-5 h-5" value="{{ $question->id }}">
                                 <span class="text-2xl font-bold text-gray-400">{{ $index + 1 }}</span>
                                 <span class="px-4 py-1.5 rounded-full text-sm font-bold flex items-center gap-1"
                                       style="background-color: {{ 
@@ -108,18 +157,23 @@
                                     $question->depth_level == 1 ? 'bg-yellow-100 text-yellow-800' : 
                                     ($question->depth_level == 2 ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800') 
                                 }}">
-                                    @if($question->depth_level == 1)
-                                        🟡 مستوى 1 - سطحي
-                                    @elseif($question->depth_level == 2)
-                                        🟠 مستوى 2 - متوسط
-                                    @else
-                                        🟢 مستوى 3 - عميق
-                                    @endif
+                                    مستوى {{ $question->depth_level }}
                                 </span>
                             </div>
                             
                             <!-- Question Text -->
-                            <p class="font-medium text-lg text-gray-800 mb-4">{{ $question->question }}</p>
+                            <div class="question-text-container">
+                                <div class="question-display">
+                                    <p class="font-medium text-lg text-gray-800 mb-4">{!! $question->question !!}</p>
+                                </div>
+                                <div class="question-edit hidden">
+                                    <textarea class="question-editor" id="editor-{{ $question->id }}">{{ $question->question }}</textarea>
+                                    <div class="mt-2 flex gap-2">
+                                        <button onclick="saveQuestion({{ $question->id }})" class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">حفظ</button>
+                                        <button onclick="cancelEdit({{ $question->id }})" class="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">إلغاء</button>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Answer Options -->
                             <div class="grid grid-cols-2 gap-3">
@@ -141,9 +195,16 @@
                         
                         <!-- Action Buttons -->
                         <div class="flex gap-2 mr-4 opacity-0 group-hover:opacity-100 transition">
+                            <button onclick="editInline({{ $question->id }})" 
+                                    class="bg-purple-100 hover:bg-purple-200 text-purple-700 p-2 rounded-lg transition"
+                                    title="تعديل سريع">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                </svg>
+                            </button>
                             <a href="{{ route('quizzes.questions.edit', [$quiz, $question]) }}" 
                                class="bg-blue-100 hover:bg-blue-200 text-blue-700 p-2 rounded-lg transition"
-                               title="تعديل">
+                               title="تعديل كامل">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                 </svg>
@@ -193,4 +254,137 @@
         </div>
     </div>
 </div>
+
+<script src="https://cdn.tiny.cloud/1/cmtwmtmif3u7ducaiqvogvq1wvc280ugtxjzo2ffaymjmuxg/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+let activeEditor = null;
+let bulkMode = false;
+
+// Inline editing
+function editInline(questionId) {
+    document.querySelectorAll('.question-edit').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.question-display').forEach(el => el.classList.remove('hidden'));
+    
+    const container = document.querySelector(`[data-question-id="${questionId}"] .question-text-container`);
+    container.querySelector('.question-display').classList.add('hidden');
+    container.querySelector('.question-edit').classList.remove('hidden');
+    
+    if (activeEditor) {
+        tinymce.remove(activeEditor);
+    }
+    
+    tinymce.init({
+        selector: `#editor-${questionId}`,
+        language: 'ar',
+        directionality: 'rtl',
+        height: 200,
+        menubar: false,
+        plugins: 'lists link charmap',
+        toolbar: 'bold italic underline | bullist numlist | link | removeformat',
+        content_style: 'body { font-family: Arial, sans-serif; font-size: 16px; direction: rtl; }',
+        setup: function(editor) {
+            activeEditor = editor;
+        }
+    });
+}
+
+function cancelEdit(questionId) {
+    const container = document.querySelector(`[data-question-id="${questionId}"] .question-text-container`);
+    container.querySelector('.question-display').classList.remove('hidden');
+    container.querySelector('.question-edit').classList.add('hidden');
+    
+    if (activeEditor) {
+        tinymce.remove(activeEditor);
+        activeEditor = null;
+    }
+}
+
+async function saveQuestion(questionId) {
+    const content = tinymce.get(`editor-${questionId}`).getContent();
+    
+    try {
+        const response = await fetch(`/quizzes/{{ $quiz->id }}/questions/${questionId}/update-text`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ question: content })
+        });
+        
+        if (response.ok) {
+            const container = document.querySelector(`[data-question-id="${questionId}"] .question-text-container`);
+            container.querySelector('.question-display p').innerHTML = content;
+            cancelEdit(questionId);
+        }
+    } catch (error) {
+        alert('حدث خطأ في الحفظ');
+    }
+}
+
+// Filtering
+function filterQuestions() {
+    const rootFilter = document.getElementById('filterRoot').value;
+    const depthFilter = document.getElementById('filterDepth').value;
+    
+    document.querySelectorAll('.question-item').forEach(item => {
+        const matchRoot = !rootFilter || item.dataset.root === rootFilter;
+        const matchDepth = !depthFilter || item.dataset.depth === depthFilter;
+        item.style.display = matchRoot && matchDepth ? '' : 'none';
+    });
+}
+
+// Bulk operations
+function toggleBulkEdit() {
+    bulkMode = !bulkMode;
+    document.getElementById('bulkActionsBar').classList.toggle('hidden');
+    document.querySelectorAll('.question-checkbox').forEach(cb => {
+        cb.classList.toggle('hidden');
+        cb.checked = false;
+    });
+    updateSelectedCount();
+}
+
+function toggleSelectAll() {
+    const isChecked = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.question-checkbox:not(.hidden)').forEach(cb => {
+        cb.checked = isChecked;
+    });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const count = document.querySelectorAll('.question-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = count + ' محدد';
+}
+
+async function bulkDelete() {
+    const selected = Array.from(document.querySelectorAll('.question-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) return;
+    
+    if (!confirm(`حذف ${selected.length} سؤال؟`)) return;
+    
+    try {
+        const response = await fetch(`/quizzes/{{ $quiz->id }}/questions/bulk-delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ ids: selected })
+        });
+        
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        alert('حدث خطأ');
+    }
+}
+
+document.querySelectorAll('.question-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateSelectedCount);
+});
+</script>
 @endsection

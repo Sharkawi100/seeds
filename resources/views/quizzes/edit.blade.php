@@ -10,12 +10,17 @@
                 @csrf
                 @method('PUT')
                 
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-bold mb-2">عنوان الاختبار</label>
+                    <input type="text" name="title" value="{{ $quiz->title }}" class="w-full px-4 py-3 border-2 rounded-lg focus:border-blue-500" required>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-bold mb-2">وصف الاختبار</label>
+                    <textarea name="description" class="tinymce-editor">{{ $quiz->description ?? '' }}</textarea>
+                </div>
+                
                 <div class="grid md:grid-cols-2 gap-6 mb-8">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">عنوان الاختبار</label>
-                        <input type="text" name="title" value="{{ $quiz->title }}" class="w-full px-4 py-3 border-2 rounded-lg focus:border-blue-500" required>
-                    </div>
-                    
                     <div>
                         <label class="block text-gray-700 font-bold mb-2">المادة الدراسية</label>
                         <select name="subject" class="w-full px-4 py-3 border-2 rounded-lg focus:border-blue-500" required>
@@ -28,16 +33,9 @@
                     <div>
                         <label class="block text-gray-700 font-bold mb-2">الصف الدراسي</label>
                         <select name="grade_level" class="w-full px-4 py-3 border-2 rounded-lg focus:border-blue-500" required>
-                            <optgroup label="المرحلة الابتدائية">
-                                @for($i = 1; $i <= 6; $i++)
-                                <option value="{{ $i }}" {{ $quiz->grade_level == $i ? 'selected' : '' }}>الصف {{ ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'][$i-1] }}</option>
-                                @endfor
-                            </optgroup>
-                            <optgroup label="المرحلة الإعدادية">
-                                @for($i = 7; $i <= 9; $i++)
-                                <option value="{{ $i }}" {{ $quiz->grade_level == $i ? 'selected' : '' }}>الصف {{ ['السابع', 'الثامن', 'التاسع'][$i-7] }}</option>
-                                @endfor
-                            </optgroup>
+                            @for($i = 1; $i <= 9; $i++)
+                            <option value="{{ $i }}" {{ $quiz->grade_level == $i ? 'selected' : '' }}>الصف {{ $i }}</option>
+                            @endfor
                         </select>
                     </div>
                 </div>
@@ -55,3 +53,16 @@
     </div>
 </div>
 @endsection
+<!-- For question editing with TinyMCE -->
+<script>
+    // Initialize TinyMCE for question text fields
+    tinymce.init({
+        selector: '.question-editor',
+        plugins: 'lists link image charmap',
+        toolbar: 'bold italic | bullist numlist | link',
+        menubar: false,
+        height: 150,
+        language: 'ar',
+        directionality: 'rtl'
+    });
+    </script>

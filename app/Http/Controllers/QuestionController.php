@@ -97,4 +97,20 @@ class QuestionController extends Controller
         $question->delete();
         return redirect()->route('quizzes.questions.index', $quiz);
     }
+    public function updateText(Request $request, Quiz $quiz, Question $question)
+    {
+        if ($quiz->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'question' => 'required|string'
+        ]);
+
+        $question->update([
+            'question' => $validated['question']
+        ]);
+
+        return response()->json(['success' => true]);
+    }
 }
