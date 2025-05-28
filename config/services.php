@@ -34,13 +34,24 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Claude AI Service Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for Anthropic's Claude AI API used for generating
+    | educational quiz questions based on the Juzoor model.
+    |
+    */
+
     'claude' => [
         'key' => env('CLAUDE_API_KEY'),
         'model' => env('CLAUDE_MODEL', 'claude-3-sonnet-20240229'),
-        'max_tokens' => env('CLAUDE_MAX_TOKENS', 4000),
-        'temperature' => env('CLAUDE_TEMPERATURE', 0.7),
-        'cache_enabled' => env('CLAUDE_CACHE_ENABLED', false),
+        'max_tokens' => (int) env('CLAUDE_MAX_TOKENS', 4000),
+        'temperature' => (float) env('CLAUDE_TEMPERATURE', 0.7),
+        'timeout' => (int) env('CLAUDE_TIMEOUT', 60),
+        'cache_enabled' => (bool) env('CLAUDE_CACHE_ENABLED', false),
     ],
 
 ];
-
