@@ -11,7 +11,15 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('quizzes', function (Blueprint $table) {
-            $table->text('description')->nullable();            //
+            // Add settings column if it doesn't exist
+            if (!Schema::hasColumn('quizzes', 'settings')) {
+                $table->json('settings')->nullable()->after('grade_level');
+            }
+
+            // Add passage_data column if it doesn't exist
+            if (!Schema::hasColumn('quizzes', 'passage_data')) {
+                $table->json('passage_data')->nullable()->after('settings');
+            }
         });
     }
 
@@ -21,7 +29,8 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('quizzes', function (Blueprint $table) {
-            $table->text('description')->nullable();
+            $table->dropColumn(['settings', 'passage_data']);
         });
     }
+
 };

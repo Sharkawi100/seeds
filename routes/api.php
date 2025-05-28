@@ -1,11 +1,16 @@
 <?php
 
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\Admin\AiManagementController;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Str;
+use App\Services\ClaudeService; // Add this import
 
 /*
 |--------------------------------------------------------------------------

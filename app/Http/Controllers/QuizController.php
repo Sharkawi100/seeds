@@ -326,4 +326,6 @@ class QuizController extends Controller
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
     }
+
 }
+
