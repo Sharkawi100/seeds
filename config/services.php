@@ -47,11 +47,11 @@ return [
 
     'claude' => [
         'key' => env('CLAUDE_API_KEY'),
-        'model' => env('CLAUDE_MODEL', 'claude-3-sonnet-20240229'),
-        'max_tokens' => (int) env('CLAUDE_MAX_TOKENS', 4000),
-        'temperature' => (float) env('CLAUDE_TEMPERATURE', 0.7),
-        'timeout' => (int) env('CLAUDE_TIMEOUT', 60),
-        'cache_enabled' => (bool) env('CLAUDE_CACHE_ENABLED', false),
+        'model' => env('CLAUDE_MODEL', 'claude-3-5-sonnet-20241022'),
+        'max_tokens' => env('CLAUDE_MAX_TOKENS', 4000),
+        'temperature' => env('CLAUDE_TEMPERATURE', 0.7),
+        'cache_enabled' => env('CLAUDE_CACHE_ENABLED', true),
+        'timeout' => env('CLAUDE_TIMEOUT', 120),
     ],
 
 ];

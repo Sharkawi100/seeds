@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Quiz;
+use App\Models\Question;
 use App\Models\Result;
 use App\Services\ClaudeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class AiManagementController extends Controller
 {
@@ -20,140 +22,83 @@ class AiManagementController extends Controller
         $this->claudeService = $claudeService;
     }
 
+    /**
+     * Display AI management dashboard
+     */
     public function index()
     {
         $stats = [
-            'total_ai_quizzes' => Quiz::whereHas('questions')->count(),
-            'recent_generations' => Quiz::with(['user', 'questions'])
-                ->whereHas('questions')
-                ->latest()
-                ->take(10)
-                ->get()
+            'total_ai_generated' => Cache::get('ai_requests_' . today()->format('Y-m-d'), 0),
+            'monthly_usage' => $this->getMonthlyUsage(),
+            'api_status' => $this->checkApiStatus(),
+            'recent_generations' => $this->getRecentGenerations()
         ];
 
         return view('admin.ai.index', compact('stats'));
     }
 
+    /**
+     * Generate quiz content using AI
+     */
     public function generate(Request $request)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'type' => 'required|in:quiz,passage,questions',
             'subject' => 'required|in:arabic,english,hebrew',
             'grade_level' => 'required|integer|min:1|max:9',
             'topic' => 'required|string|max:255',
-            'include_passage' => 'nullable|string',
-            'passage_topic' => 'nullable|string|max:255',
-            'manual_passage' => 'nullable|string',
-            'manual_passage_title' => 'nullable|string|max:255',
-            'roots' => 'required|array'
+            'settings' => 'required_if:type,quiz,questions|array',
+            'passage' => 'required_if:type,questions|string',
         ]);
 
-        DB::beginTransaction();
-
         try {
-            // Transform roots structure
-            $settings = [];
-            foreach ($validated['roots'] as $rootKey => $root) {
-                if (!isset($root['levels']))
-                    continue;
-
-                $levels = [];
-                foreach ($root['levels'] as $level) {
-                    if (isset($level['count']) && $level['count'] > 0) {
-                        $levels[] = [
-                            'depth' => (int) ($level['depth'] ?? 1),
-                            'count' => (int) $level['count']
-                        ];
-                    }
-                }
-                if (!empty($levels)) {
-                    $settings[$rootKey] = $levels;
-                }
+            switch ($validated['type']) {
+                case 'quiz':
+                    $result = $this->generateCompleteQuiz($validated);
+                    break;
+                case 'passage':
+                    $result = $this->generatePassageOnly($validated);
+                    break;
+                case 'questions':
+                    $result = $this->generateQuestionsOnly($validated);
+                    break;
             }
-
-            // Create quiz
-            $quiz = Quiz::create([
-                'user_id' => Auth::id(),
-                'title' => $validated['title'],
-                'subject' => $validated['subject'],
-                'grade_level' => $validated['grade_level'],
-                'settings' => $settings
-            ]);
-
-            // Check if we should include a passage
-            $includePassage = $request->input('include_passage') === 'on' || $request->input('include_passage') === '1';
-            $manualPassage = $request->input('manual_passage');
-            $manualPassageTitle = $request->input('manual_passage_title');
-
-            // Generate questions with AI
-            $aiResponse = $this->claudeService->generateJuzoorQuiz(
-                $quiz->subject,
-                $quiz->grade_level,
-                $validated['topic'],
-                $settings,
-                $includePassage && !$manualPassage, // Only generate passage if no manual passage
-                $validated['passage_topic'] ?? null
-            );
-
-            // If manual passage is provided, add it to the response
-            if ($manualPassage) {
-                $aiResponse['passage'] = $manualPassage;
-                $aiResponse['passage_title'] = $manualPassageTitle;
-            }
-
-            $this->parseAndSaveQuestions($quiz, $aiResponse);
-
-            DB::commit();
 
             return response()->json([
                 'success' => true,
-                'redirect' => route('admin.quizzes.show', $quiz)
+                'data' => $result
             ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-
-            // Delete the quiz if it was created
-            if (isset($quiz)) {
-                $quiz->delete();
-            }
-
-            Log::error('AI quiz generation failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $validated
+            Log::error('AI generation failed', [
+                'type' => $validated['type'],
+                'error' => $e->getMessage()
             ]);
-
-            // More specific error messages
-            $message = 'فشل توليد الاختبار. ';
-
-            if (strpos($e->getMessage(), 'API') !== false || strpos($e->getMessage(), 'key') !== false) {
-                $message .= 'تحقق من مفتاح Claude API.';
-            } elseif (strpos($e->getMessage(), 'network') !== false || strpos($e->getMessage(), 'connection') !== false) {
-                $message .= 'خطأ في الاتصال بالخادم.';
-            } else {
-                $message .= 'الرجاء المحاولة مرة أخرى.';
-            }
 
             return response()->json([
                 'success' => false,
-                'message' => $message,
-                'debug' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+                'message' => 'فشل التوليد: ' . $e->getMessage()
+            ], 422);
         }
     }
 
+    /**
+     * Generate report for quiz results
+     */
     public function generateReport(Request $request, Quiz $quiz)
     {
-        $validated = $request->validate([
-            'result_id' => 'required|exists:results,id'
-        ]);
-
         try {
-            $result = Result::with(['answers.question', 'user'])->findOrFail($validated['result_id']);
+            // Get the latest result for the quiz
+            $result = $quiz->results()->latest()->first();
 
-            // Generate a detailed report based on the result
-            $report = $this->generateResultReport($result, $quiz);
+            if (!$result) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا توجد نتائج لهذا الاختبار'
+                ], 404);
+            }
+
+            $report = $this->generateResultReport($result);
 
             return response()->json([
                 'success' => true,
@@ -162,188 +107,431 @@ class AiManagementController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Report generation failed', [
-                'error' => $e->getMessage(),
                 'quiz_id' => $quiz->id,
-                'result_id' => $validated['result_id']
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'فشل توليد التقرير.'
-            ], 500);
+                'message' => 'فشل توليد التقرير: ' . $e->getMessage()
+            ], 422);
         }
     }
 
-    private function generateResultReport(Result $result, Quiz $quiz)
+    /**
+     * Generate complete quiz with passage and questions
+     */
+    private function generateCompleteQuiz(array $data): array
     {
-        // Prepare the data for the AI
-        $performance = [
-            'total_score' => $result->total_score,
-            'root_scores' => $result->scores,
-            'quiz_info' => [
-                'title' => $quiz->title,
-                'subject' => $quiz->subject,
-                'grade_level' => $quiz->grade_level,
-                'total_questions' => $quiz->questions->count()
-            ],
-            'detailed_answers' => $result->answers->map(function ($answer) {
-                return [
-                    'question' => $answer->question->question,
-                    'root_type' => $answer->question->root_type,
-                    'depth_level' => $answer->question->depth_level,
-                    'is_correct' => $answer->is_correct,
-                    'selected_answer' => $answer->selected_answer,
-                    'correct_answer' => $answer->question->correct_answer
-                ];
-            })
+        // Transform settings to match ClaudeService format
+        $settings = $this->transformSettings($data['settings']);
+
+        $result = $this->claudeService->generateJuzoorQuiz(
+            $data['subject'],
+            $data['grade_level'],
+            $data['topic'],
+            $settings,
+            true, // include passage
+            $data['passage_topic'] ?? null
+        );
+
+        // Track usage
+        $this->trackUsage('complete_quiz', count($result['questions']));
+
+        return $result;
+    }
+
+    /**
+     * Generate passage only
+     */
+    private function generatePassageOnly(array $data): array
+    {
+        // Determine passage type and length from request or use defaults
+        $textType = $data['text_type'] ?? 'article';
+        $length = $data['text_length'] ?? 'medium';
+
+        // Use generateEducationalText method
+        $passage = $this->claudeService->generateEducationalText(
+            $data['subject'],
+            $data['grade_level'],
+            $data['topic'],
+            $textType,
+            $length
+        );
+
+        $this->trackUsage('passage_only', 1);
+
+        return [
+            'passage' => $passage,
+            'passage_title' => $data['topic']
         ];
+    }
 
-        // Use Claude to generate an educational report
-        $prompt = $this->buildReportPrompt($performance);
+    /**
+     * Generate questions from existing passage
+     */
+    private function generateQuestionsOnly(array $data): array
+    {
+        $settings = $this->transformSettings($data['settings']);
 
-        // Call Claude API to generate the report
-        $response = $this->claudeService->generateCompletion($prompt, [
-            'max_tokens' => 2000,
-            'temperature' => 0.7
+        // Use generateQuestionsFromText method
+        $questions = $this->claudeService->generateQuestionsFromText(
+            $data['passage'],
+            $data['subject'],
+            $data['grade_level'],
+            $settings
+        );
+
+        $this->trackUsage('questions_only', count($questions));
+
+        return ['questions' => $questions];
+    }
+
+    /**
+     * Generate detailed report for quiz result
+     */
+    private function generateResultReport(Result $result): string
+    {
+        $quiz = $result->quiz;
+        $scores = $result->scores;
+
+        // Build analysis prompt
+        $prompt = $this->buildReportPrompt($result, $quiz, $scores);
+
+        // Generate report using general completion
+        $report = $this->generateAICompletion($prompt, [
+            'temperature' => 0.7,
+            'max_tokens' => 1000
         ]);
 
-        return $response['content'] ?? 'تعذر إنشاء التقرير';
+        return $report;
     }
 
-    private function buildReportPrompt($performance)
+    /**
+     * Generate general AI completion
+     */
+    private function generateAICompletion(string $prompt, array $options = []): string
     {
-        $prompt = "أنت خبير تربوي متخصص في نموذج جُذور التعليمي. قم بتحليل أداء الطالب وإنشاء تقرير تفصيلي باللغة العربية.\n\n";
+        try {
+            // Use the public generateCompletion method
+            return $this->claudeService->generateCompletion($prompt, $options);
+        } catch (\Exception $e) {
+            Log::error('AI completion failed', ['error' => $e->getMessage()]);
+            throw new \Exception('فشل توليد النص: ' . $e->getMessage());
+        }
+    }
 
-        $prompt .= "معلومات الاختبار:\n";
-        $prompt .= "- العنوان: {$performance['quiz_info']['title']}\n";
-        $prompt .= "- المادة: {$performance['quiz_info']['subject']}\n";
-        $prompt .= "- الصف: {$performance['quiz_info']['grade_level']}\n";
-        $prompt .= "- عدد الأسئلة: {$performance['quiz_info']['total_questions']}\n\n";
+    /**
+     * Build report generation prompt
+     */
+    private function buildReportPrompt(Result $result, Quiz $quiz, array $scores): string
+    {
+        $rootNames = [
+            'jawhar' => 'جَوهر (الأساس)',
+            'zihn' => 'ذِهن (التحليل)',
+            'waslat' => 'وَصلات (الربط)',
+            'roaya' => 'رُؤية (التطبيق)'
+        ];
 
-        $prompt .= "النتيجة الإجمالية: {$performance['total_score']}%\n\n";
+        $prompt = "قم بكتابة تقرير تحليلي مفصل لنتائج الطالب في اختبار '{$quiz->title}' للصف {$quiz->grade_level}.\n\n";
+        $prompt .= "النتائج:\n";
+        $prompt .= "- الدرجة الإجمالية: {$result->total_score}%\n";
 
-        $prompt .= "أداء الجذور:\n";
-        foreach ($performance['root_scores'] as $root => $score) {
-            $rootName = ['jawhar' => 'جَوهر', 'zihn' => 'ذِهن', 'waslat' => 'وَصلات', 'roaya' => 'رُؤية'][$root] ?? $root;
-            $prompt .= "- $rootName: $score%\n";
+        foreach ($scores as $root => $score) {
+            if (isset($rootNames[$root])) {
+                $prompt .= "- {$rootNames[$root]}: {$score}%\n";
+            }
         }
 
-        $prompt .= "\nيرجى كتابة تقرير شامل يتضمن:\n";
-        $prompt .= "1. تحليل عام للأداء\n";
-        $prompt .= "2. نقاط القوة في كل جذر\n";
-        $prompt .= "3. المجالات التي تحتاج إلى تحسين\n";
-        $prompt .= "4. توصيات محددة للتطوير\n";
-        $prompt .= "5. أنشطة مقترحة لتعزيز التعلم\n\n";
-
-        $prompt .= "اجعل التقرير إيجابياً ومحفزاً، مع التركيز على النمو والتطور بدلاً من النقص.";
+        $prompt .= "\nالمطلوب:\n";
+        $prompt .= "1. تحليل الأداء في كل جذر\n";
+        $prompt .= "2. تحديد نقاط القوة والضعف\n";
+        $prompt .= "3. توصيات محددة للتحسين\n";
+        $prompt .= "4. خطة عمل مقترحة\n\n";
+        $prompt .= "اكتب التقرير باللغة العربية بأسلوب تربوي إيجابي ومحفز.";
 
         return $prompt;
     }
 
-    private function parseAndSaveQuestions(Quiz $quiz, array $aiResponse)
+    /**
+     * Transform settings from frontend format to ClaudeService format
+     */
+    private function transformSettings(array $settings): array
     {
-        if (!isset($aiResponse['questions']) || !is_array($aiResponse['questions'])) {
-            throw new \Exception('Invalid AI response format');
+        $transformed = [];
+
+        foreach ($settings as $root => $levels) {
+            if (is_array($levels)) {
+                foreach ($levels as $level => $count) {
+                    if ($count > 0) {
+                        $transformed[$root][$level] = $count;
+                    }
+                }
+            }
         }
 
-        $passageTitle = $aiResponse['passage_title'] ?? null;
-        $passage = $aiResponse['passage'] ?? null;
+        return $transformed;
+    }
 
-        foreach ($aiResponse['questions'] as $index => $questionData) {
-            if (
-                !isset(
-                $questionData['question'],
-                $questionData['root_type'],
-                $questionData['depth_level'],
-                $questionData['options'],
-                $questionData['correct_answer']
-            )
-            ) {
-                continue;
-            }
+    /**
+     * Track AI usage
+     */
+    private function trackUsage(string $type, int $count): void
+    {
+        $key = 'ai_usage_' . $type . '_' . today()->format('Y-m-d');
+        Cache::increment($key, $count);
 
-            $options = is_array($questionData['options'])
-                ? array_values($questionData['options'])
-                : [];
-
-            if (count($options) < 2) {
-                continue;
-            }
-
-            \App\Models\Question::create([
-                'quiz_id' => $quiz->id,
-                'question' => $questionData['question'],
-                'root_type' => $questionData['root_type'],
-                'depth_level' => (int) $questionData['depth_level'],
-                'options' => $options,
-                'correct_answer' => $questionData['correct_answer'],
-                'passage' => $index === 0 ? $passage : null,
-                'passage_title' => $index === 0 ? $passageTitle : null,
+        // Store in database for long-term tracking
+        try {
+            DB::table('ai_usage_logs')->insert([
+                'type' => $type,
+                'count' => $count,
+                'user_id' => Auth::id(),
+                'created_at' => now()
             ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to track AI usage in database', ['error' => $e->getMessage()]);
         }
     }
 
-    // API methods for additional functionality
+    /**
+     * Get monthly usage statistics
+     */
+    private function getMonthlyUsage(): array
+    {
+        $usage = [];
+        $startDate = now()->startOfMonth();
+        $endDate = now();
+
+        for ($date = $startDate->copy(); $date <= $endDate; $date->addDay()) {
+            $key = 'ai_requests_' . $date->format('Y-m-d');
+            $usage[$date->format('Y-m-d')] = Cache::get($key, 0);
+        }
+
+        return $usage;
+    }
+
+    /**
+     * Check API status
+     */
+    private function checkApiStatus(): array
+    {
+        try {
+            $testResult = $this->claudeService->testConnection();
+            return [
+                'status' => $testResult['connected'] ? 'متصل' : 'غير متصل',
+                'last_check' => now()->toDateTimeString(),
+                'details' => $testResult
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'خطأ',
+                'last_check' => now()->toDateTimeString(),
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get recent AI generations
+     */
+    private function getRecentGenerations(): array
+    {
+        try {
+            return DB::table('ai_usage_logs')
+                ->select('type', 'count', 'created_at')
+                ->where('user_id', Auth::id())
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get()
+                ->toArray();
+        } catch (\Exception $e) {
+            Log::warning('Failed to get recent generations', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * API endpoints for AJAX requests
+     */
+
+    /**
+     * Generate passage via API
+     */
     public function apiGeneratePassage(Request $request)
     {
         $validated = $request->validate([
             'subject' => 'required|in:arabic,english,hebrew',
             'grade_level' => 'required|integer|min:1|max:9',
             'topic' => 'required|string|max:255',
+            'text_type' => 'required|in:story,article,dialogue,description',
             'length' => 'required|in:short,medium,long'
         ]);
 
         try {
-            $passage = $this->claudeService->generatePassage(
+            // Use generateEducationalText
+            $passage = $this->claudeService->generateEducationalText(
                 $validated['subject'],
                 $validated['grade_level'],
                 $validated['topic'],
+                $validated['text_type'],
                 $validated['length']
             );
 
             return response()->json([
                 'success' => true,
-                'passage' => $passage['content'],
-                'title' => $passage['title'] ?? $validated['topic']
+                'passage' => $passage
             ]);
-        } catch (\Exception $e) {
-            Log::error('Passage generation failed', ['error' => $e->getMessage()]);
 
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'فشل توليد النص'
-            ], 500);
+                'message' => $e->getMessage()
+            ], 422);
         }
     }
 
+    /**
+     * Generate questions via API
+     */
     public function apiGenerateQuestions(Request $request)
     {
         $validated = $request->validate([
             'passage' => 'required|string',
             'subject' => 'required|in:arabic,english,hebrew',
             'grade_level' => 'required|integer|min:1|max:9',
-            'root_distribution' => 'required|array'
+            'roots' => 'required|array'
         ]);
 
         try {
-            $questions = $this->claudeService->generateQuestionsFromPassage(
+            // Use generateQuestionsFromText
+            $questions = $this->claudeService->generateQuestionsFromText(
                 $validated['passage'],
                 $validated['subject'],
                 $validated['grade_level'],
-                $validated['root_distribution']
+                $validated['roots']
             );
 
             return response()->json([
                 'success' => true,
                 'questions' => $questions
             ]);
-        } catch (\Exception $e) {
-            Log::error('Question generation failed', ['error' => $e->getMessage()]);
 
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'فشل توليد الأسئلة'
-            ], 500);
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Generate complete quiz via API
+     */
+    public function apiGenerateQuiz(Request $request)
+    {
+        $validated = $request->validate([
+            'subject' => 'required|in:arabic,english,hebrew',
+            'grade_level' => 'required|integer|min:1|max:9',
+            'topic' => 'required|string|max:255',
+            'settings' => 'required|array',
+            'include_passage' => 'boolean',
+            'passage_topic' => 'nullable|string'
+        ]);
+
+        try {
+            $result = $this->claudeService->generateJuzoorQuiz(
+                $validated['subject'],
+                $validated['grade_level'],
+                $validated['topic'],
+                $validated['settings'],
+                $validated['include_passage'] ?? false,
+                $validated['passage_topic'] ?? null
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Generate report via API
+     */
+    public function apiGenerateReport(Request $request)
+    {
+        $validated = $request->validate([
+            'result_id' => 'required|exists:results,id'
+        ]);
+
+        try {
+            // FIXED: Find the result by ID and generate report
+            $result = Result::findOrFail($validated['result_id']);
+            $report = $this->generateResultReport($result);
+
+            return response()->json([
+                'success' => true,
+                'report' => $report
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Regenerate a specific question
+     */
+    public function apiRegenerateQuestion(Request $request)
+    {
+        $validated = $request->validate([
+            'question_id' => 'required|exists:questions,id',
+            'passage' => 'nullable|string'
+        ]);
+
+        try {
+            $question = Question::findOrFail($validated['question_id']);
+            $quiz = $question->quiz;
+
+            // Generate a single question with the same parameters
+            $newQuestions = $this->claudeService->generateQuestionsFromText(
+                $validated['passage'] ?? $question->passage ?? '',
+                $quiz->subject,
+                $quiz->grade_level,
+                [$question->root_type => [$question->depth_level => 1]]
+            );
+
+            if (!empty($newQuestions)) {
+                $newQuestion = $newQuestions[0];
+
+                // Update the existing question
+                $question->update([
+                    'question' => $newQuestion['question'],
+                    'options' => $newQuestion['options'],
+                    'correct_answer' => $newQuestion['correct_answer']
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'question' => $question->fresh()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 422);
         }
     }
 }

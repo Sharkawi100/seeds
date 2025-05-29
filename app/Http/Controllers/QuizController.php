@@ -47,27 +47,49 @@ class QuizController extends Controller
             'roots' => 'required_if:creation_method,ai,hybrid|array',
             'topic' => 'required_if:creation_method,ai,hybrid|string|max:255',
             'include_passage' => 'boolean',
-            'passage_topic' => 'nullable|string|max:255'
+            'passage_topic' => 'nullable|string|max:255',
+            'educational_text' => 'nullable|string',
+            'text_source' => 'nullable|string',
+            'text_type' => 'nullable|string',
+            'text_length' => 'nullable|string'
+        ]);
+
+        Log::info('Quiz store request', [
+            'method' => $request->method(),
+            'creation_method' => $validated['creation_method'] ?? 'not set',
+            'all_data' => $request->all(),
+            'is_ajax' => $request->ajax(),
+            'expects_json' => $request->expectsJson()
         ]);
 
         DB::beginTransaction();
 
         try {
-            // Transform roots structure for database storage
-            $settings = [];
+            // Transform roots structure for database storage AND for ClaudeService
+            $settingsForDb = [];
+            $settingsForClaude = [];
+
             if (isset($validated['roots'])) {
                 foreach ($validated['roots'] as $rootKey => $root) {
-                    $levels = [];
-                    foreach ($root['levels'] ?? [] as $level) {
-                        if (isset($level['count']) && $level['count'] > 0) {
-                            $levels[] = [
-                                'depth' => $level['depth'] ?? 1,
-                                'count' => (int) $level['count']
+                    $settingsForClaude[$rootKey] = [];
+                    $levelsForDb = [];
+
+                    foreach ($root['levels'] ?? [] as $level => $levelData) {
+                        if (isset($levelData['count']) && $levelData['count'] > 0) {
+                            // For database storage
+                            $levelsForDb[] = [
+                                'depth' => $levelData['depth'] ?? $level,
+                                'count' => (int) $levelData['count']
                             ];
+
+                            // For Claude service (simple key => value)
+                            $depthKey = $levelData['depth'] ?? $level;
+                            $settingsForClaude[$rootKey][$depthKey] = (int) $levelData['count'];
                         }
                     }
-                    if (!empty($levels)) {
-                        $settings[$rootKey] = $levels;
+
+                    if (!empty($levelsForDb)) {
+                        $settingsForDb[$rootKey] = $levelsForDb;
                     }
                 }
             }
@@ -77,49 +99,118 @@ class QuizController extends Controller
                 'title' => $validated['title'],
                 'subject' => $validated['subject'],
                 'grade_level' => $validated['grade_level'],
-                'settings' => $settings
+                'settings' => $settingsForDb
             ]);
 
             // Handle different creation methods
             switch ($validated['creation_method']) {
                 case 'manual':
                     DB::commit();
+
+                    if ($request->expectsJson() || $request->ajax()) {
+                        return response()->json([
+                            'success' => true,
+                            'redirect' => route('quizzes.questions.create', $quiz)
+                        ]);
+                    }
+
                     return redirect()->route('quizzes.questions.create', $quiz)
                         ->with('success', 'تم إنشاء الاختبار. الآن أضف الأسئلة.');
 
                 case 'ai':
                 case 'hybrid':
                     try {
-                        $aiResponse = $this->claudeService->generateJuzoorQuiz(
-                            $quiz->subject,
-                            $quiz->grade_level,
-                            $validated['topic'] ?? '',
-                            $settings,
-                            $request->boolean('include_passage'),
-                            $validated['passage_topic'] ?? null
-                        );
+                        // Check if we have educational text
+                        $hasEducationalText = isset($validated['educational_text']) &&
+                            !empty(trim($validated['educational_text']));
 
+                        Log::info('Educational text check', [
+                            'has_educational_text' => $hasEducationalText,
+                            'text_length' => strlen($validated['educational_text'] ?? ''),
+                            'text_preview' => substr($validated['educational_text'] ?? '', 0, 200)
+                        ]);
+
+                        if ($hasEducationalText) {
+                            Log::info('Using provided educational text for questions generation');
+
+                            // Generate questions from the provided text
+                            $questions = $this->claudeService->generateQuestionsFromText(
+                                $validated['educational_text'],
+                                $quiz->subject,
+                                $quiz->grade_level,
+                                $settingsForClaude  // Use the Claude-formatted settings
+                            );
+
+                            // Structure the response with the educational text as passage
+                            $aiResponse = [
+                                'questions' => $questions,
+                                'passage' => $validated['educational_text'],
+                                'passage_title' => $validated['topic'] ?? 'نص القراءة'
+                            ];
+
+                            Log::info('Questions generated from educational text', [
+                                'questions_count' => count($questions),
+                                'will_save_passage' => true
+                            ]);
+                        } else {
+                            Log::info('No educational text provided, generating complete quiz with passage');
+
+                            // Generate complete quiz with passage
+                            $aiResponse = $this->claudeService->generateJuzoorQuiz(
+                                $quiz->subject,
+                                $quiz->grade_level,
+                                $validated['topic'] ?? '',
+                                $settingsForDb,  // Use the DB-formatted settings (generateJuzoorQuiz transforms it)
+                                true, // Always include passage
+                                $validated['passage_topic'] ?? null
+                            );
+                        }
+
+                        // Save questions with passage
                         $this->parseAndSaveQuestions($quiz, $aiResponse);
+
+                        // Verify the passage was saved
+                        $savedPassage = $quiz->questions()->whereNotNull('passage')->first();
+                        Log::info('Passage save verification', [
+                            'passage_saved' => !is_null($savedPassage),
+                            'passage_length' => $savedPassage ? strlen($savedPassage->passage) : 0
+                        ]);
 
                         DB::commit();
 
-                        if ($validated['creation_method'] === 'hybrid') {
-                            return redirect()->route('quizzes.questions.index', $quiz)
-                                ->with('success', 'تم توليد الأسئلة بنجاح. يمكنك الآن تعديلها.');
+                        $redirectUrl = $validated['creation_method'] === 'hybrid'
+                            ? route('quizzes.questions.index', $quiz)
+                            : route('quizzes.show', $quiz);
+
+                        if ($request->expectsJson() || $request->ajax()) {
+                            return response()->json([
+                                'success' => true,
+                                'redirect' => $redirectUrl
+                            ]);
                         }
 
-                        return redirect()->route('quizzes.show', $quiz)
-                            ->with('success', 'تم إنشاء الاختبار وتوليد الأسئلة بنجاح.');
+                        return redirect()->to($redirectUrl)
+                            ->with('success', $validated['creation_method'] === 'hybrid'
+                                ? 'تم توليد الأسئلة بنجاح. يمكنك الآن تعديلها.'
+                                : 'تم إنشاء الاختبار وتوليد الأسئلة بنجاح.');
 
                     } catch (\Exception $e) {
                         DB::rollBack();
                         Log::error('Quiz AI generation failed', [
                             'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
                             'quiz_id' => $quiz->id
                         ]);
 
                         // Delete the quiz if AI generation fails
                         $quiz->delete();
+
+                        if ($request->expectsJson() || $request->ajax()) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'فشل توليد الأسئلة بالذكاء الاصطناعي. الرجاء المحاولة مرة أخرى.'
+                            ], 422);
+                        }
 
                         return redirect()->route('quizzes.create')
                             ->with('error', 'فشل توليد الأسئلة بالذكاء الاصطناعي. الرجاء المحاولة مرة أخرى.')
@@ -129,7 +220,17 @@ class QuizController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Quiz creation failed', ['error' => $e->getMessage()]);
+            Log::error('Quiz creation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء إنشاء الاختبار.'
+                ], 422);
+            }
 
             return redirect()->route('quizzes.create')
                 ->with('error', 'حدث خطأ أثناء إنشاء الاختبار.')
@@ -160,6 +261,10 @@ class QuizController extends Controller
             'title' => 'required|string|max:255',
             'subject' => 'required|in:arabic,english,hebrew',
             'grade_level' => 'required|integer|min:1|max:9',
+            'description' => 'nullable|string',
+            'time_limit' => 'nullable|integer|min:1',
+            'passing_score' => 'nullable|integer|min:0|max:100',
+            'show_results' => 'boolean'
         ]);
 
         $quiz->update($validated);
@@ -221,8 +326,9 @@ class QuizController extends Controller
 
             foreach ($validated['answers'] as $questionId => $selectedAnswer) {
                 $question = $quiz->questions->find($questionId);
-                if (!$question)
+                if (!$question) {
                     continue;
+                }
 
                 $isCorrect = $question->correct_answer === $selectedAnswer;
 
@@ -273,6 +379,50 @@ class QuizController extends Controller
         }
     }
 
+    /**
+     * Generate educational text using AI
+     * This handles the AJAX request from step 2 of quiz creation
+     */
+    public function generateText(Request $request)
+    {
+        $validated = $request->validate([
+            'subject' => 'required|in:arabic,english,hebrew',
+            'grade_level' => 'required|integer|min:1|max:9',
+            'topic' => 'required|string|max:255',
+            'text_type' => 'required|in:story,article,dialogue,description',
+            'length' => 'required|in:short,medium,long'
+        ]);
+
+        try {
+            $text = $this->claudeService->generateEducationalText(
+                $validated['subject'],
+                $validated['grade_level'],
+                $validated['topic'],
+                $validated['text_type'],
+                $validated['length']
+            );
+
+            return response()->json([
+                'success' => true,
+                'text' => $text
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Text generation failed', [
+                'error' => $e->getMessage(),
+                'params' => $validated
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل توليد النص: ' . $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Parse and save questions from AI response
+     */
     private function parseAndSaveQuestions(Quiz $quiz, array $aiResponse)
     {
         if (!isset($aiResponse['questions']) || !is_array($aiResponse['questions'])) {
@@ -320,57 +470,13 @@ class QuizController extends Controller
         }
     }
 
+    /**
+     * Authorize action
+     */
     protected function authorize($ability, $quiz)
     {
         if (!Auth::check() || Auth::id() !== $quiz->user_id) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
-        }
-    }
-
-
-
-    public function generateText(Request $request)
-    {
-        $validated = $request->validate([
-            'subject' => 'required|in:arabic,english,hebrew',
-            'grade_level' => 'required|integer|min:1|max:9',
-            'topic' => 'required|string|max:255',
-            'text_type' => 'required|in:story,article,dialogue,description',
-            'length' => 'required|in:short,medium,long'
-        ]);
-
-        try {
-            // Generate passage using Claude
-            $response = $this->claudeService->generatePassage(
-                $validated['subject'],
-                $validated['grade_level'],
-                $validated['topic'],
-                $validated['length']
-            );
-
-            if ($response['success']) {
-                return response()->json([
-                    'success' => true,
-                    'text' => $response['content'],
-                    'title' => $response['title'] ?? $validated['topic']
-                ]);
-            }
-
-            return response()->json([
-                'success' => false,
-                'message' => 'فشل توليد النص'
-            ], 500);
-
-        } catch (\Exception $e) {
-            Log::error('Text generation failed', [
-                'error' => $e->getMessage(),
-                'data' => $validated
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ في توليد النص'
-            ], 500);
         }
     }
 }

@@ -806,6 +806,17 @@ function updateWordCount() {
 function updateTextPreview() {
     const text = document.getElementById('educational-text').value;
     document.getElementById('text-preview').textContent = text || 'لا يوجد نص';
+    
+    // Store in a hidden field to ensure it's submitted
+    let hiddenField = document.getElementById('educational_text_hidden');
+    if (!hiddenField) {
+        hiddenField = document.createElement('input');
+        hiddenField.type = 'hidden';
+        hiddenField.id = 'educational_text_hidden';
+        hiddenField.name = 'educational_text';
+        document.getElementById('quiz-form').appendChild(hiddenField);
+    }
+    hiddenField.value = text;
 }
 
 // Level controls
@@ -912,10 +923,22 @@ async function createQuiz() {
     
     showLoadingModal('جاري إنشاء الاختبار', 'يتم معالجة البيانات وإنشاء الاختبار...');
     
+    // Create FormData from the form
     const formData = new FormData(document.getElementById('quiz-form'));
     
+    // IMPORTANT: Add the educational text from the textarea
+    const educationalText = document.getElementById('educational-text').value;
+    if (educationalText && educationalText.trim().length > 0) {
+        formData.set('educational_text', educationalText);
+        console.log('Educational text added to form:', educationalText.substring(0, 100) + '...');
+    }
+    
+    // Debug: Log all form data
+    for (let [key, value] of formData.entries()) {
+        console.log(key + ': ' + (typeof value === 'string' ? value.substring(0, 50) : value));
+    }
+    
     try {
-        // First create the quiz
         const response = await fetch('{{ route("quizzes.store") }}', {
             method: 'POST',
             body: formData,
@@ -928,7 +951,6 @@ async function createQuiz() {
         const data = await response.json();
         
         if (data.success || response.redirected) {
-            // Quiz created successfully
             window.location.href = data.redirect || response.url;
         } else {
             hideLoadingModal();

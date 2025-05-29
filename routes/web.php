@@ -63,6 +63,13 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('quizzes', QuizController::class);
     Route::resource('quizzes.questions', QuestionController::class)->except(['show']);
 
+    // TEXT GENERATION
+    Route::post('quizzes/generate-text', [QuizController::class, 'generateText'])
+        ->name('quizzes.generate-text');
+
+    Route::post('quizzes/{quiz}/questions/{question}/update-text', [QuestionController::class, 'updateText'])
+        ->name('quizzes.questions.update-text');
+
     Route::post('quizzes/{quiz}/questions/{question}/update-text', [QuestionController::class, 'updateText'])
         ->name('quizzes.questions.update-text');
 
@@ -90,7 +97,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // Additional admin routes
     Route::get('reports', [DashboardController::class, 'reports'])->name('reports');
     Route::get('settings', [DashboardController::class, 'settings'])->name('settings');
-
+    Route::post('/quizzes/generate-text', [QuizController::class, 'generateText'])
+        ->name('quizzes.generate-text')
+        ->middleware('auth');
     // AI Management Routes
     Route::prefix('ai')->name('ai.')->group(function () {
         Route::get('/', [AiManagementController::class, 'index'])->name('index');
