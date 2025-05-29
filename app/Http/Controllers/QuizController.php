@@ -327,5 +327,50 @@ class QuizController extends Controller
         }
     }
 
-}
 
+
+    public function generateText(Request $request)
+    {
+        $validated = $request->validate([
+            'subject' => 'required|in:arabic,english,hebrew',
+            'grade_level' => 'required|integer|min:1|max:9',
+            'topic' => 'required|string|max:255',
+            'text_type' => 'required|in:story,article,dialogue,description',
+            'length' => 'required|in:short,medium,long'
+        ]);
+
+        try {
+            // Generate passage using Claude
+            $response = $this->claudeService->generatePassage(
+                $validated['subject'],
+                $validated['grade_level'],
+                $validated['topic'],
+                $validated['length']
+            );
+
+            if ($response['success']) {
+                return response()->json([
+                    'success' => true,
+                    'text' => $response['content'],
+                    'title' => $response['title'] ?? $validated['topic']
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل توليد النص'
+            ], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Text generation failed', [
+                'error' => $e->getMessage(),
+                'data' => $validated
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ في توليد النص'
+            ], 500);
+        }
+    }
+}

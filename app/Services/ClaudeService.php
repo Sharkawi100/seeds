@@ -3,589 +3,305 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use App\Models\Quiz;
-use App\Models\Question;
+use Illuminate\Support\Facades\Cache;
 
 class ClaudeService
 {
-    private string $apiKey;
-    private string $model;
-    private int $maxTokens;
-    private float $temperature;
-    private bool $cacheEnabled;
-    private array $httpOptions;
+    protected $apiKey;
+    protected $model;
+    protected $maxTokens;
+    protected $temperature;
 
     public function __construct()
     {
         $this->apiKey = config('services.claude.key');
-        $this->model = config('services.claude.model', 'claude-3-5-sonnet-20241022');
-        $this->maxTokens = (int) config('services.claude.max_tokens', 4000);
-        $this->temperature = (float) config('services.claude.temperature', 0.7);
-        $this->cacheEnabled = (bool) config('services.claude.cache_enabled', true);
-
-        $this->httpOptions = [
-            'timeout' => 60,
-            'connect_timeout' => 10,
-            'headers' => [
-                'anthropic-version' => '2023-06-01',
-                'anthropic-beta' => 'messages-2023-12-15',
-                'x-api-key' => $this->apiKey,
-                'content-type' => 'application/json',
-            ]
-        ];
-
-        $this->configureProxy();
+        $this->model = config('services.claude.model', 'claude-3-sonnet-20240229');
+        $this->maxTokens = config('services.claude.max_tokens', 4000);
+        $this->temperature = config('services.claude.temperature', 0.7);
     }
 
     /**
-     * Configure proxy settings if available
+     * Generate completion using Claude API
      */
-    private function configureProxy(): void
+    public function generateCompletion($prompt, $options = [])
     {
-        $httpProxy = env('HTTP_PROXY');
-        $httpsProxy = env('HTTPS_PROXY', $httpProxy);
+        $maxTokens = $options['max_tokens'] ?? $this->maxTokens;
+        $temperature = $options['temperature'] ?? $this->temperature;
 
-        if ($httpProxy || $httpsProxy) {
-            $this->httpOptions['proxy'] = [
-                'http' => $httpProxy,
-                'https' => $httpsProxy,
+        try {
+            $response = Http::withHeaders([
+                'x-api-key' => $this->apiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json',
+            ])->timeout(60)->post('https://api.anthropic.com/v1/messages', [
+                        'model' => $this->model,
+                        'max_tokens' => $maxTokens,
+                        'temperature' => $temperature,
+                        'messages' => [
+                            ['role' => 'user', 'content' => $prompt]
+                        ]
+                    ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return [
+                    'success' => true,
+                    'content' => $data['content'][0]['text'] ?? ''
+                ];
+            }
+
+            Log::error('Claude API error', [
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to generate completion'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Claude API exception', ['error' => $e->getMessage()]);
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
             ];
         }
     }
 
     /**
-     * Generate educational text/passage
+     * Generate passage for quiz
      */
-    public function generateEducationalText(
-        string $subject,
-        int $gradeLevel,
-        string $topic,
-        string $textType,
-        string $length
-    ): string {
-        $prompt = $this->buildTextGenerationPrompt($subject, $gradeLevel, $topic, $textType, $length);
-
-        try {
-            $response = $this->sendRequest($prompt, [
-                'temperature' => 0.8, // Higher temperature for more creative text
-                'max_tokens' => $this->getLengthTokens($length)
-            ]);
-
-            $text = $this->extractContent($response);
-
-            $this->trackUsage('text_generation', 1);
-
-            return $text;
-        } catch (\Exception $e) {
-            Log::error('Text generation failed', [
-                'error' => $e->getMessage(),
-                'params' => compact('subject', 'gradeLevel', 'topic', 'textType', 'length')
-            ]);
-            throw new \Exception('فشل توليد النص: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Generate questions from provided text
-     */
-    public function generateQuestionsFromText(
-        string $text,
-        string $subject,
-        int $gradeLevel,
-        array $roots
-    ): array {
-        $prompt = $this->buildQuestionsFromTextPrompt($text, $subject, $gradeLevel, $roots);
-
-        try {
-            $response = $this->sendRequest($prompt, [
-                'temperature' => 0.5, // Lower temperature for more consistent questions
-                'max_tokens' => 3000
-            ]);
-
-            $questions = $this->parseQuizResponse($response);
-
-            // Validate questions match requested distribution
-            $validatedQuestions = $this->validateQuestionDistribution($questions, $roots);
-
-            $this->trackUsage('questions_from_text', count($validatedQuestions));
-
-            return $validatedQuestions;
-        } catch (\Exception $e) {
-            Log::error('Question generation from text failed', [
-                'error' => $e->getMessage(),
-                'text_length' => strlen($text)
-            ]);
-            throw new \Exception('فشل توليد الأسئلة من النص: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Generate complete Juzoor quiz (legacy method)
-     */
-    public function generateJuzoorQuiz(
-        string $subject,
-        int $gradeLevel,
-        string $topic,
-        array $settings,
-        bool $includePassage = false,
-        ?string $passageTopic = null
-    ): array {
-        $prompt = $this->buildJuzoorQuizPrompt(
-            $subject,
-            $gradeLevel,
-            $topic,
-            $settings,
-            $includePassage,
-            $passageTopic
-        );
-
-        try {
-            $response = $this->sendRequest($prompt, [
-                'temperature' => 0.6,
-                'max_tokens' => 4000
-            ]);
-
-            $result = $this->parseCompleteQuizResponse($response);
-
-            $this->trackUsage('complete_quiz_generation', count($result['questions']));
-
-            return $result;
-        } catch (\Exception $e) {
-            Log::error('Juzoor quiz generation failed', [
-                'error' => $e->getMessage(),
-                'params' => compact('subject', 'gradeLevel', 'topic')
-            ]);
-            throw new \Exception('فشل توليد الاختبار: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Build prompt for text generation
-     */
-    private function buildTextGenerationPrompt(
-        string $subject,
-        int $gradeLevel,
-        string $topic,
-        string $textType,
-        string $length
-    ): string {
-        $subjectName = $this->getSubjectName($subject);
-        $textTypeName = $this->getTextTypeName($textType);
-        $lengthDescription = $this->getLengthDescription($length);
-
-        $prompt = <<<PROMPT
-أنت كاتب تربوي متخصص في إنشاء نصوص تعليمية للطلاب.
-
-المطلوب: كتابة {$textTypeName} تعليمي
-المادة: {$subjectName}
-الصف: {$gradeLevel}
-الموضوع: {$topic}
-الطول: {$lengthDescription}
-
-القواعد:
-1. النص يجب أن يكون مناسباً لمستوى الصف المحدد
-2. استخدم لغة واضحة وسليمة
-3. اجعل النص ممتعاً وجذاباً للطلاب
-4. تضمين معلومات تعليمية قيمة
-5. النص يجب أن يكون متماسكاً ومترابطاً
-6. مراعاة الفئة العمرية في اختيار المفردات والأسلوب
-
-اكتب النص مباشرة دون مقدمات أو شروحات إضافية.
-PROMPT;
-
-        if ($subject === 'arabic') {
-            $prompt .= "\n7. استخدم اللغة العربية الفصحى";
-        } elseif ($subject === 'english') {
-            $prompt .= "\n7. Write the text in English appropriate for the grade level";
-        } elseif ($subject === 'hebrew') {
-            $prompt .= "\n7. כתוב את הטקסט בעברית המתאימה לרמת הכיתה";
-        }
-
-        return $prompt;
-    }
-
-    /**
-     * Build prompt for generating questions from text
-     */
-    private function buildQuestionsFromTextPrompt(
-        string $text,
-        string $subject,
-        int $gradeLevel,
-        array $roots
-    ): string {
-        $subjectName = $this->getSubjectName($subject);
-
-        $prompt = <<<PROMPT
-أنت مساعد تعليمي متخصص في إنشاء أسئلة اختبار باستخدام نموذج جُذور التعليمي بناءً على نص معطى.
-
-النص المعطى:
-{$text}
-
-المعلومات الأساسية:
-- المادة: {$subjectName}
-- الصف: {$gradeLevel}
-
-نموذج جُذور يتكون من أربعة أنواع:
-1. جَوهر (Jawhar): "ما هو؟" - أسئلة عن التعريفات والحقائق المباشرة من النص
-2. ذِهن (Zihn): "كيف يعمل؟" - أسئلة تحليلية عن العمليات والأسباب في النص
-3. وَصلات (Waslat): "كيف يرتبط؟" - أسئلة عن العلاقات والروابط بين عناصر النص
-4. رُؤية (Roaya): "كيف نستخدمه؟" - أسئلة تطبيقية وإبداعية مبنية على النص
-
-مستويات العمق:
-- المستوى 1: سطحي (أسئلة مباشرة من النص)
-- المستوى 2: متوسط (تحليل وفهم أعمق)
-- المستوى 3: عميق (تفكير نقدي واستنتاج)
-
-المطلوب إنشاء أسئلة بناءً على النص المعطى بالتوزيع التالي:
-PROMPT;
-
-        foreach ($roots as $rootType => $levels) {
-            $rootName = $this->getRootName($rootType);
-            $prompt .= "\n\n{$rootName}:";
-            foreach ($levels as $level => $count) {
-                if ($count > 0) {
-                    $prompt .= "\n- المستوى {$level}: {$count} أسئلة";
-                }
-            }
-        }
-
-        $prompt .= <<<PROMPT
-
-قواعد مهمة:
-1. جميع الأسئلة يجب أن تكون مرتبطة مباشرة بالنص المعطى
-2. لا تسأل عن معلومات غير موجودة في النص
-3. كل سؤال يجب أن يكون واضحاً ومحدداً
-4. أربعة خيارات لكل سؤال، خيار واحد صحيح فقط
-5. الخيارات الخاطئة يجب أن تكون منطقية ومعقولة
-
-أرجع الأسئلة بصيغة JSON بالشكل التالي:
-{
-    "questions": [
-        {
-            "question": "نص السؤال",
-            "options": ["الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الخيار الرابع"],
-            "correct_answer": "الإجابة الصحيحة",
-            "root_type": "نوع الجذر",
-            "depth_level": رقم المستوى
-        }
-    ]
-}
-PROMPT;
-
-        return $prompt;
-    }
-
-    /**
-     * Build prompt for complete Juzoor quiz
-     */
-    private function buildJuzoorQuizPrompt(
-        string $subject,
-        int $gradeLevel,
-        string $topic,
-        array $settings,
-        bool $includePassage,
-        ?string $passageTopic
-    ): string {
-        $subjectName = $this->getSubjectName($subject);
-
-        $prompt = <<<PROMPT
-أنت مساعد تعليمي متخصص في إنشاء اختبارات تعليمية باستخدام نموذج جُذور.
-
-المعلومات الأساسية:
-- المادة: {$subjectName}
-- الصف: {$gradeLevel}
-- الموضوع: {$topic}
-PROMPT;
-
-        if ($includePassage) {
-            $passageTopicText = $passageTopic ?: $topic;
-            $prompt .= "\n\nأولاً: قم بكتابة نص تعليمي عن '{$passageTopicText}' مناسب للصف {$gradeLevel}";
-            $prompt .= "\nالنص يجب أن يكون بطول 150-200 كلمة ويحتوي على معلومات غنية يمكن بناء أسئلة عليها.";
-        }
-
-        $prompt .= "\n\nثانياً: قم بإنشاء أسئلة اختيار من متعدد بناءً على ";
-        $prompt .= $includePassage ? "النص الذي كتبته" : "الموضوع المحدد";
-        $prompt .= " بالتوزيع التالي:\n";
-
-        foreach ($settings as $rootType => $levels) {
-            $rootName = $this->getRootName($rootType);
-            $prompt .= "\n{$rootName}:";
-            foreach ($levels as $levelData) {
-                $depth = $levelData['depth'];
-                $count = $levelData['count'];
-                $prompt .= "\n- المستوى {$depth}: {$count} أسئلة";
-            }
-        }
-
-        $prompt .= "\n\nأرجع النتيجة بصيغة JSON بالشكل التالي:\n";
-        $prompt .= "{\n";
-        if ($includePassage) {
-            $prompt .= '    "passage": "النص التعليمي",';
-            $prompt .= "\n";
-            $prompt .= '    "passage_title": "عنوان النص",';
-            $prompt .= "\n";
-        }
-        $prompt .= '    "questions": [';
-        $prompt .= "\n        {";
-        $prompt .= "\n            \"question\": \"نص السؤال\",";
-        $prompt .= "\n            \"options\": [\"خيار1\", \"خيار2\", \"خيار3\", \"خيار4\"],";
-        $prompt .= "\n            \"correct_answer\": \"الإجابة الصحيحة\",";
-        $prompt .= "\n            \"root_type\": \"jawhar/zihn/waslat/roaya\",";
-        $prompt .= "\n            \"depth_level\": 1-3";
-        $prompt .= "\n        }";
-        $prompt .= "\n    ]";
-        $prompt .= "\n}";
-
-        return $prompt;
-    }
-
-    /**
-     * Send request to Claude API
-     */
-    private function sendRequest(string $prompt, array $overrides = []): array
+    public function generatePassage($subject, $gradeLevel, $topic, $length = 'medium')
     {
-        $payload = [
-            'model' => $overrides['model'] ?? $this->model,
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => $prompt
-                ]
-            ],
-            'max_tokens' => $overrides['max_tokens'] ?? $this->maxTokens,
-            'temperature' => $overrides['temperature'] ?? $this->temperature,
+        $wordCounts = [
+            'short' => '50-100',
+            'medium' => '150-250',
+            'long' => '300-500'
         ];
 
-        $response = Http::withOptions($this->httpOptions)
-            ->post('https://api.anthropic.com/v1/messages', $payload);
+        $prompt = "أنت خبير تربوي متخصص في إنشاء نصوص تعليمية للطلاب. قم بكتابة نص تعليمي حول موضوع '{$topic}' مناسب للصف {$gradeLevel} في مادة {$subject}.\n\n";
+        $prompt .= "المتطلبات:\n";
+        $prompt .= "- طول النص: {$wordCounts[$length]} كلمة\n";
+        $prompt .= "- لغة واضحة ومناسبة للفئة العمرية\n";
+        $prompt .= "- معلومات دقيقة وتعليمية\n";
+        $prompt .= "- النص يجب أن يكون غنياً بالمعلومات لبناء أسئلة متنوعة عليه\n";
+        $prompt .= "- استخدم أسلوباً جذاباً ومشوقاً للطلاب\n\n";
+        $prompt .= "قم بإرجاع النص فقط دون أي تعليقات إضافية.";
 
-        if (!$response->successful()) {
-            $error = $response->json('error.message', 'Unknown error');
-            throw new \Exception("Claude API Error: {$error}");
+        $response = $this->generateCompletion($prompt);
+
+        if ($response['success']) {
+            return [
+                'success' => true,
+                'content' => $response['content'],
+                'title' => $topic
+            ];
         }
 
-        return $response->json();
+        return $response;
     }
 
     /**
-     * Extract content from Claude response
+     * Generate questions from existing passage
      */
-    private function extractContent(array $response): string
+    public function generateQuestionsFromPassage($passage, $subject, $gradeLevel, $rootDistribution)
     {
-        if (!isset($response['content']) || !is_array($response['content'])) {
-            throw new \Exception('Invalid response structure');
-        }
+        $prompt = $this->buildQuestionGenerationPrompt($passage, $subject, $gradeLevel, $rootDistribution);
 
-        $textContent = '';
-        foreach ($response['content'] as $block) {
-            if ($block['type'] === 'text') {
-                $textContent .= $block['text'];
-            }
-        }
-
-        return trim($textContent);
-    }
-
-    /**
-     * Parse quiz response from AI
-     */
-    private function parseQuizResponse(array $response): array
-    {
-        $content = $this->extractContent($response);
-
-        // Extract JSON from the response
-        if (preg_match('/\{[\s\S]*\}/', $content, $matches)) {
-            $jsonString = $matches[0];
-            $data = json_decode($jsonString, true);
-
-            if (json_last_error() === JSON_ERROR_NONE && isset($data['questions'])) {
-                return $data['questions'];
-            }
-        }
-
-        throw new \Exception('Failed to parse quiz questions from AI response');
-    }
-
-    /**
-     * Parse complete quiz response (with passage)
-     */
-    private function parseCompleteQuizResponse(array $response): array
-    {
-        $content = $this->extractContent($response);
-
-        // Extract JSON from the response
-        if (preg_match('/\{[\s\S]*\}/', $content, $matches)) {
-            $jsonString = $matches[0];
-            $data = json_decode($jsonString, true);
-
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return [
-                    'passage' => $data['passage'] ?? null,
-                    'passage_title' => $data['passage_title'] ?? null,
-                    'questions' => $data['questions'] ?? []
-                ];
-            }
-        }
-
-        throw new \Exception('Failed to parse complete quiz from AI response');
-    }
-
-    /**
-     * Validate question distribution matches request
-     */
-    private function validateQuestionDistribution(array $questions, array $requestedRoots): array
-    {
-        $validated = [];
-        $distribution = [];
-
-        // Count requested questions
-        foreach ($requestedRoots as $root => $levels) {
-            foreach ($levels as $level => $count) {
-                $key = "{$root}_{$level}";
-                $distribution[$key] = [
-                    'requested' => $count,
-                    'added' => 0
-                ];
-            }
-        }
-
-        // Add questions matching distribution
-        foreach ($questions as $question) {
-            $key = "{$question['root_type']}_{$question['depth_level']}";
-
-            if (
-                isset($distribution[$key]) &&
-                $distribution[$key]['added'] < $distribution[$key]['requested']
-            ) {
-                $validated[] = $question;
-                $distribution[$key]['added']++;
-            }
-        }
-
-        // Log any mismatches
-        foreach ($distribution as $key => $counts) {
-            if ($counts['added'] < $counts['requested']) {
-                Log::warning('Question distribution mismatch', [
-                    'type' => $key,
-                    'requested' => $counts['requested'],
-                    'received' => $counts['added']
-                ]);
-            }
-        }
-
-        return $validated;
-    }
-
-    /**
-     * Track API usage
-     */
-    private function trackUsage(string $type, int $count = 1): void
-    {
-        $dateKey = today()->format('Y-m-d');
-
-        Cache::increment("ai_requests_{$dateKey}");
-        Cache::increment("ai_requests_{$type}_{$dateKey}", $count);
-
-        // Store usage in database for long-term tracking
-        DB::table('ai_usage_logs')->insert([
-            'type' => $type,
-            'model' => $this->model,
-            'count' => $count,
-            'created_at' => now(),
+        $response = $this->generateCompletion($prompt, [
+            'max_tokens' => 4000,
+            'temperature' => 0.7
         ]);
+
+        if ($response['success']) {
+            $questions = $this->parseQuestionsFromResponse($response['content']);
+            return [
+                'success' => true,
+                'questions' => $questions
+            ];
+        }
+
+        return $response;
     }
 
     /**
-     * Get tokens based on length
+     * Build prompt for question generation
      */
-    private function getLengthTokens(string $length): int
+    private function buildQuestionGenerationPrompt($passage, $subject, $gradeLevel, $rootDistribution)
     {
-        return match ($length) {
-            'short' => 500,
-            'medium' => 1000,
-            'long' => 2000,
-            default => 1000
-        };
+        $prompt = "أنت خبير تربوي متخصص في نموذج جُذور التعليمي. بناءً على النص التالي، قم بإنشاء أسئلة اختيار من متعدد.\n\n";
+        $prompt .= "النص:\n{$passage}\n\n";
+        $prompt .= "معلومات الاختبار:\n";
+        $prompt .= "- المادة: {$subject}\n";
+        $prompt .= "- الصف: {$gradeLevel}\n\n";
+
+        $prompt .= "توزيع الأسئلة المطلوب:\n";
+        foreach ($rootDistribution as $root => $levels) {
+            $rootName = ['jawhar' => 'جَوهر', 'zihn' => 'ذِهن', 'waslat' => 'وَصلات', 'roaya' => 'رُؤية'][$root] ?? $root;
+            foreach ($levels as $level) {
+                $prompt .= "- {$rootName} مستوى {$level['depth']}: {$level['count']} أسئلة\n";
+            }
+        }
+
+        $prompt .= "\nقم بإنشاء الأسئلة بصيغة JSON بالشكل التالي:\n";
+        $prompt .= '```json
+[
+    {
+        "question": "نص السؤال",
+        "root_type": "jawhar|zihn|waslat|roaya",
+        "depth_level": 1|2|3,
+        "options": ["خيار 1", "خيار 2", "خيار 3", "خيار 4"],
+        "correct_answer": "الإجابة الصحيحة"
+    }
+]
+```';
+
+        return $prompt;
     }
 
     /**
-     * Get length description in Arabic
+     * Parse questions from AI response
      */
-    private function getLengthDescription(string $length): string
+    private function parseQuestionsFromResponse($content)
     {
-        return match ($length) {
-            'short' => 'قصير (50-100 كلمة)',
-            'medium' => 'متوسط (150-250 كلمة)',
-            'long' => 'طويل (300-500 كلمة)',
-            default => 'متوسط'
-        };
-    }
+        // Extract JSON from response
+        if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
+            $jsonString = $matches[1];
+        } else if (preg_match('/\[.*\]/s', $content, $matches)) {
+            $jsonString = $matches[0];
+        } else {
+            // Try to parse the entire content as JSON
+            $jsonString = $content;
+        }
 
-    /**
-     * Get text type name in Arabic
-     */
-    private function getTextTypeName(string $type): string
-    {
-        return match ($type) {
-            'story' => 'قصة',
-            'article' => 'مقال',
-            'dialogue' => 'حوار',
-            'description' => 'نص وصفي',
-            default => 'نص'
-        };
-    }
+        try {
+            $questions = json_decode($jsonString, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($questions)) {
+                return $questions;
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to parse questions JSON', ['error' => $e->getMessage()]);
+        }
 
-    /**
-     * Get subject name in Arabic
-     */
-    private function getSubjectName(string $subject): string
-    {
-        return match ($subject) {
-            'arabic' => 'اللغة العربية',
-            'english' => 'اللغة الإنجليزية',
-            'hebrew' => 'اللغة العبرية',
-            default => $subject
-        };
-    }
-
-    /**
-     * Get root name in Arabic
-     */
-    private function getRootName(string $root): string
-    {
-        return match ($root) {
-            'jawhar' => 'جَوهر',
-            'zihn' => 'ذِهن',
-            'waslat' => 'وَصلات',
-            'roaya' => 'رُؤية',
-            default => $root
-        };
+        return [];
     }
 
     /**
      * Test connection to Claude API
      */
-    public function testConnection(): array
+    public function testConnection()
     {
         try {
-            $response = $this->sendRequest('مرحبا، أجب بكلمة "متصل" فقط', [
-                'max_tokens' => 50,
+            $response = $this->generateCompletion('مرحبا', [
+                'max_tokens' => 10,
                 'temperature' => 0
             ]);
 
             return [
-                'connected' => true,
-                'model' => $this->model,
-                'response' => $this->extractContent($response)
+                'success' => $response['success'],
+                'message' => $response['success'] ? 'Claude API connected successfully' : 'Failed to connect to Claude API'
             ];
         } catch (\Exception $e) {
             return [
-                'connected' => false,
-                'error' => $e->getMessage()
+                'success' => false,
+                'message' => 'Connection error: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Generate complete Juzoor quiz
+     */
+    public function generateJuzoorQuiz($subject, $gradeLevel, $topic, $settings, $includePassage = false, $passageTopic = null)
+    {
+        $prompt = $this->buildJuzoorQuizPrompt($subject, $gradeLevel, $topic, $settings, $includePassage, $passageTopic);
+
+        $response = $this->generateCompletion($prompt, [
+            'max_tokens' => 4000,
+            'temperature' => 0.7
+        ]);
+
+        if ($response['success']) {
+            return $this->parseJuzoorQuizResponse($response['content']);
+        }
+
+        throw new \Exception('Failed to generate quiz: ' . ($response['error'] ?? 'Unknown error'));
+    }
+
+    /**
+     * Build prompt for Juzoor quiz generation
+     */
+    private function buildJuzoorQuizPrompt($subject, $gradeLevel, $topic, $settings, $includePassage, $passageTopic)
+    {
+        $prompt = "أنت خبير تربوي متخصص في نموذج جُذور التعليمي. قم بإنشاء اختبار تعليمي شامل.\n\n";
+
+        $prompt .= "معلومات الاختبار:\n";
+        $prompt .= "- المادة: {$subject}\n";
+        $prompt .= "- الصف: {$gradeLevel}\n";
+        $prompt .= "- الموضوع: {$topic}\n\n";
+
+        if ($includePassage) {
+            $prompt .= "قم أولاً بكتابة نص قراءة حول موضوع: " . ($passageTopic ?? $topic) . "\n";
+            $prompt .= "النص يجب أن يكون مناسباً للصف المحدد وغنياً بالمعلومات.\n\n";
+        }
+
+        $prompt .= "ثم قم بإنشاء أسئلة اختيار من متعدد بناءً على التوزيع التالي:\n";
+
+        foreach ($settings as $root => $levels) {
+            $rootName = ['jawhar' => 'جَوهر', 'zihn' => 'ذِهن', 'waslat' => 'وَصلات', 'roaya' => 'رُؤية'][$root] ?? $root;
+            foreach ($levels as $level) {
+                $prompt .= "- {$rootName} مستوى {$level['depth']}: {$level['count']} أسئلة\n";
+            }
+        }
+
+        $prompt .= "\nأرجع النتيجة بصيغة JSON كالتالي:\n";
+        $prompt .= '```json
+{
+    "passage": "نص القراءة (إذا طُلب)",
+    "passage_title": "عنوان النص",
+    "questions": [
+        {
+            "question": "نص السؤال",
+            "root_type": "jawhar|zihn|waslat|roaya",
+            "depth_level": 1|2|3,
+            "options": ["خيار 1", "خيار 2", "خيار 3", "خيار 4"],
+            "correct_answer": "الإجابة الصحيحة"
+        }
+    ]
+}
+```';
+
+        return $prompt;
+    }
+
+    /**
+     * Parse Juzoor quiz response
+     */
+    private function parseJuzoorQuizResponse($content)
+    {
+        // Extract JSON from response
+        if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
+            $jsonString = $matches[1];
+        } else {
+            $jsonString = $content;
+        }
+
+        try {
+            $data = json_decode($jsonString, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $data;
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to parse quiz JSON', ['error' => $e->getMessage()]);
+        }
+
+        // Return default structure if parsing fails
+        return [
+            'passage' => null,
+            'passage_title' => null,
+            'questions' => []
+        ];
     }
 }

@@ -152,7 +152,8 @@ class AiManagementController extends Controller
         try {
             $result = Result::with(['answers.question', 'user'])->findOrFail($validated['result_id']);
 
-            $report = $this->claudeService->generateResultReport($result, $quiz);
+            // Generate a detailed report based on the result
+            $report = $this->generateResultReport($result, $quiz);
 
             return response()->json([
                 'success' => true,
@@ -171,6 +172,72 @@ class AiManagementController extends Controller
                 'message' => 'فشل توليد التقرير.'
             ], 500);
         }
+    }
+
+    private function generateResultReport(Result $result, Quiz $quiz)
+    {
+        // Prepare the data for the AI
+        $performance = [
+            'total_score' => $result->total_score,
+            'root_scores' => $result->scores,
+            'quiz_info' => [
+                'title' => $quiz->title,
+                'subject' => $quiz->subject,
+                'grade_level' => $quiz->grade_level,
+                'total_questions' => $quiz->questions->count()
+            ],
+            'detailed_answers' => $result->answers->map(function ($answer) {
+                return [
+                    'question' => $answer->question->question,
+                    'root_type' => $answer->question->root_type,
+                    'depth_level' => $answer->question->depth_level,
+                    'is_correct' => $answer->is_correct,
+                    'selected_answer' => $answer->selected_answer,
+                    'correct_answer' => $answer->question->correct_answer
+                ];
+            })
+        ];
+
+        // Use Claude to generate an educational report
+        $prompt = $this->buildReportPrompt($performance);
+
+        // Call Claude API to generate the report
+        $response = $this->claudeService->generateCompletion($prompt, [
+            'max_tokens' => 2000,
+            'temperature' => 0.7
+        ]);
+
+        return $response['content'] ?? 'تعذر إنشاء التقرير';
+    }
+
+    private function buildReportPrompt($performance)
+    {
+        $prompt = "أنت خبير تربوي متخصص في نموذج جُذور التعليمي. قم بتحليل أداء الطالب وإنشاء تقرير تفصيلي باللغة العربية.\n\n";
+
+        $prompt .= "معلومات الاختبار:\n";
+        $prompt .= "- العنوان: {$performance['quiz_info']['title']}\n";
+        $prompt .= "- المادة: {$performance['quiz_info']['subject']}\n";
+        $prompt .= "- الصف: {$performance['quiz_info']['grade_level']}\n";
+        $prompt .= "- عدد الأسئلة: {$performance['quiz_info']['total_questions']}\n\n";
+
+        $prompt .= "النتيجة الإجمالية: {$performance['total_score']}%\n\n";
+
+        $prompt .= "أداء الجذور:\n";
+        foreach ($performance['root_scores'] as $root => $score) {
+            $rootName = ['jawhar' => 'جَوهر', 'zihn' => 'ذِهن', 'waslat' => 'وَصلات', 'roaya' => 'رُؤية'][$root] ?? $root;
+            $prompt .= "- $rootName: $score%\n";
+        }
+
+        $prompt .= "\nيرجى كتابة تقرير شامل يتضمن:\n";
+        $prompt .= "1. تحليل عام للأداء\n";
+        $prompt .= "2. نقاط القوة في كل جذر\n";
+        $prompt .= "3. المجالات التي تحتاج إلى تحسين\n";
+        $prompt .= "4. توصيات محددة للتطوير\n";
+        $prompt .= "5. أنشطة مقترحة لتعزيز التعلم\n\n";
+
+        $prompt .= "اجعل التقرير إيجابياً ومحفزاً، مع التركيز على النمو والتطور بدلاً من النقص.";
+
+        return $prompt;
     }
 
     private function parseAndSaveQuestions(Quiz $quiz, array $aiResponse)
@@ -213,6 +280,70 @@ class AiManagementController extends Controller
                 'passage' => $index === 0 ? $passage : null,
                 'passage_title' => $index === 0 ? $passageTitle : null,
             ]);
+        }
+    }
+
+    // API methods for additional functionality
+    public function apiGeneratePassage(Request $request)
+    {
+        $validated = $request->validate([
+            'subject' => 'required|in:arabic,english,hebrew',
+            'grade_level' => 'required|integer|min:1|max:9',
+            'topic' => 'required|string|max:255',
+            'length' => 'required|in:short,medium,long'
+        ]);
+
+        try {
+            $passage = $this->claudeService->generatePassage(
+                $validated['subject'],
+                $validated['grade_level'],
+                $validated['topic'],
+                $validated['length']
+            );
+
+            return response()->json([
+                'success' => true,
+                'passage' => $passage['content'],
+                'title' => $passage['title'] ?? $validated['topic']
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Passage generation failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل توليد النص'
+            ], 500);
+        }
+    }
+
+    public function apiGenerateQuestions(Request $request)
+    {
+        $validated = $request->validate([
+            'passage' => 'required|string',
+            'subject' => 'required|in:arabic,english,hebrew',
+            'grade_level' => 'required|integer|min:1|max:9',
+            'root_distribution' => 'required|array'
+        ]);
+
+        try {
+            $questions = $this->claudeService->generateQuestionsFromPassage(
+                $validated['passage'],
+                $validated['subject'],
+                $validated['grade_level'],
+                $validated['root_distribution']
+            );
+
+            return response()->json([
+                'success' => true,
+                'questions' => $questions
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Question generation failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل توليد الأسئلة'
+            ], 500);
         }
     }
 }

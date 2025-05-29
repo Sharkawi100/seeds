@@ -1,16 +1,15 @@
 <?php
 
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\Admin\AiManagementController;
+use App\Services\ClaudeService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Str;
-use App\Services\ClaudeService; // Add this import
+use Illuminate\Support\Str;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,7 +36,7 @@ Route::prefix('v1')->group(function () {
     // Test Claude connection (public for debugging)
     Route::get('/test-claude', function () {
         try {
-            $service = app(\App\Services\ClaudeService::class);
+            $service = app(ClaudeService::class);
             return response()->json($service->testConnection());
         } catch (\Exception $e) {
             return response()->json([
@@ -239,7 +238,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
                 'laravel_version' => app()->version(),
                 'database' => DB::connection()->getPdo() ? 'connected' : 'disconnected',
                 'cache' => Cache::has('health_check') ? 'working' : 'unknown',
-                'claude_api' => app(\App\Services\ClaudeService::class)->testConnection()['success'] ? 'connected' : 'disconnected',
+                'claude_api' => app(ClaudeService::class)->testConnection()['success'] ? 'connected' : 'disconnected',
                 'disk_space' => [
                     'free' => disk_free_space('/'),
                     'total' => disk_total_space('/'),
@@ -323,7 +322,7 @@ Route::prefix('v1/public')->group(function () {
             : 0;
 
         // Create guest token
-        $guestToken = \Str::random(32);
+        $guestToken = Str::random(32);
 
         // Save result
         $result = \App\Models\Result::create([
