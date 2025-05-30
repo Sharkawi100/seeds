@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\QuizController as AdminQuizController;
 use App\Http\Controllers\Admin\AiManagementController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\WelcomeController;
+use App\Http\Controllers\ContactController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,9 +18,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+Route::get('/', [WelcomeController::class, 'index'])->name('home');
+
 
 Route::get('/juzoor-model', function () {
     return view('juzoor-model');
@@ -45,7 +46,13 @@ Route::get('results/{result}', [ResultController::class, 'show'])->name('results
 | Authenticated Routes
 |--------------------------------------------------------------------------
 */
-
+Route::post('/quiz/enter-pin', [WelcomeController::class, 'enterPin'])->name('quiz.enter-pin');
+Route::get('/quiz/demo', [WelcomeController::class, 'demo'])->name('quiz.demo');
+Route::get('/about', function () {
+    return view('about');
+})->name('about');
+Route::get('/contact', [ContactController::class, 'show'])->name('contact');
+Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
 Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', function () {

@@ -143,4 +143,53 @@ class Quiz extends Model
     {
         return $this->total_questions > 0;
     }
+    /**
+     * Generate a unique PIN for the quiz
+     *
+     * @return string
+     */
+    public function generatePin(): string
+    {
+        do {
+            $pin = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 6));
+        } while (static::where('pin', $pin)->exists());
+
+        $this->pin = $pin;
+        $this->save();
+
+        return $pin;
+    }
+
+    /**
+     * Check if quiz is accessible
+     *
+     * @return bool
+     */
+    public function isAccessible(): bool
+    {
+        if (!$this->is_active) {
+            return false;
+        }
+
+        if ($this->expires_at && $this->expires_at->isPast()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Scope for active quizzes
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            });
+    }
 }
