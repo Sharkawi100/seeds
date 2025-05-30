@@ -28,3 +28,17 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+/node_modules
+/public/hot
+/public/storage
+/public/build
+/storage/*.key
+/vendor
+.env
+.env.local
+.env.production
+*.log
+.DS_Store
+Thumbs.db
+sync-from-live.bat
+deploy-to-live.bat

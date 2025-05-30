@@ -240,7 +240,9 @@ class QuizController extends Controller
 
     public function show(Quiz $quiz)
     {
-        $this->authorize('view', $quiz);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
 
         $quiz->load('questions');
         return view('quizzes.show', compact('quiz'));
@@ -248,14 +250,18 @@ class QuizController extends Controller
 
     public function edit(Quiz $quiz)
     {
-        $this->authorize('update', $quiz);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
 
         return view('quizzes.edit', compact('quiz'));
     }
 
     public function update(Request $request, Quiz $quiz)
     {
-        $this->authorize('update', $quiz);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -275,7 +281,9 @@ class QuizController extends Controller
 
     public function destroy(Quiz $quiz)
     {
-        $this->authorize('delete', $quiz);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
 
         $quiz->delete();
 
@@ -467,16 +475,6 @@ class QuizController extends Controller
                 'passage' => $index === 0 ? $passage : null,
                 'passage_title' => $index === 0 ? $passageTitle : null,
             ]);
-        }
-    }
-
-    /**
-     * Authorize action
-     */
-    protected function authorize($ability, $quiz)
-    {
-        if (!Auth::check() || Auth::id() !== $quiz->user_id) {
-            abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
     }
 }

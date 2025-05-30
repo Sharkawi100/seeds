@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Quiz;
@@ -10,22 +11,27 @@ class QuestionController extends Controller
 {
     public function index(Quiz $quiz)
     {
-        if ($quiz->user_id !== Auth::id())
-            abort(403);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
         return view('quizzes.questions.index', compact('quiz'));
     }
 
     public function create(Quiz $quiz)
     {
-        if ($quiz->user_id !== Auth::id())
-            abort(403);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
         return view('quizzes.questions.create', compact('quiz'));
     }
 
     public function store(Request $request, Quiz $quiz)
     {
-        if ($quiz->user_id !== Auth::id())
-            abort(403);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
 
         $validated = $request->validate([
             'passage_title' => 'nullable|string|max:255',
@@ -59,15 +65,18 @@ class QuestionController extends Controller
 
     public function edit(Quiz $quiz, Question $question)
     {
-        if ($quiz->user_id !== Auth::id())
-            abort(403);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
         return view('quizzes.questions.edit', compact('quiz', 'question'));
     }
 
     public function update(Request $request, Quiz $quiz, Question $question)
     {
-        if ($quiz->user_id !== Auth::id())
-            abort(403);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
 
         $validated = $request->validate([
             'question' => 'required|string',
@@ -92,15 +101,19 @@ class QuestionController extends Controller
 
     public function destroy(Quiz $quiz, Question $question)
     {
-        if ($quiz->user_id !== Auth::id())
-            abort(403);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
         $question->delete();
+
         return redirect()->route('quizzes.questions.index', $quiz);
     }
+
     public function updateText(Request $request, Quiz $quiz, Question $question)
     {
-        if ($quiz->user_id !== Auth::id()) {
-            abort(403);
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
 
         $validated = $request->validate([

@@ -468,8 +468,14 @@ PROMPT;
         Log::info('Parsing quiz response', ['content_length' => strlen($content)]);
 
         // Extract JSON from the response
-        if (preg_match('/\{[\s\S]*\}/', $content, $matches)) {
-            $jsonString = $matches[0];
+        $jsonStart = strpos($content, '{');
+        $jsonEnd = strrpos($content, '}');
+
+        if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd > $jsonStart) {
+            $jsonString = substr($content, $jsonStart, $jsonEnd - $jsonStart + 1);
+            // Clean up common JSON issues from AI responses
+            $jsonString = preg_replace('/,\s*]/', ']', $jsonString);  // Remove trailing commas in arrays
+            $jsonString = preg_replace('/,\s*}/', '}', $jsonString);  // Remove trailing commas in objects
             $data = json_decode($jsonString, true);
 
             if (json_last_error() === JSON_ERROR_NONE && isset($data['questions'])) {
@@ -504,8 +510,12 @@ PROMPT;
         Log::info('Parsing complete quiz response', ['content_length' => strlen($content)]);
 
         // Extract JSON from the response
-        if (preg_match('/\{[\s\S]*\}/', $content, $matches)) {
+        if (preg_match('/\{[\s\S]*\}/s', $content, $matches)) {
+
             $jsonString = $matches[0];
+            // Clean up common JSON issues from AI responses
+            $jsonString = preg_replace('/,\s*]/', ']', $jsonString);  // Remove trailing commas in arrays
+            $jsonString = preg_replace('/,\s*}/', '}', $jsonString);  // Remove trailing commas in objects
             $data = json_decode($jsonString, true);
 
             if (json_last_error() === JSON_ERROR_NONE) {
