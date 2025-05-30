@@ -51,26 +51,11 @@ define('PROJECT_PATH', 'C:\\xampp\\htdocs\\juzoor-quiz');
 define('MYSQL_BIN', 'C:\\xampp\\mysql\\bin');
 define('WINSCP_PATH', 'C:\\Program Files (x86)\\WinSCP\\WinSCP.com');
 
-// Git configuration - try multiple possible paths
-$gitPaths = [
-    'C:\\Program Files\\Git\\bin\\git.exe',
-    'C:\\Program Files (x86)\\Git\\bin\\git.exe',
-    'C:\\Git\\bin\\git.exe',
-    'git' // fallback to PATH
-];
-
-$gitExecutable = 'git';
-foreach ($gitPaths as $path) {
-    if (file_exists($path) || $path === 'git') {
-        $gitExecutable = $path;
-        if ($path !== 'git')
-            break;
-    }
-}
-define('GIT_PATH', $gitExecutable);
+// For Git, we'll just use 'git' command since it should be in PATH
+define('GIT_PATH', 'git');
 
 // Initialize Git config for safety
-@exec(GIT_PATH . ' config --global --add safe.directory ' . escapeshellarg(PROJECT_PATH) . ' 2>&1');
+@exec('git config --global --add safe.directory ' . escapeshellarg(PROJECT_PATH) . ' 2>&1');
 
 // Set environment variables for Git
 putenv('GIT_TERMINAL_PROMPT=0');
@@ -95,8 +80,11 @@ class CommandExecutor
 
         // Add common Git paths to PATH if not already there
         $additionalPaths = [
+            'C:\\Program Files\\Git\\cmd',
             'C:\\Program Files\\Git\\bin',
+            'C:\\Program Files (x86)\\Git\\cmd',
             'C:\\Program Files (x86)\\Git\\bin',
+            'C:\\Git\\cmd',
             'C:\\Git\\bin'
         ];
 
@@ -112,20 +100,61 @@ class CommandExecutor
      */
     public function execute($command, $input = null)
     {
-        // For Windows, wrap commands in cmd /c
+        // For Git commands, always use simple 'git' from PATH
+        if (strpos($command, 'git') !== false || strpos($command, 'Git') !== false) {
+            // Replace any full Git path with just 'git'
+            $patterns = [
+                '/^"?C:\\\\Program Files\\\\Git\\\\cmd\\\\git\.exe"?\s+/' => 'git ',
+                '/^"?C:\\\\Program Files\\\\Git\\\\bin\\\\git\.exe"?\s+/' => 'git ',
+                '/^"?C:\\\\Program Files \(x86\)\\\\Git\\\\cmd\\\\git\.exe"?\s+/' => 'git ',
+                '/^"?C:\\\\Program Files \(x86\)\\\\Git\\\\bin\\\\git\.exe"?\s+/' => 'git ',
+                '/^C:\\\\Program\s+Files\\\\Git\\\\cmd\\\\git\.exe\s+/' => 'git ',
+                '/^C:\\\\Program\s+Files\\\\Git\\\\bin\\\\git\.exe\s+/' => 'git ',
+            ];
+
+            foreach ($patterns as $pattern => $replacement) {
+                $command = preg_replace($pattern, $replacement, $command);
+            }
+
+            // Now execute using shell_exec in project directory
+            $originalDir = getcwd();
+            chdir($this->workingDir);
+
+            $output = @shell_exec($command . ' 2>&1');
+            chdir($originalDir);
+
+            if ($output !== null) {
+                return [
+                    'success' => strpos($output, 'fatal:') === false &&
+                        strpos($output, 'error:') === false &&
+                        strpos($output, 'is not recognized') === false,
+                    'output' => $output,
+                    'error' => '',
+                    'exitCode' => 0,
+                    'command' => $command,
+                    'method' => 'shell_exec_git'
+                ];
+            }
+        }
+
+        // For other commands, use the existing logic
         if (stripos(PHP_OS, 'WIN') === 0) {
-            $fullCommand = 'cmd /c "' . str_replace('"', '""', $command) . '"';
+            if (substr($command, 0, 1) === '"') {
+                $fullCommand = 'cmd /c ' . $command;
+            } else {
+                $fullCommand = 'cmd /c "' . str_replace('"', '""', $command) . '"';
+            }
         } else {
             $fullCommand = $command;
         }
 
         $descriptors = [
-            0 => ['pipe', 'r'],  // stdin
-            1 => ['pipe', 'w'],  // stdout
-            2 => ['pipe', 'w']   // stderr
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w']
         ];
 
-        $process = proc_open(
+        $process = @proc_open(
             $fullCommand,
             $descriptors,
             $pipes,
@@ -134,23 +163,42 @@ class CommandExecutor
         );
 
         if (!is_resource($process)) {
+            $fallbackOutput = @shell_exec($command . ' 2>&1');
             return [
-                'success' => false,
-                'output' => '',
-                'error' => 'Failed to execute command: ' . $command,
-                'exitCode' => -1
+                'success' => !empty($fallbackOutput) && strpos($fallbackOutput, 'fatal') === false,
+                'output' => $fallbackOutput ?: '',
+                'error' => '',
+                'exitCode' => empty($fallbackOutput) ? 1 : 0,
+                'command' => $command,
+                'method' => 'shell_exec'
             ];
         }
 
-        // Send input if provided
+        stream_set_blocking($pipes[0], false);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
         if ($input !== null) {
             fwrite($pipes[0], $input);
         }
         fclose($pipes[0]);
 
-        // Get output and error
-        $output = stream_get_contents($pipes[1]);
-        $error = stream_get_contents($pipes[2]);
+        $output = '';
+        $error = '';
+        $timeout = 30;
+        $startTime = time();
+
+        while (!feof($pipes[1]) || !feof($pipes[2])) {
+            if ((time() - $startTime) > $timeout) {
+                proc_terminate($process);
+                break;
+            }
+
+            $output .= fread($pipes[1], 8192);
+            $error .= fread($pipes[2], 8192);
+            usleep(10000);
+        }
+
         fclose($pipes[1]);
         fclose($pipes[2]);
 
@@ -161,7 +209,8 @@ class CommandExecutor
             'output' => $output,
             'error' => $error,
             'exitCode' => $exitCode,
-            'command' => $command
+            'command' => $command,
+            'method' => 'proc_open'
         ];
     }
 
@@ -205,14 +254,73 @@ class GitManager
 
     public function isGitAvailable()
     {
-        $result = $this->executor->execute(GIT_PATH . ' --version');
-        return $result['success'];
+        // Method 1: Try simple git command (what works in batch files)
+        $shellResult = @shell_exec('git --version 2>&1');
+        if ($shellResult && strpos($shellResult, 'git version') !== false) {
+            return true;
+        }
+
+        // Method 2: Try with CD to project directory
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+        $result = @shell_exec('git --version 2>&1');
+        chdir($originalDir);
+
+        if ($result && strpos($result, 'git version') !== false) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function getGitVersion()
+    {
+        // Try simple git command first (this is what works in batch files)
+        $shellResult = @shell_exec('git --version 2>&1');
+        if ($shellResult && strpos($shellResult, 'git version') !== false) {
+            return [
+                'version' => trim($shellResult),
+                'method' => 'shell_exec',
+                'command' => 'git --version'
+            ];
+        }
+
+        // Try from project directory
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+        $result = @shell_exec('git --version 2>&1');
+        chdir($originalDir);
+
+        if ($result && strpos($result, 'git version') !== false) {
+            return [
+                'version' => trim($result),
+                'method' => 'shell_exec (from project dir)',
+                'command' => 'git --version'
+            ];
+        }
+
+        return null;
     }
 
     public function isGitRepository()
     {
-        $result = $this->executor->execute(GIT_PATH . ' rev-parse --git-dir');
-        return $result['success'];
+        // Check for .git directory first
+        if (is_dir(PROJECT_PATH . '\\.git')) {
+            return true;
+        }
+
+        // Try git command
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+
+        $result = @shell_exec('git rev-parse --git-dir 2>&1');
+        chdir($originalDir);
+
+        if ($result && strpos($result, '.git') !== false && strpos($result, 'fatal') === false) {
+            return true;
+        }
+
+        return false;
     }
 
     public function getBranch()
@@ -250,23 +358,25 @@ class GitManager
 
         // Check if this is a Git repository
         if (!$this->isGitRepository()) {
-            // Try to initialize Git repository
-            $initResult = $this->executor->execute(GIT_PATH . ' init');
-            if (!$initResult['success']) {
-                return ['status' => 'ليس مستودع Git', 'hasChanges' => false, 'details' => $initResult['error']];
-            }
+            return ['status' => 'ليس مستودع Git', 'hasChanges' => false, 'details' => ''];
         }
 
-        $result = $this->executor->execute(GIT_PATH . ' status --porcelain');
-        if (!$result['success']) {
+        // Try to get status
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+
+        $output = @shell_exec('git status --porcelain 2>&1');
+        chdir($originalDir);
+
+        if ($output === null || strpos($output, 'fatal') !== false) {
             return [
                 'status' => 'خطأ في Git',
                 'hasChanges' => false,
-                'details' => $result['error']
+                'details' => $output ?: 'Unable to get status'
             ];
         }
 
-        $output = trim($result['output']);
+        $output = trim($output);
         return [
             'status' => empty($output) ? 'نظيف' : 'يوجد تغييرات',
             'hasChanges' => !empty($output),
@@ -277,9 +387,14 @@ class GitManager
 
     public function getRemoteUrl()
     {
-        $result = $this->executor->execute(GIT_PATH . ' config --get remote.origin.url');
-        if ($result['success'] && !empty(trim($result['output']))) {
-            $url = trim($result['output']);
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+
+        $result = @shell_exec('git config --get remote.origin.url 2>&1');
+        chdir($originalDir);
+
+        if ($result && !empty(trim($result)) && strpos($result, 'fatal') === false) {
+            $url = trim($result);
             // Convert SSH URL to HTTPS for browser
             if (strpos($url, 'git@github.com:') === 0) {
                 $url = str_replace('git@github.com:', 'https://github.com/', $url);
@@ -288,6 +403,61 @@ class GitManager
             return $url;
         }
         return '#';
+    }
+
+    // Add these methods to the GitManager class (place them before pushToGitHub method)
+
+    /**
+     * Check if Git user configuration is set
+     * @return array Configuration status and values
+     */
+    public function checkGitConfig()
+    {
+        // Check if user.name and user.email are set
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+
+        $userName = @shell_exec('git config --global user.name 2>&1');
+        $userEmail = @shell_exec('git config --global user.email 2>&1');
+
+        chdir($originalDir);
+
+        return [
+            'hasName' => !empty(trim($userName)) && strpos($userName, 'fatal') === false,
+            'hasEmail' => !empty(trim($userEmail)) && strpos($userEmail, 'fatal') === false,
+            'name' => trim($userName ?: ''),
+            'email' => trim($userEmail ?: '')
+        ];
+    }
+
+    /**
+     * Set Git user configuration
+     * @param string|null $name User name
+     * @param string|null $email User email
+     * @return array Results of setting configuration
+     */
+    public function setGitConfig($name = null, $email = null)
+    {
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+
+        $results = [];
+
+        if ($name) {
+            $cmd = 'git config --global user.name "' . str_replace('"', '\\"', $name) . '"';
+            $result = @shell_exec($cmd . ' 2>&1');
+            $results['name'] = empty($result) || strpos($result, 'fatal') === false;
+        }
+
+        if ($email) {
+            $cmd = 'git config --global user.email "' . str_replace('"', '\\"', $email) . '"';
+            $result = @shell_exec($cmd . ' 2>&1');
+            $results['email'] = empty($result) || strpos($result, 'fatal') === false;
+        }
+
+        chdir($originalDir);
+
+        return $results;
     }
 
     public function pushToGitHub($commitMessage = null)
@@ -377,10 +547,13 @@ class ProjectManager
     public function getProjectInfo()
     {
         $gitStatus = $this->git->getStatus();
+        $gitConfig = $this->git->checkGitConfig();
         $gitInfo = [
             'available' => $this->git->isGitAvailable(),
             'isRepo' => $this->git->isGitRepository(),
-            'executable' => GIT_PATH
+            'hasConfig' => $gitConfig['hasName'] && $gitConfig['hasEmail'],
+            'userName' => $gitConfig['name'] ?? '',
+            'userEmail' => $gitConfig['email'] ?? ''
         ];
 
         return [
@@ -403,11 +576,12 @@ class ProjectManager
             return [
                 'success' => false,
                 'message' => 'ملف sync-from-live.bat غير موجود',
-                'output' => ''
+                'output' => 'File not found: ' . $batFile
             ];
         }
 
-        $result = $this->executor->execute($batFile);
+        // For batch files, use "call" to ensure proper execution
+        $result = $this->executor->execute('call ' . escapeshellarg($batFile));
         return [
             'success' => $result['success'],
             'message' => $result['success'] ? 'تمت المزامنة بنجاح' : 'فشلت المزامنة',
@@ -422,11 +596,11 @@ class ProjectManager
             return [
                 'success' => false,
                 'message' => 'ملف backup-database.bat غير موجود',
-                'output' => ''
+                'output' => 'File not found: ' . $batFile
             ];
         }
 
-        $result = $this->executor->execute($batFile);
+        $result = $this->executor->execute('call ' . escapeshellarg($batFile));
         return [
             'success' => $result['success'],
             'message' => $result['success'] ? 'تم النسخ الاحتياطي بنجاح' : 'فشل النسخ الاحتياطي',
@@ -436,46 +610,125 @@ class ProjectManager
 
     public function clearCache()
     {
-        $commands = [
-            'php artisan cache:clear',
-            'php artisan config:clear',
-            'php artisan view:clear',
-            'php artisan route:clear'
-        ];
+        // Change to project directory
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
 
-        $result = $this->executor->executeSequence($commands);
+        $phpPath = PHP_BINARY ?: 'php';
+        $artisanPath = 'artisan';
 
-        $output = "تنفيذ أوامر مسح الذاكرة المؤقتة:\n";
-        foreach ($result['results'] as $idx => $cmdResult) {
-            $output .= "\n{$commands[$idx]}:\n";
-            $output .= $cmdResult['output'] ?: 'تم التنفيذ بنجاح';
-            $output .= "\n";
+        if (!file_exists($artisanPath)) {
+            chdir($originalDir);
+            return [
+                'success' => false,
+                'message' => 'ملف artisan غير موجود',
+                'output' => 'Laravel artisan file not found at: ' . PROJECT_PATH . '\\artisan'
+            ];
         }
 
+        $output = "تنفيذ أوامر مسح الذاكرة المؤقتة:\n";
+        $output .= "PHP Path: " . $phpPath . "\n";
+        $output .= "Working Directory: " . PROJECT_PATH . "\n";
+        $output .= str_repeat('=', 50) . "\n\n";
+
+        $commands = [
+            'cache:clear' => 'php artisan cache:clear',
+            'config:clear' => 'php artisan config:clear',
+            'view:clear' => 'php artisan view:clear',
+            'route:clear' => 'php artisan route:clear'
+        ];
+
+        $allSuccess = true;
+        foreach ($commands as $name => $cmd) {
+            $output .= "Running: " . $cmd . "\n";
+            $result = @shell_exec($cmd . ' 2>&1');
+
+            if ($result !== null) {
+                $output .= $result;
+                if (strpos($result, 'ERROR') !== false || strpos($result, 'Exception') !== false) {
+                    $allSuccess = false;
+                }
+            } else {
+                $output .= "Failed to execute command\n";
+                $allSuccess = false;
+            }
+            $output .= "\n" . str_repeat('-', 40) . "\n";
+        }
+
+        chdir($originalDir);
+
         return [
-            'success' => $result['success'],
-            'message' => $result['success'] ? 'تم مسح جميع الذاكرة المؤقتة' : 'حدث خطأ أثناء مسح الذاكرة المؤقتة',
+            'success' => $allSuccess,
+            'message' => $allSuccess ? 'تم مسح جميع الذاكرة المؤقتة' : 'حدث خطأ أثناء مسح الذاكرة المؤقتة',
             'output' => $output
         ];
     }
 
     public function npmInstall()
     {
-        $result = $this->executor->execute('npm install');
+        // Change to project directory
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+
+        // Check if npm is available
+        $npmCheck = @shell_exec('npm --version 2>&1');
+        if (!$npmCheck || strpos($npmCheck, 'not recognized') !== false) {
+            chdir($originalDir);
+            return [
+                'success' => false,
+                'message' => 'npm غير مثبت على النظام',
+                'output' => 'Please install Node.js from https://nodejs.org/'
+            ];
+        }
+
+        $output = "Running npm install...\n";
+        $output .= "NPM Version: " . trim($npmCheck) . "\n";
+        $output .= "Working Directory: " . PROJECT_PATH . "\n";
+        $output .= str_repeat('=', 50) . "\n\n";
+
+        $result = @shell_exec('npm install 2>&1');
+        chdir($originalDir);
+
+        $success = $result !== null && strpos($result, 'npm ERR!') === false;
+
         return [
-            'success' => $result['success'],
-            'message' => $result['success'] ? 'تم تثبيت الحزم بنجاح' : 'فشل تثبيت الحزم',
-            'output' => $result['output'] . "\n" . $result['error']
+            'success' => $success,
+            'message' => $success ? 'تم تثبيت الحزم بنجاح' : 'فشل تثبيت الحزم',
+            'output' => $output . $result
         ];
     }
 
     public function npmBuild()
     {
-        $result = $this->executor->execute('npm run build');
+        // Change to project directory
+        $originalDir = getcwd();
+        chdir(PROJECT_PATH);
+
+        // Check if npm is available
+        $npmCheck = @shell_exec('npm --version 2>&1');
+        if (!$npmCheck || strpos($npmCheck, 'not recognized') !== false) {
+            chdir($originalDir);
+            return [
+                'success' => false,
+                'message' => 'npm غير مثبت على النظام',
+                'output' => 'Please install Node.js from https://nodejs.org/'
+            ];
+        }
+
+        $output = "Running npm build...\n";
+        $output .= "NPM Version: " . trim($npmCheck) . "\n";
+        $output .= "Working Directory: " . PROJECT_PATH . "\n";
+        $output .= str_repeat('=', 50) . "\n\n";
+
+        $result = @shell_exec('npm run build 2>&1');
+        chdir($originalDir);
+
+        $success = $result !== null && strpos($result, 'npm ERR!') === false;
+
         return [
-            'success' => $result['success'],
-            'message' => $result['success'] ? 'تم بناء الملفات بنجاح' : 'فشل بناء الملفات',
-            'output' => $result['output'] . "\n" . $result['error']
+            'success' => $success,
+            'message' => $success ? 'تم بناء الملفات بنجاح' : 'فشل بناء الملفات',
+            'output' => $output . $result
         ];
     }
 
@@ -486,12 +739,12 @@ class ProjectManager
             return [
                 'success' => false,
                 'message' => 'ملف deploy-to-live.bat غير موجود',
-                'output' => ''
+                'output' => 'File not found: ' . $batFile
             ];
         }
 
-        // Execute with confirmation
-        $result = $this->executor->execute($batFile, "yes\n");
+        // Execute with confirmation using echo to pipe "yes"
+        $result = $this->executor->execute('echo yes | call ' . escapeshellarg($batFile));
         return [
             'success' => $result['success'],
             'message' => $result['success'] ? 'تم النشر بنجاح على الخادم المباشر' : 'فشل النشر',
@@ -551,6 +804,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
                 $response = [
                     'success' => true,
                     'data' => $manager->getProjectInfo()
+                ];
+                break;
+
+            case 'set_git_config':
+                $git = new GitManager();
+                $name = $_POST['git_name'] ?? '';
+                $email = $_POST['git_email'] ?? '';
+
+                if (empty($name) || empty($email)) {
+                    $response = [
+                        'success' => false,
+                        'message' => 'الاسم والبريد الإلكتروني مطلوبان'
+                    ];
+                } else {
+                    $result = $git->setGitConfig($name, $email);
+                    $response = [
+                        'success' => true,
+                        'message' => 'تم تكوين Git بنجاح',
+                        'output' => "Git configured:\nName: $name\nEmail: $email"
+                    ];
+                }
+                break;
+
+            case 'check_git_config':
+                $git = new GitManager();
+                $config = $git->checkGitConfig();
+                $response = [
+                    'success' => true,
+                    'data' => $config
                 ];
                 break;
         }
@@ -1073,6 +1355,29 @@ $projectInfo = $manager->getProjectInfo();
             border-right: 4px solid var(--danger);
         }
 
+        /* Input styles for modals */
+        input[type="text"],
+        input[type="email"] {
+            font-family: 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Button hover effects */
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .container {
@@ -1138,8 +1443,16 @@ $projectInfo = $manager->getProjectInfo();
                     </span>
                 </div>
                 <div class="status-item">
-                    <strong>وقت الخادم</strong>
-                    <span><?php echo $projectInfo['serverTime']; ?></span>
+                    <strong>مستخدم Git</strong>
+                    <span style="font-size: 0.85rem;">
+                        <?php
+                        if ($projectInfo['gitInfo']['hasConfig']) {
+                            echo htmlspecialchars($projectInfo['gitInfo']['userName']);
+                        } else {
+                            echo '<span style="color: #e53e3e;">غير مكوّن</span> <a href="#" onclick="showGitConfigModal(); return false;" style="color: var(--primary);">تكوين</a>';
+                        }
+                        ?>
+                    </span>
                 </div>
             </div>
         </div>
@@ -1221,6 +1534,78 @@ $projectInfo = $manager->getProjectInfo();
                 </a>
             </div>
         </div>
+
+        <!-- Debug Info (hidden by default) -->
+        <?php if (isset($_GET['debug'])): ?>
+            <div class="status-card" style="margin-top: 2rem; background: #1a202c; color: #e2e8f0;">
+                <h2 style="color: #e2e8f0;">🐛 معلومات التشخيص</h2>
+                <pre style="font-family: monospace; font-size: 0.9rem; line-height: 1.5;">
+    Git Configuration:
+    - Defined Path: <?php echo GIT_PATH; ?>
+
+    - File Exists: <?php echo (GIT_PATH !== 'git' && file_exists(GIT_PATH)) ? 'Yes ✓' : 'No ✗'; ?>
+
+    - Git Available: <?php echo $projectInfo['gitInfo']['available'] ? 'Yes ✓' : 'No ✗'; ?>
+
+    - Is Git Repository: <?php echo $projectInfo['gitInfo']['isRepo'] ? 'Yes ✓' : 'No ✗'; ?>
+
+    <?php
+    $gitManager = new GitManager();
+    $gitVersion = $gitManager->getGitVersion();
+    if ($gitVersion) {
+        echo "- Git Version: " . $gitVersion['version'] . "\n";
+        echo "- Detection Method: " . $gitVersion['method'] . "\n";
+        echo "- Command Used: " . $gitVersion['command'] . "\n";
+    } else {
+        echo "- Git Version: Not detected\n";
+    }
+    ?>
+
+    Git Paths Checked:
+    <?php
+    $checkedPaths = [
+        'C:\\Program Files\\Git\\cmd\\git.exe',
+        'C:\\Program Files\\Git\\bin\\git.exe',
+        'C:\\Program Files (x86)\\Git\\cmd\\git.exe',
+        'C:\\Program Files (x86)\\Git\\bin\\git.exe',
+        'C:\\Git\\cmd\\git.exe',
+        'C:\\Git\\bin\\git.exe',
+        'C:\\Users\\' . get_current_user() . '\\AppData\\Local\\Programs\\Git\\cmd\\git.exe'
+    ];
+
+    foreach ($checkedPaths as $path) {
+        echo sprintf("  %-60s %s\n", $path, file_exists($path) ? '✓ Found' : '✗ Not found');
+    }
+    ?>
+
+    Shell Commands Test:
+    <?php
+    $testCommands = [
+        'where git' => @shell_exec('where git 2>&1'),
+        'git --version' => @shell_exec('git --version 2>&1'),
+        'echo %PATH%' => substr(@shell_exec('echo %PATH% 2>&1'), 0, 200) . '...'
+    ];
+
+    foreach ($testCommands as $cmd => $output) {
+        echo "\n{$cmd}:\n";
+        echo $output ? trim($output) : '(no output)';
+        echo "\n";
+    }
+    ?>
+
+    Environment:
+    - PHP Version: <?php echo phpversion(); ?>
+    - PHP SAPI: <?php echo php_sapi_name(); ?>
+    - OS: <?php echo PHP_OS; ?>
+    - User: <?php echo get_current_user(); ?>
+    - Working Dir: <?php echo getcwd(); ?>
+    - Safe Mode: <?php echo ini_get('safe_mode') ? 'On' : 'Off'; ?>
+    - Exec Enabled: <?php echo function_exists('exec') ? 'Yes' : 'No'; ?>
+    - Shell_exec Enabled: <?php echo function_exists('shell_exec') ? 'Yes' : 'No'; ?>
+    - Proc_open Enabled: <?php echo function_exists('proc_open') ? 'Yes' : 'No'; ?>
+                </pre>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- Output Modal -->
@@ -1239,8 +1624,76 @@ $projectInfo = $manager->getProjectInfo();
         </div>
     </div>
 
+    <!-- Git Config Modal -->
+    <div id="gitConfigModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <span>⚙️</span>
+                    <span>تكوين Git</span>
+                </h3>
+                <button class="modal-close" onclick="closeGitConfigModal()">&times;</button>
+            </div>
+            <div style="padding: 2rem;">
+                <p style="margin-bottom: 1.5rem; color: #4a5568;">
+                    يحتاج Git إلى معرفة هويتك لتسجيل التغييرات. يرجى إدخال اسمك وبريدك الإلكتروني:
+                </p>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">الاسم:</label>
+                    <input type="text" id="gitName" placeholder="مثال: أحمد محمد"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 1rem;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">البريد الإلكتروني:</label>
+                    <input type="email" id="gitEmail" placeholder="مثال: your-email@example.com"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 1rem;">
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button onclick="closeGitConfigModal()"
+                        style="padding: 0.75rem 1.5rem; background: #e2e8f0; border: none; border-radius: 0.5rem; cursor: pointer; font-family: inherit; font-size: 1rem; transition: all 0.3s;">
+                        إلغاء
+                    </button>
+                    <button id="saveGitConfigBtn" onclick="saveGitConfig()"
+                        style="padding: 0.75rem 1.5rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-family: inherit; font-size: 1rem; transition: all 0.3s;">
+                        حفظ التكوين
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
+
+    <!-- Git Setup Help -->
+    <?php if (!$projectInfo['gitInfo']['available'] || $projectInfo['gitBranch'] === 'Git غير مثبت'): ?>
+        <div
+            style="position: fixed; bottom: 20px; right: 20px; background: #fed7d7; color: #742a2a; padding: 1rem; border-radius: 0.5rem; max-width: 400px; box-shadow: var(--shadow-lg); z-index: 100;">
+            <strong>⚠️ تنبيه: Git غير متاح</strong>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+                للاستفادة من ميزات Git، يرجى:
+                <br>1. التأكد من تثبيت Git من <a href="https://git-scm.com/" target="_blank">git-scm.com</a>
+                <br>2. <strong>إعادة تشغيل XAMPP</strong> (مهم!)
+                <br>3. التأكد من إضافة Git إلى PATH أثناء التثبيت
+                <br>4. تحديث الصفحة
+                <br><br>
+                <small>💡 نصيحة: إعادة تشغيل XAMPP عادة ما يحل المشكلة</small>
+            </p>
+        </div>
+    <?php elseif (!$projectInfo['gitInfo']['hasConfig']): ?>
+        <div
+            style="position: fixed; bottom: 20px; right: 20px; background: #fefcbf; color: #744210; padding: 1rem; border-radius: 0.5rem; max-width: 400px; box-shadow: var(--shadow-lg); z-index: 100; border-right: 4px solid #f6e05e;">
+            <strong>⚠️ تنبيه: Git يحتاج إلى تكوين</strong>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+                يجب تكوين Git قبل استخدامه. قم بإدخال اسمك وبريدك الإلكتروني:
+                <br><br>
+                <button onclick="showGitConfigModal()"
+                    style="background: #744210; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer; font-family: inherit;">
+                    تكوين Git الآن
+                </button>
+            </p>
+        </div>
+    <?php endif; ?>
 
     <script>
         // Global variables
@@ -1309,6 +1762,23 @@ $projectInfo = $manager->getProjectInfo();
 
                 const data = await response.json();
 
+                // Check if Git configuration is needed
+                if (data.needsConfig) {
+                    modalIcon.textContent = '⚠️';
+                    modalTitle.textContent = 'يجب تكوين Git أولاً';
+                    modalTitle.style.color = 'var(--warning)';
+                    modalBody.innerHTML = `
+                        <div style="white-space: pre-wrap;">${data.output}</div>
+                        <div style="margin-top: 1.5rem; text-align: center;">
+                            <button onclick="closeModal(); showGitConfigModal();" 
+                                    style="background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-size: 1rem;">
+                                تكوين Git الآن
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
                 // Update modal with results
                 if (data.success) {
                     modalIcon.textContent = '✅';
@@ -1357,6 +1827,92 @@ $projectInfo = $manager->getProjectInfo();
             }
         }
 
+        // Git configuration modal functions
+        function showGitConfigModal() {
+            document.getElementById('gitConfigModal').style.display = 'block';
+
+            // Check current config
+            checkGitConfig();
+        }
+
+        function closeGitConfigModal() {
+            document.getElementById('gitConfigModal').style.display = 'none';
+        }
+
+        async function checkGitConfig() {
+            try {
+                const formData = new FormData();
+                formData.append('action', 'check_git_config');
+                formData.append('ajax', '1');
+
+                const response = await fetch('manage.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    document.getElementById('gitName').value = data.data.name || '';
+                    document.getElementById('gitEmail').value = data.data.email || '';
+                }
+            } catch (error) {
+                console.error('Error checking git config:', error);
+            }
+        }
+
+        async function saveGitConfig() {
+            const name = document.getElementById('gitName').value.trim();
+            const email = document.getElementById('gitEmail').value.trim();
+            const saveButton = document.getElementById('saveGitConfigBtn');
+
+            if (!name || !email) {
+                showToast('يرجى إدخال الاسم والبريد الإلكتروني', 'error');
+                return;
+            }
+
+            // Show loading state
+            const originalText = saveButton.textContent;
+            saveButton.disabled = true;
+            saveButton.textContent = 'جاري الحفظ...';
+
+            try {
+                const formData = new FormData();
+                formData.append('action', 'set_git_config');
+                formData.append('git_name', name);
+                formData.append('git_email', email);
+                formData.append('ajax', '1');
+
+                const response = await fetch('manage.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('تم حفظ تكوين Git بنجاح', 'success');
+                    closeGitConfigModal();
+
+                    // Refresh status to show the new Git user
+                    refreshStatus();
+
+                    // Retry the git action if we came from a push
+                    if (currentAction === 'push_to_github') {
+                        setTimeout(() => showGitDialog(), 500);
+                    }
+                } else {
+                    showToast(data.message || 'فشل حفظ التكوين', 'error');
+                }
+            } catch (error) {
+                showToast('خطأ في حفظ التكوين', 'error');
+            } finally {
+                // Restore button state
+                saveButton.disabled = false;
+                saveButton.textContent = originalText;
+            }
+        }
+
         // Confirm deployment
         function confirmDeploy() {
             const message = `⚠️ تحذير: النشر على الخادم المباشر
@@ -1395,15 +1951,35 @@ $projectInfo = $manager->getProjectInfo();
 
                 if (data.success && data.data) {
                     // Update status items
-                    document.querySelectorAll('.status-item').forEach((item, index) => {
-                        const value = Object.values(data.data)[index];
+                    const statusItems = document.querySelectorAll('.status-item');
+                    const statusData = [
+                        data.data.environment,
+                        data.data.projectPath,
+                        data.data.phpVersion,
+                        data.data.gitBranch,
+                        data.data.gitStatus,
+                        data.data.gitInfo.hasConfig ? data.data.gitInfo.userName : 'غير مكوّن'
+                    ];
+
+                    statusItems.forEach((item, index) => {
                         const span = item.querySelector('span');
-                        if (span && value !== undefined) {
-                            // Update badge classes for git status
-                            if (item.querySelector('strong').textContent === 'حالة Git') {
-                                span.className = value === 'نظيف' ? 'badge badge-success' : 'badge badge-warning';
+                        if (span && statusData[index] !== undefined) {
+                            // Special handling for Git status
+                            if (index === 4) { // Git status
+                                span.className = statusData[index] === 'نظيف' ? 'badge badge-success' : 'badge badge-warning';
+                                span.textContent = statusData[index];
+                            } else if (index === 3) { // Git branch
+                                span.className = 'badge badge-info';
+                                span.textContent = statusData[index];
+                            } else if (index === 5) { // Git user
+                                if (data.data.gitInfo.hasConfig) {
+                                    span.innerHTML = statusData[index];
+                                } else {
+                                    span.innerHTML = '<span style="color: #e53e3e;">غير مكوّن</span> <a href="#" onclick="showGitConfigModal(); return false;" style="color: var(--primary);">تكوين</a>';
+                                }
+                            } else {
+                                span.textContent = statusData[index];
                             }
-                            span.textContent = value;
                         }
                     });
                 }
@@ -1420,15 +1996,23 @@ $projectInfo = $manager->getProjectInfo();
         // Close modal on outside click
         window.onclick = function (event) {
             const modal = document.getElementById('outputModal');
+            const gitModal = document.getElementById('gitConfigModal');
+
             if (event.target === modal && !isProcessing) {
                 closeModal();
+            } else if (event.target === gitModal) {
+                closeGitConfigModal();
             }
         }
 
         // Keyboard shortcuts
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && !isProcessing) {
-                closeModal();
+                if (document.getElementById('gitConfigModal').style.display === 'block') {
+                    closeGitConfigModal();
+                } else {
+                    closeModal();
+                }
             }
         });
 
@@ -1444,6 +2028,13 @@ $projectInfo = $manager->getProjectInfo();
             });
         });
     </script>
+
+    <!-- Footer with debug link -->
+    <div style="text-align: center; margin-top: 3rem; padding-bottom: 2rem;">
+        <a href="?debug=1" style="color: rgba(255,255,255,0.6); font-size: 0.9rem; text-decoration: none;">
+            🐛 وضع التشخيص
+        </a>
+    </div>
 </body>
 
 </html>
