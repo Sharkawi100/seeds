@@ -14,6 +14,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Schema::defaultStringLength(191);
+        if (request()->server->has('HTTP_X_FORWARDED_PROTO')) {
+            if (request()->header('X-Forwarded-Proto') == 'https') {
+                \URL::forceScheme('https');
+            }
+        }
     }
 }
