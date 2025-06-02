@@ -57,3 +57,12 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 });
+use App\Http\Controllers\Auth\SocialAuthController;
+
+// Social Login Routes
+Route::middleware('guest')->group(function () {
+    Route::get('auth/{provider}', [SocialAuthController::class, 'redirect'])
+        ->name('social.login');
+    Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+        ->name('social.callback');
+});

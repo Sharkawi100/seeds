@@ -161,5 +161,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 | Authentication Routes
 |--------------------------------------------------------------------------
 */
+Route::post('/profile/logout-other-devices', [ProfileController::class, 'logoutOtherDevices'])
+    ->name('profile.logout-other-devices')
+    ->middleware('auth');
 
 require __DIR__ . '/auth.php';

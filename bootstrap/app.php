@@ -16,11 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
         ]);
 
-        $middleware->alias([
-            'admin' => \App\Http\Middleware\IsAdmin::class,
+        // Add CSRF exception for social callbacks
+        $middleware->validateCsrfTokens(except: [
+            'auth/*/callback',
         ]);
-
-        $middleware->redirectGuestsTo('/login');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

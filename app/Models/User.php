@@ -16,6 +16,13 @@ class User extends Authenticatable
         'email',
         'password',
         'is_admin',
+        'google_id',
+        'facebook_id',
+        'avatar',
+        'auth_provider',
+        'user_type',
+        'school_name',
+        'grade_level',
     ];
 
     protected $hidden = [
