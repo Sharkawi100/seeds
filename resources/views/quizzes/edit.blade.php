@@ -169,7 +169,25 @@
                             @enderror
                         </div>
                     </div>
-                    
+                    <!-- PIN Code Display -->
+<div class="mb-8 animate-fade-in animation-delay-600">
+    <div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-3">
+            <i class="fas fa-key mr-2"></i>رمز الدخول
+        </h3>
+        <div class="bg-white rounded-lg p-4 text-center">
+            <p class="text-3xl font-bold tracking-wider text-purple-600">{{ $quiz->pin_code }}</p>
+            <button type="button" onclick="copyPIN('{{ $quiz->pin_code }}')"
+                    class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg mt-3 transition-colors">
+                <i class="fas fa-copy mr-2"></i>نسخ الرمز
+            </button>
+        </div>
+        <p class="text-xs text-gray-600 mt-3 text-center">
+            <i class="fas fa-info-circle"></i>
+            هذا الرمز ثابت ولا يمكن تغييره
+        </p>
+    </div>
+</div>
                     <!-- Advanced Settings (Collapsible) -->
                     <div class="mb-8 animate-fade-in animation-delay-700">
                         <button type="button" 

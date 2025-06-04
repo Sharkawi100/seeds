@@ -107,6 +107,8 @@ class QuizController extends Controller
                     'allow_review' => $validated['allow_review'] ?? true,
                 ],
             ]);
+            // Generate PIN immediately
+            $quiz->generatePin();
 
             // Handle different creation methods
             switch ($validated['creation_method']) {
@@ -198,7 +200,10 @@ class QuizController extends Controller
                         return redirect()->to($redirectUrl)
                             ->with('success', $validated['creation_method'] === 'hybrid'
                                 ? 'تم توليد الأسئلة بنجاح. يمكنك الآن تعديلها.'
-                                : 'تم إنشاء الاختبار وتوليد الأسئلة بنجاح.');
+                                : 'تم إنشاء الاختبار وتوليد الأسئلة بنجاح.')
+                            ->with('quiz_created', true)
+                            ->with('quiz_pin', $quiz->pin_code)
+                            ->with('quiz_id', $quiz->id);
 
                     } catch (\Exception $e) {
                         DB::rollBack();
@@ -243,7 +248,16 @@ class QuizController extends Controller
                 ->withInput();
         }
     }
+    public function generateMissingPins()
+    {
+        $quizzes = Quiz::whereNull('pin_code')->orWhere('pin_code', '')->get();
 
+        foreach ($quizzes as $quiz) {
+            $quiz->generatePin();
+        }
+
+        return "Generated PINs for {$quizzes->count()} quizzes";
+    }
     public function show(Quiz $quiz)
     {
         if ((int) $quiz->user_id !== Auth::id()) {

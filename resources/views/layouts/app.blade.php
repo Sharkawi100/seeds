@@ -248,6 +248,8 @@
             @endif
             
             @yield('content')
+            <!-- Success Modals -->
+<x-quiz-created-modal />
         </main>
         
         <!-- Footer -->

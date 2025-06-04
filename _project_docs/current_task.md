@@ -101,3 +101,25 @@ Last Updated: June 2025
 -   ✅ Production deployment successful
 -   ✅ All devices showing proper styling
 -   ✅ OAuth working seamlessly
+
+### 3. Update `_project_docs/current_task.md`
+
+Add a new section:
+
+```markdown
+## 🐛 Recent Issues Fixed
+
+### Route Naming Mismatch (December 2024)
+
+-   **Issue**: Error 500 on production - "Route [contact] not defined"
+-   **Cause**: Route was named `contact.show` but view used `route('contact')`
+-   **Fix**: Updated `welcome.blade.php` to use correct route name
+-   **Prevention**: Added route verification to deployment checklist
+
+### Lessons Learned
+
+1. Always verify route names match between routes and views
+2. Clear route cache after any route changes
+3. VSCode Laravel extension may show false positives
+4. Use `php artisan route:list` to verify routes
+```

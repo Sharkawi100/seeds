@@ -425,3 +425,41 @@ Stores hashed passwords to prevent reuse
 - SSO for schools
 - Advanced threat detection
 ````
+
+````markdown
+### 6. Route Verification
+
+-   [ ] Check all route names match between routes files and views
+-   [ ] Run `php artisan route:list` to verify all routes
+-   [ ] Test critical routes manually
+-   [ ] Clear route cache: `php artisan route:clear`
+
+### 7. Common Deployment Pitfalls
+
+-   [ ] **Route Names**: Verify route names match exactly (e.g., `contact.show` not `contact`)
+-   [ ] **Case Sensitivity**: File/class names must match exactly on Linux
+-   [ ] **Cache Issues**: Always clear all caches after deployment
+-   [ ] **Permissions**: Set correct permissions for storage and cache directories
+
+### 8. Post-Deployment Commands
+
+Run these commands in order:
+
+```bash
+# 1. Install dependencies (if needed)
+composer install --no-dev --optimize-autoloader
+
+# 2. Clear everything
+php artisan cache:clear
+php artisan route:clear
+php artisan config:clear
+php artisan view:clear
+
+# 3. Optimize (only after testing)
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# 4. Set permissions
+```
+````

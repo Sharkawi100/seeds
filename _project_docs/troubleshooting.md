@@ -119,3 +119,35 @@ Emails Going to Spam
 Set proper FROM address
 Add SPF/DKIM records
 Use transactional email service
+
+# Troubleshooting Guide - جُذور (Juzoor)
+
+Last Updated: December 2024
+
+## Common Issues & Solutions
+
+### 🔴 Error 500: Route Not Found
+
+**Symptoms:**
+
+-   Error 500 on production
+-   Laravel log shows: "Route [route_name] not defined"
+
+**Common Causes:**
+
+1. Route naming mismatch between routes file and views
+2. Route cache not cleared after deployment
+3. Case sensitivity issues on Linux servers
+
+**Solutions:**
+
+```bash
+# Clear all caches
+php artisan route:clear
+php artisan cache:clear
+php artisan config:clear
+php artisan view:clear
+
+# List routes to verify
+php artisan route:list | grep route_name
+```

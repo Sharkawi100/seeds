@@ -43,3 +43,5 @@ Thumbs.db
 sync-from-live.bat
 deploy-to-live.bat
 .env.local
+
+

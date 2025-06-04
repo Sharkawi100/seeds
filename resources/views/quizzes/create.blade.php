@@ -382,7 +382,30 @@
                             <option value="manual">إضافة يدوية للأسئلة</option>
                         </select>
                     </div>
-                    
+                    @if(session('quiz_created'))
+<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" id="pinModal">
+    <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center animate-bounce-in">
+        <div class="text-6xl mb-4">🎉</div>
+        <h2 class="text-2xl font-bold mb-4">تم إنشاء الاختبار بنجاح!</h2>
+        
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl p-6 mb-6">
+            <p class="text-sm mb-2">رمز الدخول للطلاب</p>
+            <p class="text-4xl font-bold tracking-wider">{{ session('quiz_pin') }}</p>
+        </div>
+        
+        <div class="space-y-3">
+            <button onclick="copyPIN('{{ session('quiz_pin') }}')" 
+                    class="btn btn-primary w-full">
+                <i class="fas fa-copy"></i> نسخ رمز الدخول
+            </button>
+            <a href="{{ route('quizzes.show', session('quiz_id')) }}" 
+               class="btn btn-outline w-full">
+                عرض الاختبار
+            </a>
+        </div>
+    </div>
+</div>
+@endif
                     <!-- Submit Actions -->
                     <div class="mt-8 flex justify-between items-center">
                         <button type="button" 

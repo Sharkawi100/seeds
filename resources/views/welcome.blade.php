@@ -52,26 +52,26 @@
                         <h3 class="text-2xl font-bold text-gray-800">ابدأ الآن - دخول سريع</h3>
                     </div>
                     
-                    <form action="{{ route('quiz.enter-pin') }}" method="POST" class="space-y-4">
-                        @csrf
-                        <div class="relative">
-                            <input type="text" 
-                                   name="pin" 
-                                   id="pin-input"
-                                   placeholder="أدخل رمز الاختبار"
-                                   maxlength="6"
-                                   class="w-full px-6 py-5 text-3xl text-center font-mono uppercase border-2 border-gray-300 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-200 transition-all bg-gray-50/50 placeholder-gray-400"
-                                   required>
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-5 pointer-events-none">
-                                <i class="fas fa-hashtag text-gray-400 text-xl"></i>
+                    <div class="max-w-md mx-auto">
+                        <form action="{{ route('quiz.enter-pin') }}" method="POST" class="space-y-4">
+                            @csrf
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    أدخل رمز الاختبار
+                                </label>
+                                <input type="text" 
+                                       name="pin" 
+                                       class="w-full px-4 py-3 text-center text-2xl font-bold tracking-wider uppercase border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100"
+                                       placeholder="ABC123"
+                                       maxlength="6"
+                                       required
+                                       autofocus>
                             </div>
-                        </div>
-                        <button type="submit" 
-                                class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold py-5 px-8 rounded-2xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 group text-lg">
-                            <span>دخول الاختبار</span>
-                            <i class="fas fa-rocket transform group-hover:translate-x-1 transition-transform"></i>
-                        </button>
-                    </form>
+                            <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-bold hover:shadow-lg transform hover:scale-105 transition">
+                                دخول الاختبار
+                            </button>
+                        </form>
+                    </div>
                     
                     <div class="flex items-center gap-4 mt-6">
                         <div class="flex-1 h-px bg-gray-300"></div>
@@ -734,8 +734,7 @@
                 <ul class="space-y-2">
                     <li><a href="{{ route('about') }}" class="text-gray-400 hover:text-white transition">عن جُذور</a></li>
                     <li><a href="{{ route('juzoor.model') }}" class="text-gray-400 hover:text-white transition">نموذج جُذور</a></li>
-                    <li><a href="{{ route('contact') }}" class="text-gray-400 hover:text-white transition">تواصل معنا</a></li>
-                </ul>
+                    <li><a href="{{ route('contact.show') }}" class="text-gray-400 hover:text-white transition">تواصل معنا</a></li>                </ul>
             </div>
             <div>
                 <h4 class="text-lg font-bold mb-4">للمستخدمين</h4>

@@ -142,6 +142,34 @@
                     </div>
                 </div>
             </div>
+            <!-- PIN Display Card -->
+<div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-xl p-6 mb-6 text-white">
+    <div class="flex flex-col md:flex-row items-center justify-between">
+        <div>
+            <h3 class="text-2xl font-bold mb-2">رمز الدخول السريع</h3>
+            <p class="text-white/80">شارك هذا الرمز مع الطلاب للدخول المباشر</p>
+        </div>
+        <div class="mt-4 md:mt-0 text-center">
+            <div class="bg-white/20 backdrop-blur rounded-xl p-6">
+                <p class="text-4xl font-bold tracking-wider mb-3">{{ $quiz->pin_code }}</p>
+                <div class="flex gap-2">
+                    <button onclick="copyPIN('{{ $quiz->pin_code }}')"
+                            class="btn btn-sm bg-white/20 hover:bg-white/30 border-0 text-white">
+                        <i class="fas fa-copy"></i> نسخ
+                    </button>
+                    <button onclick="shareQuiz('{{ $quiz->pin_code }}', '{{ $quiz->title }}')"
+                            class="btn btn-sm bg-white/20 hover:bg-white/30 border-0 text-white">
+                        <i class="fas fa-share"></i> مشاركة
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mt-4 text-sm text-white/70">
+        <i class="fas fa-info-circle"></i>
+        رابط الدخول المباشر: {{ url('/') }}/?pin={{ $quiz->pin_code }}
+    </div>
+</div>
         </div>
 
         <!-- Educational Text / Passage -->
