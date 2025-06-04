@@ -24,7 +24,60 @@ class User extends Authenticatable
         'school_name',
         'grade_level',
     ];
+    /**
+     * Calculate profile completion percentage
+     */
+    public function getProfileCompletionAttribute(): int
+    {
+        $fields = [
+            'name' => 20,
+            'email' => 20,
+            'avatar' => 15,
+            'user_type' => 10,
+        ];
 
+        if ($this->user_type === 'teacher') {
+            $fields['school_name'] = 20;
+            $fields['bio'] = 15;
+        } else {
+            $fields['grade_level'] = 20;
+            $fields['favorite_subject'] = 15;
+        }
+
+        $completed = 0;
+        foreach ($fields as $field => $weight) {
+            if (!empty($this->$field)) {
+                $completed += $weight;
+            }
+        }
+
+        return min($completed, 100);
+    }
+
+    /**
+     * Get incomplete profile fields
+     */
+    public function getIncompleteFieldsAttribute(): array
+    {
+        $incomplete = [];
+
+        if (empty($this->avatar))
+            $incomplete[] = 'صورة الملف الشخصي';
+
+        if ($this->user_type === 'teacher') {
+            if (empty($this->school_name))
+                $incomplete[] = 'اسم المدرسة';
+            if (empty($this->bio))
+                $incomplete[] = 'نبذة شخصية';
+        } else {
+            if (empty($this->grade_level))
+                $incomplete[] = 'المرحلة الدراسية';
+            if (empty($this->favorite_subject))
+                $incomplete[] = 'المادة المفضلة';
+        }
+
+        return $incomplete;
+    }
     protected $hidden = [
         'password',
         'remember_token',

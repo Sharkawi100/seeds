@@ -64,3 +64,50 @@ Last Updated: December 2024
 ### ai_usage_logs
 
 -   id, type, model, count, user_id, created_at
+
+Database Schema Updates
+Users Table Additions
+sqlgoogle_id VARCHAR(255) NULL
+facebook_id VARCHAR(255) NULL  
+avatar VARCHAR(255) NULL
+auth_provider ENUM('email', 'google', 'facebook') DEFAULT 'email'
+user_type VARCHAR(20) DEFAULT 'student'
+school_name VARCHAR(255) NULL
+grade_level INT NULL
+last_login_at TIMESTAMP NULL
+last_login_ip VARCHAR(45) NULL
+login_count INT DEFAULT 0
+account_locked BOOLEAN DEFAULT FALSE
+locked_until TIMESTAMP NULL
+force_password_change BOOLEAN DEFAULT FALSE
+password_changed_at TIMESTAMP NULL
+New Tables
+
+login_attempts - Security tracking
+user_logins - Session management
+password_histories - Password reuse prevention
+
+Configuration
+OAuth Setup (.env)
+envGOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-secret
+GOOGLE_REDIRECT_URL=https://www.iseraj.com/roots/auth/google/callback
+Security Settings
+
+Max login attempts: 5
+Lockout duration: 15 minutes
+Password history: 5 passwords
+Session lifetime: 120 minutes
+
+API Endpoints
+GET /auth/{provider} # Redirect to OAuth provider
+GET /auth/{provider}/callback # Handle OAuth callback
+POST /profile/logout-other-devices # Logout from other devices
+Future Enhancements
+
+Two-Factor Authentication (2FA)
+Biometric authentication
+Magic link login
+SSO for schools
+Advanced threat detection
+Login with QR code

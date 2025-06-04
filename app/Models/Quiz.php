@@ -23,7 +23,20 @@ class Quiz extends Model
         'grade_level',
         'settings'
     ];
+    protected static function boot()
+    {
+        parent::boot();
 
+        static::creating(function ($quiz) {
+            if (empty($quiz->pin)) {
+                do {
+                    $pin = strtoupper(Str::random(6));
+                } while (self::where('pin', $pin)->exists());
+
+                $quiz->pin = $pin;
+            }
+        });
+    }
     /**
      * The attributes that should be cast.
      *

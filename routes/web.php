@@ -165,4 +165,14 @@ Route::post('/profile/logout-other-devices', [ProfileController::class, 'logoutO
     ->name('profile.logout-other-devices')
     ->middleware('auth');
 
+// Enhanced Profile Routes
+Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function () {
+    Route::get('/', [ProfileController::class, 'dashboard'])->name('dashboard');
+    Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
+    Route::patch('/', [ProfileController::class, 'update'])->name('update');
+    Route::delete('/', [ProfileController::class, 'destroy'])->name('destroy');
+    Route::post('/avatar', [ProfileController::class, 'updateAvatar'])->name('avatar.update');
+    Route::get('/completion', [ProfileController::class, 'completion'])->name('completion');
+});
+
 require __DIR__ . '/auth.php';

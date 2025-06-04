@@ -99,7 +99,13 @@ class QuizController extends Controller
                 'title' => $validated['title'],
                 'subject' => $validated['subject'],
                 'grade_level' => $validated['grade_level'],
-                'settings' => $settingsForDb
+                'pin' => strtoupper(Str::random(6)), // ? Add this line
+                'settings' => [
+                    'creation_method' => $validated['creation_method'],
+                    'question_count' => $validated['question_count'] ?? 0,
+                    'time_limit' => $validated['time_limit'] ?? null,
+                    'allow_review' => $validated['allow_review'] ?? true,
+                ],
             ]);
 
             // Handle different creation methods

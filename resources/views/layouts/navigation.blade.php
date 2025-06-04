@@ -29,43 +29,64 @@
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
-                @auth
-                <x-dropdown align="right" width="48">
-                    <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div>{{ Auth::user()->name }}</div>
-                            <div class="ms-1">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </button>
-                    </x-slot>
-
-                    <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')">
-                            الملف الشخصي
-                        </x-dropdown-link>
-
-                        <!-- Authentication -->
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <x-dropdown-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
-                                تسجيل الخروج
-                            </x-dropdown-link>
-                        </form>
-                    </x-slot>
-                </x-dropdown>
-                @else
-                <a href="{{ route('login') }}" class="text-sm text-gray-700 underline">تسجيل الدخول</a>
-                @if (Route::has('register'))
-                    <a href="{{ route('register') }}" class="ml-4 text-sm text-gray-700 underline">التسجيل</a>
-                @endif
-                @endauth
+<x-dropdown align="right" width="64">
+    <x-slot name="trigger">
+        <button class="inline-flex items-center px-3 py-2 ...">
+            <div class="flex items-center">
+                @if(Auth::user()->avatar)
+    @if(str_starts_with(Auth::user()->avatar, 'http'))
+        <img src="{{ Auth::user()->avatar }}" alt="Avatar" class="w-8 h-8 rounded-full ml-2">
+    @else
+        <img src="{{ asset('storage/' . Auth::user()->avatar) }}" alt="Avatar" class="w-8 h-8 rounded-full ml-2">
+    @endif
+@else
+    <div class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center ml-2">
+        <span class="text-white text-sm font-bold">
+            {{ substr(Auth::user()->name, 0, 1) }}
+        </span>
+    </div>
+@endif
+                <div class="text-right">
+                    <div>{{ Auth::user()->name }}</div>
+                    @if(Auth::user()->profile_completion < 100)
+                        <div class="text-xs text-gray-500">
+                            الملف الشخصي {{ Auth::user()->profile_completion }}% مكتمل
+                        </div>
+                    @endif
+                </div>
             </div>
+        </button>
+    </x-slot>
+
+    <x-slot name="content">
+        <x-dropdown-link :href="route('profile.dashboard')">
+            <i class="fas fa-user ml-2"></i> ملفي الشخصي
+        </x-dropdown-link>
+        
+        @if(Auth::user()->profile_completion < 100)
+            <x-dropdown-link :href="route('profile.completion')">
+                <i class="fas fa-tasks ml-2 text-yellow-500"></i> 
+                أكمل ملفك الشخصي
+            </x-dropdown-link>
+        @endif
+        
+        <x-dropdown-link :href="route('profile.edit')">
+            <i class="fas fa-cog ml-2"></i> الإعدادات
+        </x-dropdown-link>
+
+        <hr class="my-1">
+
+        <!-- Logout -->
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <x-dropdown-link :href="route('logout')"
+                    onclick="event.preventDefault();
+                                this.closest('form').submit();">
+                <i class="fas fa-sign-out-alt ml-2"></i> تسجيل الخروج
+            </x-dropdown-link>
+        </form>
+    </x-slot>
+</x-dropdown>
 
             <!-- Hamburger -->
             <div class="-me-2 flex items-center sm:hidden">

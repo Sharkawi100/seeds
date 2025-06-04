@@ -60,8 +60,12 @@ class SocialAuthController extends Controller
             \Log::info('User found/created', ['user_id' => $user->id]);
 
             // Process login with security service
-            $loginRecord = \App\Models\UserLogin::createForUser($user, true);
-
+            // $loginRecord = \App\Models\UserLogin::createForUser($user, true);
+            $user->update([
+                'last_login_at' => now(),
+                'last_login_ip' => request()->ip(),
+                'login_count' => $user->login_count + 1
+            ]);
             // Update last login info
             $user->update([
                 'last_login_at' => now(),

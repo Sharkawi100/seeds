@@ -53,3 +53,35 @@ Last Updated: December 2024
 -   Rate Limiting: Built-in Laravel + custom implementation
 -   Password Policies: Custom validation rules
 -   Session Management: Multi-device support
+
+## 4. Update `_project_docs/tech_stack.md`
+
+Add these updates:
+
+```markdown
+## Frontend Build Tools
+
+-   **Vite**: Asset bundling and hot module replacement
+-   **PostCSS**: CSS processing
+-   **Autoprefixer**: CSS vendor prefixes
+
+## Authentication Packages
+
+-   **laravel/socialite**: OAuth integration (Google, Facebook)
+-   **jenssegers/agent**: Device detection for login tracking
+
+## Production Optimizations
+
+-   Asset compilation with Vite
+-   Route caching
+-   Config caching
+-   View caching
+-   Autoloader optimization
+
+## Deployment Considerations
+
+-   Shared hosting compatible
+-   No SSH required (deployment via FTP/scripts)
+-   MySQL database
+-   PHP 8.3+ required
+```
