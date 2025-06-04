@@ -1,4 +1,5 @@
 <?php
+// File: bootstrap/app.php
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -12,11 +13,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Register middleware aliases
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\IsAdmin::class,
+        ]);
+
+        // Append to web middleware group
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
         ]);
 
-        // Add CSRF exception for social callbacks
+        // Add CSRF exceptions
         $middleware->validateCsrfTokens(except: [
             'auth/*/callback',
         ]);

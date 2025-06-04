@@ -15,69 +15,28 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'is_admin',
+        'phone',
+        'birth_date',
         'google_id',
         'facebook_id',
         'avatar',
+        'bio',
         'auth_provider',
         'user_type',
+        'is_admin',
+        'is_school',
         'school_name',
         'grade_level',
+        'favorite_subject',
+        'last_login_at',
+        'achievements',
+        'preferences',
+        'privacy_settings',
+        'password_changed_at',
+        'last_login_ip',
+        'login_count',
     ];
-    /**
-     * Calculate profile completion percentage
-     */
-    public function getProfileCompletionAttribute(): int
-    {
-        $fields = [
-            'name' => 20,
-            'email' => 20,
-            'avatar' => 15,
-            'user_type' => 10,
-        ];
 
-        if ($this->user_type === 'teacher') {
-            $fields['school_name'] = 20;
-            $fields['bio'] = 15;
-        } else {
-            $fields['grade_level'] = 20;
-            $fields['favorite_subject'] = 15;
-        }
-
-        $completed = 0;
-        foreach ($fields as $field => $weight) {
-            if (!empty($this->$field)) {
-                $completed += $weight;
-            }
-        }
-
-        return min($completed, 100);
-    }
-
-    /**
-     * Get incomplete profile fields
-     */
-    public function getIncompleteFieldsAttribute(): array
-    {
-        $incomplete = [];
-
-        if (empty($this->avatar))
-            $incomplete[] = 'صورة الملف الشخصي';
-
-        if ($this->user_type === 'teacher') {
-            if (empty($this->school_name))
-                $incomplete[] = 'اسم المدرسة';
-            if (empty($this->bio))
-                $incomplete[] = 'نبذة شخصية';
-        } else {
-            if (empty($this->grade_level))
-                $incomplete[] = 'المرحلة الدراسية';
-            if (empty($this->favorite_subject))
-                $incomplete[] = 'المادة المفضلة';
-        }
-
-        return $incomplete;
-    }
     protected $hidden = [
         'password',
         'remember_token',
@@ -89,6 +48,14 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'is_school' => 'boolean',
+            'birth_date' => 'date',
+            'last_login_at' => 'datetime',
+            'password_changed_at' => 'datetime',
+            // Cast LONGTEXT fields as arrays
+            'achievements' => 'array',
+            'preferences' => 'array',
+            'privacy_settings' => 'array',
         ];
     }
 
@@ -100,6 +67,11 @@ class User extends Authenticatable
     public function results()
     {
         return $this->hasMany(Result::class);
+    }
+
+    public function userLogins()
+    {
+        return $this->hasMany(UserLogin::class);
     }
 
     public function isAdmin(): bool

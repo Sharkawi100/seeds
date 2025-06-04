@@ -1,10 +1,10 @@
 <?php
+// File: app/Rules/StrongPassword.php
 
 namespace App\Rules;
 
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
-use App\Models\PasswordHistory;
 use Illuminate\Support\Facades\Hash;
 
 class StrongPassword implements ValidationRule
@@ -54,8 +54,8 @@ class StrongPassword implements ValidationRule
             $this->requirements[] = 'كلمة المرور هذه شائعة جداً وغير آمنة';
         }
 
-        // Check password history
-        if ($this->userId && $this->isReusedPassword($value)) {
+        // Check password history (only if model exists)
+        if ($this->userId && class_exists('\App\Models\PasswordHistory') && $this->isReusedPassword($value)) {
             $this->requirements[] = 'لا يمكن استخدام آخر 5 كلمات مرور سابقة';
         }
 
@@ -88,19 +88,24 @@ class StrongPassword implements ValidationRule
      */
     protected function isReusedPassword(string $password): bool
     {
-        if (!$this->userId) {
+        if (!$this->userId || !class_exists('\App\Models\PasswordHistory')) {
             return false;
         }
 
-        $recentPasswords = PasswordHistory::where('user_id', $this->userId)
-            ->latest()
-            ->take(5)
-            ->pluck('password');
+        try {
+            $recentPasswords = \App\Models\PasswordHistory::where('user_id', $this->userId)
+                ->latest()
+                ->take(5)
+                ->pluck('password');
 
-        foreach ($recentPasswords as $oldPassword) {
-            if (Hash::check($password, $oldPassword)) {
-                return true;
+            foreach ($recentPasswords as $oldPassword) {
+                if (Hash::check($password, $oldPassword)) {
+                    return true;
+                }
             }
+        } catch (\Exception $e) {
+            // If table doesn't exist, just return false
+            return false;
         }
 
         return false;
