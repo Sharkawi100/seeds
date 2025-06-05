@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register middleware aliases
         $middleware->alias([
             'admin' => \App\Http\Middleware\IsAdmin::class,
+            'can.create.quizzes' => \App\Http\Middleware\CanCreateQuizzes::class, // Add this line
         ]);
 
         // Append to web middleware group

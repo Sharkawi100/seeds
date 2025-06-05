@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Session;
+
 
 class UserController extends Controller
 {
@@ -22,8 +24,13 @@ class UserController extends Controller
             });
         }
 
+        // Updated role filtering to handle user_type
         if ($request->filled('role')) {
-            $query->where('is_admin', $request->role === 'admin');
+            if ($request->role === 'admin') {
+                $query->where('is_admin', true);
+            } elseif (in_array($request->role, ['teacher', 'student'])) {
+                $query->where('user_type', $request->role);
+            }
         }
 
         $users = $query->withCount(['quizzes', 'results'])
@@ -45,11 +52,24 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'user_type' => ['required', 'in:student,teacher'],
             'is_admin' => ['boolean'],
+            'school_name' => ['nullable', 'string', 'max:255'],
+            'grade_level' => ['nullable', 'integer', 'min:1', 'max:9'],
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
         $validated['is_admin'] = $request->boolean('is_admin');
+
+        // Only save school_name for teachers
+        if ($validated['user_type'] !== 'teacher') {
+            $validated['school_name'] = null;
+        }
+
+        // Only save grade_level for students
+        if ($validated['user_type'] !== 'student') {
+            $validated['grade_level'] = null;
+        }
 
         User::create($validated);
 
@@ -77,7 +97,10 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'user_type' => ['required', 'in:student,teacher'],
             'is_admin' => ['boolean'],
+            'school_name' => ['nullable', 'string', 'max:255'],
+            'grade_level' => ['nullable', 'integer', 'min:1', 'max:9'],
         ]);
 
         if ($request->filled('password')) {
@@ -91,6 +114,16 @@ class UserController extends Controller
         // Prevent removing admin role from self
         if ($user->id === Auth::id() && !$validated['is_admin']) {
             return back()->with('error', 'لا يمكنك إزالة صلاحيات الإدارة من حسابك');
+        }
+
+        // Only save school_name for teachers
+        if ($validated['user_type'] !== 'teacher') {
+            $validated['school_name'] = null;
+        }
+
+        // Only save grade_level for students
+        if ($validated['user_type'] !== 'student') {
+            $validated['grade_level'] = null;
         }
 
         $user->update($validated);
@@ -109,5 +142,43 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'تم حذف المستخدم بنجاح');
+    }
+
+    // NEW: Impersonate user (login as another user)
+    public function impersonate(User $user)
+    {
+        if ($user->id === Auth::id()) {
+            return back()->with('error', 'لا يمكنك انتحال شخصية نفسك');
+        }
+
+        // Store the admin's ID to return later
+        Session::put('impersonator', Auth::id());
+
+        // Login as the selected user
+        Auth::login($user);
+
+        return redirect()->route('dashboard')
+            ->with('info', 'أنت الآن تتصفح كـ: ' . $user->name);
+    }
+
+    // NEW: Stop impersonation
+    public function stopImpersonation()
+    {
+        if (!Session::has('impersonator')) {
+            return redirect()->route('dashboard');
+        }
+
+        $originalUserId = Session::get('impersonator');
+        Session::forget('impersonator');
+
+        // Use the simplified name since User is already imported
+        $originalUser = User::find($originalUserId);
+
+        if ($originalUser && $originalUser instanceof User) {
+            Auth::login($originalUser);
+        }
+
+        return redirect()->route('admin.users.index')
+            ->with('success', 'تم العودة إلى حسابك الأصلي');
     }
 }

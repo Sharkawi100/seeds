@@ -147,7 +147,19 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('results')->name('results.')->controller(ResultController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/quiz/{quiz}', 'quizResults')->name('quiz');
+        Route::middleware(['can.create.quizzes'])->group(function () {
+            Route::get('/quizzes/create', [QuizController::class, 'create'])->name('quizzes.create');
+            Route::post('/quizzes', [QuizController::class, 'store'])->name('quizzes.store');
+            Route::get('/quizzes/{quiz}/edit', [QuizController::class, 'edit'])->name('quizzes.edit');
+            Route::put('/quizzes/{quiz}', [QuizController::class, 'update'])->name('quizzes.update');
+            Route::delete('/quizzes/{quiz}', [QuizController::class, 'destroy'])->name('quizzes.destroy');
+        });
+
+        // These routes are available to all authenticated users
+        Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index');
+        Route::get('/quizzes/{quiz}', [QuizController::class, 'show'])->name('quizzes.show');
     });
+
 });
 
 /*

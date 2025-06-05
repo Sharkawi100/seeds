@@ -27,22 +27,29 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
+    // In app/Http/Controllers/Auth/RegisteredUserController.php
+
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'user_type' => ['required', 'in:student,teacher'], // Add this
+            'school_name' => ['nullable', 'required_if:user_type,teacher', 'string', 'max:255'],
+            'grade_level' => ['nullable', 'required_if:user_type,student', 'integer', 'min:1', 'max:9'],
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'user_type' => $request->user_type, // Add this
+            'school_name' => $request->user_type === 'teacher' ? $request->school_name : null,
+            'grade_level' => $request->user_type === 'student' ? $request->grade_level : null,
         ]);
 
         event(new Registered($user));
-
         Auth::login($user);
 
         return redirect(route('dashboard', absolute: false));

@@ -13,9 +13,11 @@
     
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
+    <!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- Scripts -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="{{ asset('build/assets/app-CX5so9Op.css') }}">
+<script src="{{ asset('build/assets/app-Bf4POITK.js') }}" defer></script>
     
     <!-- Custom Styles -->
     <style>
@@ -33,8 +35,16 @@
             --animation-timing: cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        * {
-            font-family: 'Cairo', 'Tajawal', sans-serif !important;
+        body {
+            font-family: 'Cairo', 'Tajawal', sans-serif;
+        }
+        
+        /* FontAwesome fix */
+        i[class*="fa-"],
+        i[class*="fas"],
+        i[class*="far"],
+        i[class*="fab"] {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
         }
         
         /* Glassmorphism Effect */
@@ -215,7 +225,22 @@
     @stack('styles')
 </head>
 <body class="font-sans antialiased bg-gray-50 overflow-x-hidden">
-    <!-- Background Pattern -->
+    {{-- Impersonation Warning Banner --}}
+    @if(session()->has('impersonator'))
+    <div class="bg-yellow-500 text-black px-4 py-2 text-center font-bold relative z-50">
+        <i class="fas fa-exclamation-triangle ml-2"></i>
+        أنت تتصفح الآن بحساب: {{ Auth::user()->name }} 
+        ({{ Auth::user()->is_admin ? 'مدير' : (Auth::user()->user_type === 'teacher' ? 'معلم' : 'طالب') }})
+        <form method="POST" action="{{ route('admin.stop-impersonation') }}" class="inline mr-4">
+            @csrf
+            <button type="submit" class="underline hover:no-underline">
+                <i class="fas fa-undo ml-1"></i>
+                العودة لحسابك الأصلي
+            </button>
+        </form>
+    </div>
+    @endif
+        <!-- Background Pattern -->
     <div class="fixed inset-0 z-0">
         <div class="absolute inset-0 bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 opacity-70"></div>
         <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.05"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');"></div>
@@ -248,8 +273,6 @@
             @endif
             
             @yield('content')
-            <!-- Success Modals -->
-<x-quiz-created-modal />
         </main>
         
         <!-- Footer -->
@@ -275,7 +298,7 @@
                 </div>
                 
                 <div class="mt-6 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
-                    <p>&copy; 2024 جُذور. جميع الحقوق محفوظة. صُنع بـ ❤️ للتعليم العربي</p>
+                    <p>&copy; 2024 جُذور. جميع الحقوق محفوظة. صُنع بـ ❤️ لموقع السراج</p>
                 </div>
             </div>
         </footer>
