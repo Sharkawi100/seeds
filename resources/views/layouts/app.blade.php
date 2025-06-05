@@ -231,13 +231,10 @@
         <i class="fas fa-exclamation-triangle ml-2"></i>
         أنت تتصفح الآن بحساب: {{ Auth::user()->name }} 
         ({{ Auth::user()->is_admin ? 'مدير' : (Auth::user()->user_type === 'teacher' ? 'معلم' : 'طالب') }})
-        <form method="POST" action="{{ route('admin.stop-impersonation') }}" class="inline mr-4">
-            @csrf
-            <button type="submit" class="underline hover:no-underline">
-                <i class="fas fa-undo ml-1"></i>
-                العودة لحسابك الأصلي
-            </button>
-        </form>
+        <a href="{{ route('admin.stop-impersonation') }}" class="inline mr-4 underline hover:no-underline">
+            <i class="fas fa-undo ml-1"></i>
+            العودة لحسابك الأصلي
+        </a>
     </div>
     @endif
         <!-- Background Pattern -->

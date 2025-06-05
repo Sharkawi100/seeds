@@ -12,19 +12,14 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\QuizController as AdminQuizController;
 use App\Http\Controllers\Admin\AiManagementController;
+use App\Http\Middleware\IsAdmin;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
 */
 
 /*
@@ -83,7 +78,6 @@ Route::get('/results/{result}', [ResultController::class, 'show'])->name('result
 */
 
 Route::middleware(['auth'])->group(function () {
-
     // Dashboard
     Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
 
@@ -92,7 +86,6 @@ Route::middleware(['auth'])->group(function () {
     | Profile Management
     |--------------------------------------------------------------------------
     */
-
     Route::prefix('profile')->name('profile.')->controller(ProfileController::class)->group(function () {
         // Main Profile Routes
         Route::get('/', 'dashboard')->name('dashboard');
@@ -119,7 +112,6 @@ Route::middleware(['auth'])->group(function () {
     | Quiz Management
     |--------------------------------------------------------------------------
     */
-
     Route::resource('quizzes', QuizController::class);
 
     Route::prefix('quizzes')->name('quizzes.')->group(function () {
@@ -143,23 +135,10 @@ Route::middleware(['auth'])->group(function () {
     | Results Management
     |--------------------------------------------------------------------------
     */
-
     Route::prefix('results')->name('results.')->controller(ResultController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/quiz/{quiz}', 'quizResults')->name('quiz');
-        Route::middleware(['can.create.quizzes'])->group(function () {
-            Route::get('/quizzes/create', [QuizController::class, 'create'])->name('quizzes.create');
-            Route::post('/quizzes', [QuizController::class, 'store'])->name('quizzes.store');
-            Route::get('/quizzes/{quiz}/edit', [QuizController::class, 'edit'])->name('quizzes.edit');
-            Route::put('/quizzes/{quiz}', [QuizController::class, 'update'])->name('quizzes.update');
-            Route::delete('/quizzes/{quiz}', [QuizController::class, 'destroy'])->name('quizzes.destroy');
-        });
-
-        // These routes are available to all authenticated users
-        Route::get('/quizzes', [QuizController::class, 'index'])->name('quizzes.index');
-        Route::get('/quizzes/{quiz}', [QuizController::class, 'show'])->name('quizzes.show');
     });
-
 });
 
 /*
@@ -167,11 +146,7 @@ Route::middleware(['auth'])->group(function () {
 | Admin Routes
 |--------------------------------------------------------------------------
 */
-
-
-
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-
+Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
     // Admin Dashboard
     Route::controller(DashboardController::class)->group(function () {
         Route::get('/dashboard', 'index')->name('dashboard');
@@ -179,8 +154,20 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/settings', 'settings')->name('settings');
     });
 
-    // Resource Management
+    // User Management
     Route::resource('users', AdminUserController::class);
+
+    // Additional user management routes
+    Route::post('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::post('users/{user}/update-role', [AdminUserController::class, 'updateRole'])->name('users.update-role');
+    Route::post('users/{user}/disconnect-social', [AdminUserController::class, 'disconnectSocial'])->name('users.disconnect-social');
+    Route::get('users/{user}/impersonate', [AdminUserController::class, 'impersonate'])->name('users.impersonate');
+    Route::get('users-export', [AdminUserController::class, 'export'])->name('users.export');
+
+    // Stop impersonation
+    Route::get('stop-impersonation', [AdminUserController::class, 'stopImpersonation'])->name('stop-impersonation');
+
+    // Quiz Management
     Route::resource('quizzes', AdminQuizController::class);
 
     // AI Management
@@ -191,11 +178,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     });
 });
 
-// Simple logout route that works with GET
+// Simple logout route
 Route::get('/logout-now', function () {
     Auth::guard('web')->logout();
     request()->session()->invalidate();
     request()->session()->regenerateToken();
     return redirect('/');
 })->name('logout.simple');
+
 require __DIR__ . '/auth.php';

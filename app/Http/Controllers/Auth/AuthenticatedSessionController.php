@@ -1,4 +1,5 @@
 <?php
+// File: app/Http/Controllers/Auth/AuthenticatedSessionController.php
 
 namespace App\Http\Controllers\Auth;
 
@@ -36,23 +37,15 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        // Check if user is active
+        if (!Auth::user()->is_active) {
+            Auth::logout();
+            throw ValidationException::withMessages([
+                'email' => 'حسابك معطل. يرجى التواصل مع الإدارة.',
+            ]);
+        }
+
         $request->session()->regenerate();
-
-        // Get the authenticated user
-        $user = Auth::user();
-
-        // Update last login info
-        $user->update([
-            'last_login_at' => now(),
-            'last_login_ip' => $request->ip(),
-            'login_count' => $user->login_count + 1,
-        ]);
-
-        // Create login record
-        $loginRecord = \App\Models\UserLogin::createForUser($user);
-
-        // Store login record ID in session
-        session(['login_record_id' => $loginRecord->id]);
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
@@ -62,8 +55,8 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        // Update logout time if login record exists
-        if ($loginRecordId = session('login_record_id')) {
+        // Update logout time if UserLogin model exists
+        if (class_exists(\App\Models\UserLogin::class) && $loginRecordId = session('login_record_id')) {
             \App\Models\UserLogin::where('id', $loginRecordId)
                 ->update(['logged_out_at' => now()]);
         }
