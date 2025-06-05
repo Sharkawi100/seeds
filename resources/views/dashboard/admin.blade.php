@@ -199,22 +199,24 @@
         </h2>
         <div class="space-y-4 max-h-96 overflow-y-auto">
             @foreach(\App\Models\Result::with(['user', 'quiz'])->latest()->take(10)->get() as $result)
-            <div class="flex items-center justify-between p-3 bg-black/40 rounded-lg hover:bg-black/50 transition">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
-                        {{ mb_substr($result->user->name ?? 'ض', 0, 1) }}
+            @if($result->quiz)
+                <div class="flex items-center justify-between p-3 bg-black/40 rounded-lg hover:bg-black/50 transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                            {{ mb_substr($result->user->name ?? 'ض', 0, 1) }}
+                        </div>
+                        <div>
+                            <p class="text-white font-medium">{{ $result->user->name ?? 'ضيف' }}</p>
+                            <p class="text-gray-300 text-sm">أكمل {{ $result->quiz->title }}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p class="text-white font-medium">{{ $result->user->name ?? 'ضيف' }}</p>
-                        <p class="text-gray-300 text-sm">أكمل {{ $result->quiz->title }}</p>
+                    <div class="text-left">
+                        <p class="text-white font-bold">{{ number_format($result->total_score, 1) }}%</p>
+                        <p class="text-gray-300 text-xs">{{ $result->created_at->diffForHumans() }}</p>
                     </div>
                 </div>
-                <div class="text-left">
-                    <p class="text-white font-bold">{{ number_format($result->total_score, 1) }}%</p>
-                    <p class="text-gray-300 text-xs">{{ $result->created_at->diffForHumans() }}</p>
-                </div>
-            </div>
-            @endforeach
+            @endif
+        @endforeach
         </div>
     </div>
     

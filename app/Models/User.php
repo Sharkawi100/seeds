@@ -28,9 +28,16 @@ class User extends Authenticatable
         'user_type',
         'is_admin',
         'is_active',
+        'is_approved',
         'is_school',
         'school_name',
         'grade_level',
+        'subjects_taught',
+        'experience_years',
+        'teacher_data',
+        'parent_email',
+        'student_school_id',
+        'student_data',
         'google_id',
         'facebook_id',
         'avatar',
@@ -161,5 +168,15 @@ class User extends Authenticatable
     public function scopeInactive($query)
     {
         return $query->where('is_active', false);
+    }
+
+    public function canManageQuizzes()
+    {
+        return $this->is_admin || $this->user_type === 'teacher';
+    }
+
+    public function isTeacherOrAdmin()
+    {
+        return $this->is_admin || $this->user_type === 'teacher';
     }
 }

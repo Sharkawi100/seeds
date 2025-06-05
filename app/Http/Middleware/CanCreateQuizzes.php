@@ -15,8 +15,8 @@ class CanCreateQuizzes
         }
 
         // Only teachers and admins can create quizzes
-        if (Auth::user()->user_type !== 'teacher' && !Auth::user()->is_admin) {
-            abort(403, 'غير مصرح لك بإنشاء اختبارات. هذه الميزة متاحة للمعلمين فقط.');
+        if (!Auth::user()->is_admin && Auth::user()->user_type !== 'teacher') {
+            abort(403);
         }
 
         return $next($request);

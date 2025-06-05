@@ -1,6 +1,6 @@
 # Features & Business Logic - Juzoor
 
-Last Updated: December 2024
+Last Updated: June 2025
 
 ## Core Features
 
@@ -59,6 +59,25 @@ Last Updated: December 2024
     -   Logout from other devices
     -   Last login display
 
+### 7. Role-Specific Authentication (NEW - June 2025)
+
+-   **Separate Login/Registration Flows**:
+    -   Teacher portal with approval workflow
+    -   Student portal with simplified registration
+    -   Role selection page at /login and /register
+-   **Teacher Features**:
+    -   Required fields: school, subjects taught, experience
+    -   Admin approval required before access
+    -   Pending approval page while waiting
+-   **Student Features**:
+    -   Optional parent email
+    -   PIN login (school code + student ID)
+    -   Auto-approved registration
+-   **Database Enhancements**:
+    -   Role-specific columns added
+    -   JSON fields for extensible data
+    -   Performance indexes
+
 ## Updated Business Rules
 
 -   Social login users don't need passwords
@@ -66,8 +85,11 @@ Last Updated: December 2024
 -   New device logins trigger email notifications
 -   Passwords cannot be reused (last 5 tracked)
 -   Admin accounts can force password changes
+-   Teachers must be approved by admin before creating quizzes
+-   Students are auto-approved upon registration
+-   Default user type for social login is 'student'
 
-### 7. Results & Analytics
+### 8. Results & Analytics
 
 -   Root-wise scoring visualization (radar chart)
 -   Detailed answer review
@@ -76,8 +98,8 @@ Last Updated: December 2024
 
 ## User Roles
 
-1. **Admin**: Full system access, user management
-2. **Teacher**: Create quizzes, view all results
+1. **Admin**: Full system access, user management, teacher approval
+2. **Teacher**: Create quizzes, view all results (after approval)
 3. **Student**: Take quizzes, view own results
 4. **Guest**: Take quiz via PIN, temporary results
 
@@ -88,3 +110,5 @@ Last Updated: December 2024
 -   PIN codes are 6 characters (alphanumeric)
 -   Guest results expire after 7 days
 -   AI usage is tracked and limited
+-   Teachers require approval before access
+-   Students can use PIN or email login

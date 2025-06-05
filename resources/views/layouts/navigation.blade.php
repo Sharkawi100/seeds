@@ -14,22 +14,27 @@
        <div class="flex justify-between h-16">
            <div class="flex">
                <!-- Logo with Role Indicator -->
-               <div class="shrink-0 flex items-center">
-                   <a href="{{ route('dashboard') }}" class="group flex items-center gap-2">
-                       <h2 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent group-hover:from-purple-700 group-hover:to-purple-900 transition-all duration-300">
-                           🌱 جُذور
-                       </h2>
-                       @auth
-                           @if(Auth::user()->is_admin)
-                               <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">إدارة</span>
-                           @elseif(Auth::user()->user_type === 'teacher')
-                               <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">معلم</span>
-                           @else
-                               <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">طالب</span>
-                           @endif
-                       @endauth
-                   </a>
-               </div>
+<div class="shrink-0 flex items-center">
+    <a href="{{ route('dashboard') }}" class="group flex items-center gap-2">
+        <h2 class="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent group-hover:from-purple-700 group-hover:to-purple-900 transition-all duration-300">
+            🌱 جُذور
+        </h2>
+        @auth
+            @if(Auth::user()->is_admin)
+                <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">إدارة</span>
+            @elseif(Auth::user()->user_type === 'teacher')
+                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">معلم</span>
+            @else
+                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">طالب</span>
+            @endif
+        @endauth
+    </a>
+    
+    <!-- Home Icon -->
+<a href="{{ url('/') }}" target="_blank" class="ml-4 text-gray-600 hover:text-purple-600 transition-colors duration-300" title="الصفحة الرئيسية">
+    <i class="fas fa-home text-xl"></i>
+</a>
+</div>
 
                <!-- Navigation Links -->
                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">

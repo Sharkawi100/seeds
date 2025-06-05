@@ -41,6 +41,26 @@ Route::controller(ContactController::class)->prefix('contact')->name('contact.')
     Route::get('/', 'show')->name('show');
     Route::post('/', 'submit')->name('submit');
 });
+// Teacher Authentication Routes
+Route::prefix('teacher')->name('teacher.')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::get('login', [App\Http\Controllers\Auth\Teacher\TeacherLoginController::class, 'showLoginForm'])->name('login');
+        Route::post('login', [App\Http\Controllers\Auth\Teacher\TeacherLoginController::class, 'login']);
+        Route::get('register', [App\Http\Controllers\Auth\Teacher\TeacherRegisterController::class, 'showRegistrationForm'])->name('register');
+        Route::post('register', [App\Http\Controllers\Auth\Teacher\TeacherRegisterController::class, 'register']);
+    });
+});
+
+// Student Authentication Routes
+Route::prefix('student')->name('student.')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::get('login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'showLoginForm'])->name('login');
+        Route::post('login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'login']);
+        Route::post('pin-login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'pinLogin'])->name('pin-login');
+        Route::get('register', [App\Http\Controllers\Auth\Student\StudentRegisterController::class, 'showRegistrationForm'])->name('register');
+        Route::post('register', [App\Http\Controllers\Auth\Student\StudentRegisterController::class, 'register']);
+    });
+});
 
 // Language Switcher
 Route::get('/lang/{locale}', function ($locale) {
@@ -78,6 +98,13 @@ Route::get('/results/{result}', [ResultController::class, 'show'])->name('result
 */
 
 Route::middleware(['auth'])->group(function () {
+    // Teacher pending approval page
+    Route::get('/teacher/pending-approval', function () {
+        if (Auth::user()->user_type !== 'teacher' || Auth::user()->is_approved) {
+            return redirect()->route('dashboard');
+        }
+        return view('auth.teacher.pending-approval');
+    })->name('teacher.pending-approval');
     // Dashboard
     Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
 
@@ -152,6 +179,8 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
         Route::get('/dashboard', 'index')->name('dashboard');
         Route::get('/reports', 'reports')->name('reports');
         Route::get('/settings', 'settings')->name('settings');
+        Route::post('quizzes/{quiz}/toggle-status', [AdminQuizController::class, 'toggleStatus'])->name('admin.quizzes.toggle-status');
+        Route::get('quizzes/export', [AdminQuizController::class, 'export'])->name('admin.quizzes.export');
     });
 
     // User Management
@@ -186,4 +215,13 @@ Route::get('/logout-now', function () {
     return redirect('/');
 })->name('logout.simple');
 
+
+// Update existing routes to redirect to role selection
+Route::get('/login', function () {
+    return view('auth.role-selection', ['action' => 'login']);
+})->middleware('guest')->name('login');
+
+Route::get('/register', function () {
+    return view('auth.role-selection', ['action' => 'register']);
+})->middleware('guest')->name('register');
 require __DIR__ . '/auth.php';

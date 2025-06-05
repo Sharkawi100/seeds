@@ -23,7 +23,7 @@
                 {{-- Regular welcome header for teachers and students --}}
                 <div class="text-center mb-8">
                     <h1 class="text-5xl font-bold text-white mb-2">🎮 مرحباً {{ Auth::user()->name }}!</h1>
-                    @if(Auth::user()->user_type === 'teacher')
+                    @if(Auth::user()->is_admin || Auth::user()->user_type === 'teacher')
                         <p class="text-xl text-gray-300">جاهز لتحدي جديد في عالم جُذور التعليمي؟</p>
                     @else
                         <p class="text-xl text-gray-300">جاهز للتعلم والنمو مع جُذور؟</p>
@@ -33,12 +33,15 @@
 
             {{-- Include role-specific dashboard --}}
             @if(Auth::user()->is_admin)
-                @include('dashboard.admin')
-            @elseif(Auth::user()->user_type === 'teacher')
-                @include('dashboard.teacher')
-            @else
-                @include('dashboard.student')
-            @endif
+    @include('dashboard.admin')
+    {{-- Also show teacher features for admins --}}
+@endif
+
+@if(Auth::user()->is_admin || Auth::user()->user_type === 'teacher')
+    @include('dashboard.teacher')
+@elseif(Auth::user()->user_type === 'student')
+    @include('dashboard.student')
+@endif
         </div>
     </div>
 </div>

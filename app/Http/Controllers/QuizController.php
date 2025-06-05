@@ -270,7 +270,8 @@ class QuizController extends Controller
 
     public function edit(Quiz $quiz)
     {
-        if ((int) $quiz->user_id !== Auth::id()) {
+        // Allow admin to edit any quiz
+        if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
 
@@ -279,6 +280,10 @@ class QuizController extends Controller
 
     public function update(Request $request, Quiz $quiz)
     {
+        // Allow admin to update any quiz
+        if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
         if ((int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }

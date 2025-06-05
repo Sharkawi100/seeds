@@ -1,6 +1,6 @@
 # Routes Summary - Juzoor
 
-Last Updated: December 2024
+Last Updated: June 2025
 
 ## Public Routes
 
@@ -10,12 +10,33 @@ Last Updated: December 2024
 -   POST /quiz/{quiz}/submit # Submit answers
 -   GET /results/{result} # View results (with token)
 
+## Role Selection Routes (NEW)
+
+-   GET /login # Role selection page
+-   GET /register # Role selection page
+
+## Teacher Auth Routes (NEW)
+
+-   GET /teacher/login # Teacher login form
+-   POST /teacher/login # Process teacher login
+-   GET /teacher/register # Teacher registration form
+-   POST /teacher/register # Process teacher registration
+-   GET /teacher/pending-approval # Pending approval page (auth required)
+
+## Student Auth Routes (NEW)
+
+-   GET /student/login # Student login form
+-   POST /student/login # Process student login
+-   POST /student/pin-login # Student PIN login
+-   GET /student/register # Student registration form
+-   POST /student/register # Process student registration
+
 ## Auth Routes
 
--   GET/POST /login # User login
--   GET/POST /register # User registration
--   POST /logout # Logout
 -   GET/POST /forgot-password # Password reset
+-   GET /auth/{provider} # Social login redirect
+-   GET /auth/{provider}/callback # Social login callback
+-   POST /logout # Logout
 
 ## Authenticated Routes
 
@@ -27,20 +48,12 @@ Last Updated: December 2024
 ## Admin Routes (prefix: /admin)
 
 -   GET /admin/dashboard # Admin dashboard
+-   GET /admin/reports # Reports and analytics (NEW)
 -   Resource /admin/users # User management
 -   Resource /admin/quizzes # All quizzes management
 -   POST /admin/ai/generate # AI management
 
-## Auth Routes (Updated)
-
--   GET/POST /login # User login (enhanced UI)
--   GET/POST /register # User registration (multi-step)
--   POST /logout # Logout
--   GET/POST /forgot-password # Password reset
--   GET /auth/{provider} # Social login redirect (NEW)
--   GET /auth/{provider}/callback # Social login callback (NEW)
-
-## Profile Routes (NEW)
+## Profile Routes
 
 -   POST /profile/logout-other-devices # Logout from other devices
 
