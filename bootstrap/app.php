@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Add CSRF exceptions
         $middleware->validateCsrfTokens(except: [
             'auth/*/callback',
+            'logout',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

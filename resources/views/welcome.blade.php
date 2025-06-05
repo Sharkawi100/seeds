@@ -734,8 +734,7 @@
                 <ul class="space-y-2">
                     <li><a href="{{ route('about') }}" class="text-gray-400 hover:text-white transition">عن جُذور</a></li>
                     <li><a href="{{ route('juzoor.model') }}" class="text-gray-400 hover:text-white transition">نموذج جُذور</a></li>
-                    <li><a href="{{ route('contact.show') }}" class="text-gray-400 hover:text-white transition">تواصل معنا</a></li>                </ul>
-            </div>
+                    <li><a href="{{ route('contact.show') }}" class="text-gray-400 hover:text-white transition">تواصل معنا</a></li>            </div>
             <div>
                 <h4 class="text-lg font-bold mb-4">للمستخدمين</h4>
                 <ul class="space-y-2">

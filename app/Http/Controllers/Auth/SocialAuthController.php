@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Facades\Log;
+
+
 
 class SocialAuthController extends Controller
 {
@@ -42,12 +45,12 @@ class SocialAuthController extends Controller
 
         try {
             // Debug point 1
-            \Log::info('Social callback started for: ' . $provider);
+            Log::info('Social callback started for: ' . $provider);
 
             $socialUser = Socialite::driver($provider)->user();
 
             // Debug point 2
-            \Log::info('Social user retrieved', [
+            Log::info('Social user retrieved', [
                 'id' => $socialUser->getId(),
                 'email' => $socialUser->getEmail(),
                 'name' => $socialUser->getName()
@@ -57,16 +60,9 @@ class SocialAuthController extends Controller
             $user = $this->findOrCreateUser($socialUser, $provider);
 
             // Debug point 3
-            \Log::info('User found/created', ['user_id' => $user->id]);
+            Log::info('User found/created', ['user_id' => $user->id]);
 
-            // Process login with security service
-            // $loginRecord = \App\Models\UserLogin::createForUser($user, true);
-            $user->update([
-                'last_login_at' => now(),
-                'last_login_ip' => request()->ip(),
-                'login_count' => $user->login_count + 1
-            ]);
-            // Update last login info
+            // Update last login info (ONLY ONCE)
             $user->update([
                 'last_login_at' => now(),
                 'last_login_ip' => request()->ip(),
@@ -77,10 +73,7 @@ class SocialAuthController extends Controller
             Auth::login($user, true);
 
             // Debug point 4
-            \Log::info('User logged in', ['auth_check' => Auth::check()]);
-
-            // Store login record ID
-            session(['login_record_id' => $loginRecord->id]);
+            Log::info('User logged in', ['auth_check' => Auth::check()]);
 
             // Flash success message
             session()->flash('success', 'تم تسجيل الدخول بنجاح عبر ' . $this->getProviderName($provider));
@@ -95,11 +88,11 @@ class SocialAuthController extends Controller
             return redirect()->intended(route($route));
 
         } catch (\Exception $e) {
-            \Log::error('Social login failed: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
+            Log::error('Social login failed: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
 
             return redirect()->route('login')
-                ->with('error', 'فشل تسجيل الدخول عبر ' . $this->getProviderName($provider) . '. يرجى المحاولة مرة أخرى. Error: ' . $e->getMessage());
+                ->with('error', 'فشل تسجيل الدخول عبر ' . $this->getProviderName($provider) . '. يرجى المحاولة مرة أخرى.');
         }
     }
 

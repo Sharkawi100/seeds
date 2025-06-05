@@ -119,23 +119,7 @@
     <div class="animated-shape shape-2"></div>
     <div class="animated-shape shape-3"></div>
     
-    <!-- Language Switcher -->
-    <div class="absolute top-4 left-4 z-10">
-        <div class="flex gap-2">
-            <a href="{{ route('lang.switch', 'ar') }}" 
-               class="px-3 py-1 rounded-lg {{ app()->getLocale() == 'ar' ? 'bg-white text-purple-600' : 'text-white hover:bg-white/20' }} transition">
-                العربية
-            </a>
-            <a href="{{ route('lang.switch', 'en') }}" 
-               class="px-3 py-1 rounded-lg {{ app()->getLocale() == 'en' ? 'bg-white text-purple-600' : 'text-white hover:bg-white/20' }} transition">
-                English
-            </a>
-            <a href="{{ route('lang.switch', 'he') }}" 
-               class="px-3 py-1 rounded-lg {{ app()->getLocale() == 'he' ? 'bg-white text-purple-600' : 'text-white hover:bg-white/20' }} transition">
-                עברית
-            </a>
-        </div>
-    </div>
+    
     
     <div class="flex min-h-screen items-center justify-center px-4">
         <div class="w-full max-w-md">
@@ -305,7 +289,7 @@
                     عن نموذج جُذور
                 </a>
                 <span class="text-white/60">•</span>
-                <a href="{{ route('contact') }}" class="text-white/80 hover:text-white text-sm mx-3">
+                <a href="{{ route('contact.show') }}" class="text-white/80 hover:text-white text-sm mx-3">
                     تواصل معنا
                 </a>
             </div>
