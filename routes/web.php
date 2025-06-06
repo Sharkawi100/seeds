@@ -27,6 +27,12 @@ use Illuminate\Support\Facades\Auth;
 | Public Routes (No Authentication Required)
 |--------------------------------------------------------------------------
 */
+// Teacher/Student specific pages
+Route::get('/for-teachers', fn() => view('for-teachers'))->name('for.teachers');
+Route::get('/for-students', fn() => view('for-students'))->name('for.students');
+
+// Educational Model Pages
+Route::get('/juzoor-model/growth', fn() => view('juzoor-growth'))->name('juzoor.growth');
 
 // Landing Page
 Route::get('/', [WelcomeController::class, 'index'])->name('home');
