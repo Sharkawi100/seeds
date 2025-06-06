@@ -951,5 +951,77 @@ document.querySelectorAll('.group').forEach(card => {
         this.querySelector('[class*="text-5xl"]')?.classList.remove('animate-pulse');
     });
 });
+// Interactive Roots Visualization
+let rootsVisible = false;
+function toggleRoots() {
+    const roots = ['jawhar', 'zihn', 'waslat', 'roaya'];
+    rootsVisible = !rootsVisible;
+    
+    roots.forEach((root, index) => {
+        const rootEl = document.getElementById(`root-${root}`);
+        const lineEl = document.getElementById(`line-${root}`);
+        
+        if (rootsVisible) {
+            setTimeout(() => {
+                rootEl.style.opacity = '1';
+                rootEl.style.transform = 'scale(1)';
+                lineEl.style.opacity = '1';
+            }, index * 100);
+        } else {
+            rootEl.style.opacity = '0';
+            rootEl.style.transform = 'scale(0)';
+            lineEl.style.opacity = '0';
+        }
+    });
+}
+
+// Student Growth Animation
+let currentStage = 0;
+function animateStudentGrowth() {
+    const stages = 4;
+    currentStage = (currentStage % stages) + 1;
+    
+    // Hide all stages
+    for (let i = 1; i <= stages; i++) {
+        const stage = document.getElementById(`growth-stage-${i}`);
+        if (stage) {
+            stage.style.opacity = '0';
+            stage.style.transform = 'scale(0)';
+        }
+        
+        const progress = document.getElementById(`progress-${i}`);
+        if (progress) {
+            progress.classList.remove('bg-green-500');
+            progress.classList.add('bg-gray-300');
+        }
+    }
+    
+    // Show current stage
+    if (currentStage <= 3) {
+        const currentStageEl = document.getElementById(`growth-stage-${currentStage}`);
+        if (currentStageEl) {
+            currentStageEl.style.opacity = '1';
+            currentStageEl.style.transform = 'scale(1)';
+        }
+    }
+    
+    // Update progress indicators
+    for (let i = 1; i <= currentStage; i++) {
+        const progress = document.getElementById(`progress-${i}`);
+        if (progress) {
+            progress.classList.remove('bg-gray-300');
+            progress.classList.add('bg-green-500');
+        }
+    }
+    
+    // Reset after final stage
+    if (currentStage === stages) {
+        setTimeout(() => {
+            currentStage = 0;
+            animateStudentGrowth();
+        }, 2000);
+    }
+}
 </script>
+
 @endpush
