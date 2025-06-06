@@ -1,5 +1,11 @@
 @extends('layouts.app')
-
+@push('styles')
+<style>
+    * {
+        font-family: 'Tajawal', sans-serif !important;
+    }
+</style>
+@endpush
 @section('title', 'نموذج جُذور التعليمي')
 
 @section('content')
@@ -13,8 +19,96 @@
     <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h1 class="text-5xl md:text-6xl font-black mb-6">نموذج جُذور التعليمي</h1>
         <p class="text-xl md:text-2xl max-w-3xl mx-auto opacity-90">
-            إطار تعليمي مبتكر يُعيد تصور التعلم كنمو عضوي متعدد الاتجاهات
+            أربعة جذور للمعرفة تنمو معاً لبناء فهم شامل ومتوازن
         </p>
+    </div>
+</section>
+
+<!-- Academic Resources Section -->
+<section class="py-16 bg-gradient-to-br from-purple-50 to-blue-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-10">
+            <div class="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-md mb-4">
+                <i class="fas fa-graduation-cap text-purple-600 text-xl"></i>
+                <span class="text-purple-600 font-bold text-sm uppercase tracking-wider">موارد أكاديمية</span>
+            </div>
+            <h2 class="text-3xl md:text-4xl font-black text-gray-800 mb-4">
+                الأساس النظري لنموذج جُذور
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                اطلع على البحث الأكاديمي الكامل الذي يشرح النموذج التربوي بالتفصيل
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <!-- Arabic PDF -->
+            <div class="group">
+                <div class="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                    <div class="bg-gradient-to-br from-purple-600 to-purple-800 p-8 text-center">
+                        <i class="fas fa-file-pdf text-6xl text-white mb-4"></i>
+                        <h3 class="text-2xl font-bold text-white mb-2">النسخة العربية</h3>
+                        <p class="text-purple-200">البحث الكامل باللغة العربية</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex flex-col gap-3">
+                            <a href="{{ asset('docs/juzoor-ar.pdf') }}" target="_blank" 
+                               class="flex items-center justify-center gap-3 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold py-3 px-6 rounded-xl transition-all">
+                                <i class="fas fa-eye"></i>
+                                <span>عرض المستند</span>
+                            </a>
+                            <a href="{{ asset('docs/juzoor-ar.pdf') }}" download 
+                               class="flex items-center justify-center gap-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-xl transition-all">
+                                <i class="fas fa-download"></i>
+                                <span>تحميل PDF</span>
+                            </a>
+                        </div>
+                        <div class="mt-4 text-center text-sm text-gray-500">
+                            <i class="fas fa-file-alt ml-1"></i>
+                            حجم الملف: 2.4 ميجابايت
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- English PDF -->
+            <div class="group">
+                <div class="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden">
+                    <div class="bg-gradient-to-br from-blue-600 to-blue-800 p-8 text-center">
+                        <i class="fas fa-file-pdf text-6xl text-white mb-4"></i>
+                        <h3 class="text-2xl font-bold text-white mb-2">English Version</h3>
+                        <p class="text-blue-200">Complete research in English</p>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex flex-col gap-3">
+                            <a href="{{ asset('docs/juzoor-en.pdf') }}" target="_blank" 
+                               class="flex items-center justify-center gap-3 bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold py-3 px-6 rounded-xl transition-all">
+                                <i class="fas fa-eye"></i>
+                                <span>View Document</span>
+                            </a>
+                            <a href="{{ asset('docs/juzoor-en.pdf') }}" download 
+                               class="flex items-center justify-center gap-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-xl transition-all">
+                                <i class="fas fa-download"></i>
+                                <span>Download PDF</span>
+                            </a>
+                        </div>
+                        <div class="mt-4 text-center text-sm text-gray-500">
+                            <i class="fas fa-file-alt ml-1"></i>
+                            File size: 2.4 MB
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Info -->
+        <div class="mt-12 text-center">
+            <div class="inline-flex items-center gap-4 bg-white/80 backdrop-blur-sm px-6 py-4 rounded-2xl shadow-md">
+                <i class="fas fa-info-circle text-purple-600 text-xl"></i>
+                <p class="text-gray-700">
+                    هذه الأوراق البحثية توضح الأساس النظري والفلسفي لنموذج جُذور التربوي
+                </p>
+            </div>
+        </div>
     </div>
 </section>
 
