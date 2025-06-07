@@ -2,322 +2,538 @@
 
 @section('title', $quiz->title)
 
+@push('styles')
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+    body, * {
+        font-family: 'Tajawal', sans-serif !important;
+    }
+    
+    .hover-lift {
+        transition: all 0.3s ease;
+    }
+    .hover-lift:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    }
+    
+    .root-stripe {
+        width: 6px;
+        height: 100%;
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 8px 0 0 8px;
+    }
+    
+    .root-stripe.jawhar { background: #ef4444; }
+    .root-stripe.zihn { background: #06b6d4; }
+    .root-stripe.waslat { background: #eab308; }
+    .root-stripe.roaya { background: #9333ea; }
+    
+    .progress-ring {
+        transform: rotate(-90deg);
+    }
+    
+    .progress-ring__circle {
+        transition: stroke-dashoffset 0.5s ease;
+    }
+    
+    .question-preview {
+        transition: all 0.3s ease;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .question-preview:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+    }
+    
+    .option-badge {
+        background: #f9fafb;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #4b5563;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        font-weight: 500;
+        padding: 12px 24px;
+        border-radius: 12px;
+        transition: all 0.3s;
+        border: none;
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-secondary {
+        background: white;
+        color: #3b82f6;
+        font-weight: 500;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: 2px solid #3b82f6;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-secondary:hover {
+        background: #eff6ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .btn-danger {
+        background: white;
+        color: #ef4444;
+        font-weight: 500;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: 2px solid #ef4444;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-danger:hover {
+        background: #fef2f2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .pin-card {
+        background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+        border: 2px solid #3b82f6;
+    }
+    
+    .locked-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #fef3c7;
+        color: #d97706;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 500;
+        border: 1px solid #fcd34d;
+    }
+    
+    .question-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+    
+    .answers-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+    
+    @media (max-width: 768px) {
+        .answers-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .answer-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        background: #f9fafb;
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s;
+    }
+    
+    .answer-option:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        transform: translateX(-2px);
+    }
+    
+    .answer-option-letter {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: #6b7280;
+    }
+    
+    .answer-option-text {
+        flex: 1;
+        color: #4b5563;
+        line-height: 1.5;
+    }
+    
+    .passage-collapsed {
+        max-height: 200px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .passage-collapsed::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 80px;
+        background: linear-gradient(to bottom, transparent, white);
+    }
+    
+    .passage-content {
+        transition: all 0.3s ease;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="min-h-screen bg-gray-50 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header Section -->
-        <div class="mb-8">
-            <!-- Breadcrumb -->
-            <nav class="flex mb-6" aria-label="Breadcrumb">
-                <ol class="inline-flex items-center space-x-1 md:space-x-3 rtl:space-x-reverse">
-                    <li class="inline-flex items-center">
-                        <a href="{{ route('dashboard') }}" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600">
-                            <svg class="w-4 h-4 ml-2 rtl:ml-0 rtl:mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-                            </svg>
-                            الرئيسية
-                        </a>
-                    </li>
-                    <li>
-                        <div class="flex items-center">
-                            <svg class="w-3 h-3 text-gray-400 mx-1 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 6 10">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 9l4-4-4-4"></path>
-                            </svg>
-                            <a href="{{ route('quizzes.index') }}" class="mr-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:mr-2">اختباراتي</a>
-                        </div>
-                    </li>
-                    <li aria-current="page">
-                        <div class="flex items-center">
-                            <svg class="w-3 h-3 text-gray-400 mx-1 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 6 10">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 9l4-4-4-4"></path>
-                            </svg>
-                            <span class="mr-1 text-sm font-medium text-gray-500 md:mr-2">{{ $quiz->title }}</span>
-                        </div>
-                    </li>
-                </ol>
-            </nav>
+        <!-- Breadcrumb -->
+        <nav class="mb-6">
+            <ol class="flex items-center space-x-2 text-sm">
+                <li><a href="{{ route('dashboard') }}" class="text-gray-600 hover:text-blue-600 transition">🏠 الرئيسية</a></li>
+                <li><span class="text-gray-400">/</span></li>
+                <li><a href="{{ route('quizzes.index') }}" class="text-gray-600 hover:text-blue-600 transition">📚 اختباراتي</a></li>
+                <li><span class="text-gray-400">/</span></li>
+                <li class="text-gray-900 font-medium">{{ $quiz->title }}</li>
+            </ol>
+        </nav>
 
-            <!-- Quiz Header -->
-            <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ $quiz->title }}</h1>
-                        <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                            <div class="flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                                </svg>
-                                <span>{{ __($quiz->subject) }}</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <span>الصف {{ $quiz->grade_level }}</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                </svg>
-                                <span>{{ $quiz->created_at->format('Y/m/d') }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 md:mt-0 flex gap-2">
-                        <a href="{{ route('quiz.take', $quiz) }}" 
-                           class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
-                            <svg class="w-5 h-5 ml-2 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
-                            بدء الاختبار
-                        </a>
-                        
+        <!-- Header Section -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                <div class="mb-4 lg:mb-0">
+                    <h1 class="text-4xl font-bold text-gray-900 mb-3">{{ $quiz->title }}</h1>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <span class="inline-flex items-center gap-2 text-gray-600">
+                            <span class="text-lg">📚</span>
+                            <span class="font-medium">{{ $quiz->subject_name }}</span>
+                        </span>
+                        <span class="inline-flex items-center gap-2 text-gray-600">
+                            <span class="text-lg">🎓</span>
+                            <span class="font-medium">الصف {{ $quiz->grade_level }}</span>
+                        </span>
+                        <span class="inline-flex items-center gap-2 text-gray-600">
+                            <span class="text-lg">📅</span>
+                            <span class="font-medium">{{ $quiz->created_at->format('Y/m/d') }}</span>
+                        </span>
                         @if($quiz->has_submissions)
-                            <div class="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-700 font-medium rounded-lg">
-                                <i class="fas fa-lock ml-2"></i>
-                                الاختبار مقفل
-                            </div>
-                            <a href="{{ route('quizzes.duplicate', $quiz) }}" 
-   class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
-    <i class="fas fa-copy ml-2"></i>
-    نسخ الاختبار
-</a>
-                        @else
-                            <a href="{{ route('quizzes.edit', $quiz) }}" 
-                               class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
-                                <svg class="w-5 h-5 ml-2 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
-                                تعديل
-                            </a>
+                            <span class="locked-badge">
+                                🔒 الاختبار مقفل
+                            </span>
                         @endif
                     </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-3">
+                    <a href="{{ route('quiz.take', $quiz) }}" class="btn-primary">
+                        ▶️ بدء الاختبار
+                    </a>
+                    
+                    @if($quiz->has_submissions)
+                        <a href="#" class="btn-secondary" onclick="alert('يرجى إضافة وظيفة النسخ'); return false;">
+                            📋 نسخ الاختبار
+                        </a>
+                    @else
+                        <a href="{{ route('quizzes.edit', $quiz) }}" class="btn-secondary">
+                            ✏️ تعديل
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
 
-            <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">عدد الأسئلة</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ $quiz->questions->count() }}</p>
-                        </div>
-                        <div class="p-3 bg-blue-100 rounded-lg">
-                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
+        <!-- PIN Display Card -->
+        <div class="pin-card rounded-2xl shadow-md p-6 mb-6">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">🚀 رمز الدخول السريع</h3>
+                    <p class="text-gray-600">شارك هذا الرمز مع الطلاب للدخول المباشر</p>
                 </div>
-                
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">المحاولات</p>
-                            <p class="text-2xl font-bold text-gray-900">{{ $quiz->results->count() }}</p>
-                        </div>
-                        <div class="p-3 bg-green-100 rounded-lg">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">متوسط النجاح</p>
-                            <p class="text-2xl font-bold text-gray-900">
-                                {{ $quiz->results->count() > 0 ? round($quiz->results->avg('total_score')) . '%' : '--' }}
-                            </p>
-                        </div>
-                        <div class="p-3 bg-yellow-100 rounded-lg">
-                            <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-xl shadow-sm p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">آخر تحديث</p>
-                            <p class="text-sm font-bold text-gray-900">{{ $quiz->updated_at->diffForHumans() }}</p>
-                        </div>
-                        <div class="p-3 bg-purple-100 rounded-lg">
-                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
+                <div class="mt-4 md:mt-0 text-center">
+                    <div class="bg-white rounded-xl p-6 shadow-sm">
+                        <p class="text-4xl font-bold tracking-wider text-blue-600 mb-3">{{ $quiz->pin }}</p>
+                        <div class="flex gap-3 justify-center">
+                            <button onclick="copyPIN('{{ $quiz->pin }}')"
+                                    class="text-blue-600 hover:text-blue-800 font-medium transition">
+                                📋 نسخ
+                            </button>
+                            <button onclick="shareQuiz('{{ $quiz->pin }}', '{{ $quiz->title }}')"
+                                    class="text-blue-600 hover:text-blue-800 font-medium transition">
+                                📤 مشاركة
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- PIN Display Card -->
-<div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl shadow-xl p-6 mb-6 text-white">
-    <div class="flex flex-col md:flex-row items-center justify-between">
-        <div>
-            <h3 class="text-2xl font-bold mb-2">رمز الدخول السريع</h3>
-            <p class="text-white/80">شارك هذا الرمز مع الطلاب للدخول المباشر</p>
+            <div class="mt-4 text-sm text-gray-600">
+                <span class="font-medium">رابط الدخول المباشر:</span> {{ url('/') }}/?pin={{ $quiz->pin }}
+            </div>
         </div>
-        <div class="mt-4 md:mt-0 text-center">
-            <div class="bg-white/20 backdrop-blur rounded-xl p-6">
-                <p class="text-4xl font-bold tracking-wider mb-3">{{ $quiz->pin_code }}</p>
-                <div class="flex gap-2">
-                    <button onclick="copyPIN('{{ $quiz->pin_code }}')"
-                            class="btn btn-sm bg-white/20 hover:bg-white/30 border-0 text-white">
-                        <i class="fas fa-copy"></i> نسخ
-                    </button>
-                    <button onclick="shareQuiz('{{ $quiz->pin_code }}', '{{ $quiz->title }}')"
-                            class="btn btn-sm bg-white/20 hover:bg-white/30 border-0 text-white">
-                        <i class="fas fa-share"></i> مشاركة
-                    </button>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Total Questions -->
+            <div class="bg-white rounded-xl shadow-sm p-5 hover-lift">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">عدد الأسئلة</p>
+                        <p class="text-3xl font-bold text-gray-900">{{ $quiz->questions->count() }}</p>
+                    </div>
+                    <div class="relative w-16 h-16">
+                        <svg class="progress-ring w-16 h-16">
+                            <circle class="progress-ring__circle" stroke="#e5e7eb" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"></circle>
+                            <circle class="progress-ring__circle" stroke="#3b82f6" stroke-width="4" fill="transparent" r="28" cx="32" cy="32" 
+                                    style="stroke-dasharray: 176; stroke-dashoffset: {{ 176 - (176 * min($quiz->questions->count() / 50, 1)) }}"></circle>
+                        </svg>
+                        <span class="absolute inset-0 flex items-center justify-center text-2xl">📝</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attempts -->
+            <div class="bg-white rounded-xl shadow-sm p-5 hover-lift">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">المحاولات</p>
+                        <p class="text-3xl font-bold text-gray-900">{{ $quiz->results->count() }}</p>
+                    </div>
+                    <div class="relative w-16 h-16">
+                        <svg class="progress-ring w-16 h-16">
+                            <circle class="progress-ring__circle" stroke="#e5e7eb" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"></circle>
+                            <circle class="progress-ring__circle" stroke="#10b981" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"
+                                    style="stroke-dasharray: 176; stroke-dashoffset: {{ 176 - (176 * min($quiz->results->count() / 100, 1)) }}"></circle>
+                        </svg>
+                        <span class="absolute inset-0 flex items-center justify-center text-2xl">👥</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Average Score -->
+            <div class="bg-white rounded-xl shadow-sm p-5 hover-lift">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">متوسط النجاح</p>
+                        <p class="text-3xl font-bold text-gray-900">
+                            {{ $quiz->results->count() > 0 ? round($quiz->results->avg('total_score')) : '--' }}%
+                        </p>
+                    </div>
+                    <div class="relative w-16 h-16">
+                        @php $avgScore = $quiz->results->avg('total_score') ?? 0; @endphp
+                        <svg class="progress-ring w-16 h-16">
+                            <circle class="progress-ring__circle" stroke="#e5e7eb" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"></circle>
+                            <circle class="progress-ring__circle" stroke="#eab308" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"
+                                    style="stroke-dasharray: 176; stroke-dashoffset: {{ 176 - (176 * ($avgScore / 100)) }}"></circle>
+                        </svg>
+                        <span class="absolute inset-0 flex items-center justify-center text-2xl">⭐</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Last Update -->
+            <div class="bg-white rounded-xl shadow-sm p-5 hover-lift">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">آخر تحديث</p>
+                        <p class="text-base font-bold text-gray-900">{{ $quiz->updated_at->diffForHumans() }}</p>
+                    </div>
+                    <span class="text-3xl">🕐</span>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="mt-4 text-sm text-white/70">
-        <i class="fas fa-info-circle"></i>
-        رابط الدخول المباشر: {{ url('/') }}/?pin={{ $quiz->pin_code }}
-    </div>
-</div>
+
+        <!-- Root Distribution -->
+        <div class="mb-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">📊 توزيع الأسئلة حسب الجذور</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                @php
+                    $rootCounts = $quiz->questions->groupBy('root_type')->map->count();
+                    $totalQuestions = $quiz->questions->count();
+                    $roots = [
+                        'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => 'red'],
+                        'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => 'cyan'],
+                        'waslat' => ['name' => 'وَصلات', 'icon' => '🔗', 'color' => 'yellow'],
+                        'roaya' => ['name' => 'رُؤية', 'icon' => '👁️', 'color' => 'purple']
+                    ];
+                @endphp
+                
+                @foreach($roots as $key => $root)
+                <div class="bg-white rounded-xl shadow-sm p-4 hover-lift border-r-4 border-{{ $root['color'] }}-500">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-2xl">{{ $root['icon'] }}</span>
+                            <h3 class="font-bold text-gray-900">{{ $root['name'] }}</h3>
+                        </div>
+                        <span class="text-2xl font-bold text-{{ $root['color'] }}-600">
+                            {{ $rootCounts[$key] ?? 0 }}
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-{{ $root['color'] }}-500 h-2 rounded-full transition-all duration-500" 
+                             style="width: {{ $totalQuestions > 0 ? (($rootCounts[$key] ?? 0) / $totalQuestions) * 100 : 0 }}%"></div>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-2">
+                        {{ $totalQuestions > 0 ? round((($rootCounts[$key] ?? 0) / $totalQuestions) * 100) : 0 }}% من الأسئلة
+                    </p>
+                </div>
+                @endforeach
+            </div>
         </div>
 
-        <!-- Educational Text / Passage -->
+        <!-- Educational Passage -->
         @if($quiz->passage)
         <div class="bg-white rounded-2xl shadow-sm mb-6 overflow-hidden">
             <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                        </svg>
-                        {{ $quiz->passage_title ?: 'النص التعليمي' }}
+                        📖 {{ $quiz->passage_title ?: 'النص التعليمي' }}
                     </h2>
-                    <span class="bg-white/20 text-white px-3 py-1 rounded-full text-sm">
-                        نص القراءة
-                    </span>
+                    <button onclick="togglePassage()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <span id="toggleText">إخفاء</span>
+                        <svg id="toggleIcon" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
-            <div class="p-6">
-                <div class="prose prose-lg max-w-none text-gray-700 leading-relaxed">
-                    {!! nl2br(e($quiz->passage)) !!}
+            <div id="passageContent" class="passage-content">
+                <div class="p-6">
+                    <div class="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+                        {!! nl2br(e($quiz->passage)) !!}
+                    </div>
                 </div>
             </div>
         </div>
         @endif
 
-        <!-- Questions Section -->
-        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200">
+        <!-- Questions Preview -->
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    الأسئلة
+                    ❓ معاينة الأسئلة
                 </h2>
             </div>
             
             <div class="divide-y divide-gray-200">
-                @foreach($quiz->questions as $index => $question)
-                @php
-                    $rootColors = [
-                        'jawhar' => 'bg-red-50 border-red-200',
-                        'zihn' => 'bg-cyan-50 border-cyan-200',
-                        'waslat' => 'bg-yellow-50 border-yellow-200',
-                        'roaya' => 'bg-purple-50 border-purple-200'
-                    ];
-                    $rootIcons = [
-                        'jawhar' => '🎯',
-                        'zihn' => '🧠',
-                        'waslat' => '🔗',
-                        'roaya' => '👁️'
-                    ];
-                    $rootNames = [
-                        'jawhar' => 'جَوهر',
-                        'zihn' => 'ذِهن',
-                        'waslat' => 'وَصلات',
-                        'roaya' => 'رُؤية'
-                    ];
-                @endphp
-                
-                <div class="p-6 hover:bg-gray-50 transition-colors">
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-600">
+                @forelse($quiz->questions as $index => $question)
+                <div class="question-preview p-6 hover:bg-gray-50 transition-colors relative">
+                    <div class="root-stripe {{ $question->root_type }}"></div>
+                    
+                    <div class="flex items-start gap-4 mr-3">
+                        <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center font-bold text-gray-700 text-lg shadow-sm">
                             {{ $index + 1 }}
                         </div>
                         <div class="flex-1">
-                            <div class="flex items-center gap-3 mb-2">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm {{ $rootColors[$question->root_type] ?? 'bg-gray-100' }} border">
-                                    <span class="ml-1">{{ $rootIcons[$question->root_type] ?? '❓' }}</span>
-                                    {{ $rootNames[$question->root_type] ?? $question->root_type }}
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-{{ $roots[$question->root_type]['color'] }}-100 text-{{ $roots[$question->root_type]['color'] }}-700 font-medium">
+                                    {{ $roots[$question->root_type]['icon'] }} {{ $roots[$question->root_type]['name'] }}
                                 </span>
-                                <span class="text-xs text-gray-500">المستوى {{ $question->depth_level }}</span>
+                                <span class="text-sm text-gray-500">
+                                    @for($i = 1; $i <= 3; $i++)
+                                        @if($i <= $question->depth_level)
+                                            <span class="text-yellow-500">●</span>
+                                        @else
+                                            <span class="text-gray-300">●</span>
+                                        @endif
+                                    @endfor
+                                    المستوى {{ $question->depth_level }}
+                                </span>
                             </div>
-                            <p class="text-gray-900 mb-3">{!! $question->question !!}</p>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            
+                            <h3 class="question-title">{!! $question->question !!}</h3>
+                            
+                            <div class="answers-grid">
                                 @foreach($question->options as $optionIndex => $option)
-                                <div class="flex items-center gap-2 text-sm text-gray-600">
-                                    <span class="flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium">
+                                <div class="answer-option">
+                                    <div class="answer-option-letter">
                                         {{ ['أ', 'ب', 'ج', 'د', 'هـ', 'و'][$optionIndex] ?? $optionIndex + 1 }}
-                                    </span>
-                                    <span>{{ $option }}</span>
+                                    </div>
+                                    <div class="answer-option-text">
+                                        {{ $option }}
+                                    </div>
                                 </div>
                                 @endforeach
                             </div>
                         </div>
                     </div>
                 </div>
-                @endforeach
+                @empty
+                <div class="p-12 text-center">
+                    <span class="text-6xl mb-4 block">❓</span>
+                    <h3 class="text-xl font-bold text-gray-700 mb-2">لا توجد أسئلة بعد</h3>
+                    <p class="text-gray-500">ابدأ بإضافة أسئلة لهذا الاختبار</p>
+                </div>
+                @endforelse
             </div>
             
+            @if($quiz->questions->count() > 0)
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
                 <div class="flex items-center justify-between">
                     <a href="{{ route('quizzes.questions.index', $quiz) }}" 
-                       class="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center gap-1">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                        إدارة الأسئلة
+                       class="text-blue-600 hover:text-blue-800 font-medium text-sm transition">
+                        🔧 إدارة الأسئلة
                     </a>
                     <span class="text-sm text-gray-600">
                         إجمالي {{ $quiz->questions->count() }} سؤال
                     </span>
                 </div>
             </div>
+            @endif
         </div>
 
         <!-- Action Buttons -->
-        <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="{{ route('quiz.take', $quiz) }}" 
-               class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-                <svg class="w-5 h-5 ml-2 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-                بدء الاختبار
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="{{ route('quiz.take', $quiz) }}" class="btn-primary text-center">
+                ▶️ بدء الاختبار
             </a>
-            <a href="{{ route('quizzes.questions.create', $quiz) }}" 
-               class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-                <svg class="w-5 h-5 ml-2 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                إضافة أسئلة
+            <a href="{{ route('quizzes.questions.create', $quiz) }}" class="btn-secondary text-center">
+                ➕ إضافة أسئلة
             </a>
-            <a href="{{ route('quizzes.index') }}" 
-               class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
-                <svg class="w-5 h-5 ml-2 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-                العودة للقائمة
+            <a href="{{ route('quizzes.index') }}" class="btn-secondary text-center">
+                ↩️ العودة للقائمة
             </a>
         </div>
     </div>
 </div>
-@push('scripts')
+
 <script>
 function copyPIN(pin) {
-    navigator.clipboard.writeText(pin);
-    alert('تم نسخ رمز الدخول');
+    navigator.clipboard.writeText(pin).then(() => {
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = '✅ تم النسخ';
+        setTimeout(() => {
+            button.textContent = originalText;
+        }, 2000);
+    });
 }
 
 function shareQuiz(pin, title) {
@@ -331,12 +547,40 @@ function shareQuiz(pin, title) {
         copyPIN(pin);
     }
 }
+
+function togglePassage() {
+    const content = document.getElementById('passageContent');
+    const toggleText = document.getElementById('toggleText');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (!content) {
+        console.error('Passage content not found');
+        return;
+    }
+    
+    if (content.classList.contains('passage-collapsed')) {
+        content.classList.remove('passage-collapsed');
+        toggleText.textContent = 'إخفاء';
+        toggleIcon.style.transform = 'rotate(0deg)';
+    } else {
+        content.classList.add('passage-collapsed');
+        toggleText.textContent = 'عرض';
+        toggleIcon.style.transform = 'rotate(180deg)';
+    }
+}
+
+// Start with passage collapsed if it's longer than 400px
+window.addEventListener('load', function() {
+    const passageContent = document.getElementById('passageContent');
+    if (passageContent && passageContent.scrollHeight > 400) {
+        togglePassage();
+    }
+});
 </script>
-@endpush
-@endsection
 
 @push('scripts')
 <script>
-// Add any JavaScript functionality here if needed
+// Additional scripts can go here
 </script>
 @endpush
+@endsection
