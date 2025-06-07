@@ -239,4 +239,24 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+function copyPIN(pin) {
+    navigator.clipboard.writeText(pin);
+    alert('تم نسخ رمز الدخول');
+}
+
+function shareQuiz(pin, title) {
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            text: `رمز دخول الاختبار: ${pin}`,
+            url: window.location.href
+        });
+    } else {
+        copyPIN(pin);
+    }
+}
+</script>
+@endpush
 @endsection

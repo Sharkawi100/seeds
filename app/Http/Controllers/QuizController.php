@@ -274,7 +274,10 @@ class QuizController extends Controller
         if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
-
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'لا يمكن تعديل الاختبار بعد أن بدأ الطلاب في حله.');
+        }
         return view('quizzes.edit', compact('quiz'));
     }
 
@@ -284,8 +287,10 @@ class QuizController extends Controller
         if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
-        if ((int) $quiz->user_id !== Auth::id()) {
-            abort(403, 'غير مصرح لك بهذا الإجراء.');
+
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'لا يمكن تعديل الاختبار بعد أن بدأ الطلاب في حله.');
         }
 
         $validated = $request->validate([
