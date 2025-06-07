@@ -22,7 +22,8 @@ class Quiz extends Model
         'title',
         'subject',
         'grade_level',
-        'settings'
+        'settings',
+        'has_submissions'
     ];
     protected static function boot()
     {

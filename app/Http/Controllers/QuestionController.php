@@ -24,6 +24,11 @@ class QuestionController extends Controller
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
 
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
+        }
+
         return view('quizzes.questions.create', compact('quiz'));
     }
 
@@ -31,6 +36,11 @@ class QuestionController extends Controller
     {
         if ((int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
         }
 
         $validated = $request->validate([
@@ -78,6 +88,11 @@ class QuestionController extends Controller
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
 
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
+        }
+
         $validated = $request->validate([
             'question' => 'required|string',
             'root_type' => 'required|in:jawhar,zihn,waslat,roaya',
@@ -105,6 +120,11 @@ class QuestionController extends Controller
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
 
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
+        }
+
         $question->delete();
 
         return redirect()->route('quizzes.questions.index', $quiz);
@@ -114,6 +134,13 @@ class QuestionController extends Controller
     {
         if ((int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        if ($quiz->has_submissions) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.'
+            ], 403);
         }
 
         $validated = $request->validate([

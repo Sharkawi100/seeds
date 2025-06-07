@@ -81,6 +81,7 @@ Route::get('/lang/{locale}', function ($locale) {
 | Quiz Routes (Public Access)
 |--------------------------------------------------------------------------
 */
+Route::post('/quizzes/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('quizzes.duplicate');
 
 Route::prefix('quiz')->name('quiz.')->group(function () {
     // Guest Access

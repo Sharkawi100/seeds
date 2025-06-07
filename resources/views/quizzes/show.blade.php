@@ -71,16 +71,27 @@
                             </svg>
                             بدء الاختبار
                         </a>
-                        <a href="{{ route('quizzes.edit', $quiz) }}" 
-                           class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
-                            <svg class="w-5 h-5 ml-2 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                            </svg>
-                            تعديل
-                        </a>
+                        
+                        @if($quiz->has_submissions)
+                            <div class="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-700 font-medium rounded-lg">
+                                <i class="fas fa-lock ml-2"></i>
+                                الاختبار مقفل
+                            </div>
+                            <a href="{{ route('quizzes.duplicate', $quiz) }}" 
+   class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition duration-150 ease-in-out">
+    <i class="fas fa-copy ml-2"></i>
+    نسخ الاختبار
+</a>
+                        @else
+                            <a href="{{ route('quizzes.edit', $quiz) }}" 
+                               class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg transition duration-150 ease-in-out">
+                                <svg class="w-5 h-5 ml-2 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                تعديل
+                            </a>
+                        @endif
                     </div>
-                </div>
-            </div>
 
             <!-- Statistics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

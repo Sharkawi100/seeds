@@ -316,6 +316,39 @@ class QuizController extends Controller
             ->with('success', 'تم حذف الاختبار بنجاح.');
     }
 
+    public function duplicate(Quiz $quiz)
+    {
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Clone quiz
+            $newQuiz = $quiz->replicate();
+            $newQuiz->title = $quiz->title . ' - نسخة';
+            $newQuiz->has_submissions = false;
+            $newQuiz->pin = strtoupper(Str::random(6));
+            $newQuiz->save();
+
+            // Clone questions
+            foreach ($quiz->questions as $question) {
+                $newQuestion = $question->replicate();
+                $newQuestion->quiz_id = $newQuiz->id;
+                $newQuestion->save();
+            }
+
+            DB::commit();
+            return redirect()->route('quizzes.show', $newQuiz)
+                ->with('success', 'تم نسخ الاختبار بنجاح. يمكنك الآن تعديله.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'فشل نسخ الاختبار.');
+        }
+    }
+
     public function take(Quiz $quiz)
     {
         if (!Auth::check() && !session('guest_name')) {
@@ -366,7 +399,10 @@ class QuizController extends Controller
                 'total_score' => 0,
                 'expires_at' => !Auth::check() ? now()->addDays(7) : null
             ]);
-
+            // Mark quiz as having submissions
+            if (!$quiz->has_submissions) {
+                $quiz->update(['has_submissions' => true]);
+            }
             if (!Auth::check()) {
                 session(['guest_token' => $result->guest_token]);
             }
