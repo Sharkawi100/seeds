@@ -157,6 +157,29 @@
                                         @endfor
                                     </optgroup>
                                 </select>
+                                @if($quiz->questions->where('passage', '!=', null)->first())
+<div class="mb-6">
+    <label for="passage" class="block text-sm font-medium text-gray-700 mb-2">
+        النص التعليمي
+    </label>
+    <textarea name="passage" 
+              id="passage" 
+              rows="6"
+              class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">{{ $quiz->questions->where('passage', '!=', null)->first()->passage }}</textarea>
+    <p class="mt-1 text-sm text-gray-500">يمكنك تعديل النص التعليمي المرتبط بالأسئلة</p>
+</div>
+
+<div class="mb-6">
+    <label for="passage_title" class="block text-sm font-medium text-gray-700 mb-2">
+        عنوان النص
+    </label>
+    <input type="text" 
+           name="passage_title" 
+           id="passage_title"
+           value="{{ $quiz->questions->where('passage', '!=', null)->first()->passage_title }}"
+           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+</div>
+@endif
                                 <div class="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                                     <i class="fas fa-chevron-down text-gray-400"></i>
                                 </div>
@@ -176,8 +199,8 @@
             <i class="fas fa-key mr-2"></i>رمز الدخول
         </h3>
         <div class="bg-white rounded-lg p-4 text-center">
-            <p class="text-3xl font-bold tracking-wider text-purple-600">{{ $quiz->pin_code }}</p>
-            <button type="button" onclick="copyPIN('{{ $quiz->pin_code }}')"
+            <p class="text-3xl font-bold tracking-wider text-purple-600">{{ $quiz->pin }}</p>
+            <button type="button" onclick="copyPIN('{{ $quiz->pin }}')"
                     class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg mt-3 transition-colors">
                 <i class="fas fa-copy mr-2"></i>نسخ الرمز
             </button>

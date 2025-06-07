@@ -86,8 +86,8 @@
             
             <!-- Questions Container -->
             <div id="questions-wrapper">
-                @foreach($quiz->questions as $index => $question)
-                <div id="question-{{ $index }}" 
+                @foreach($questions as $index => $question)
+                     <div id="question-{{ $index }}" 
                      class="question-card bg-white rounded-xl shadow-lg p-4 mb-4"
                      data-question-index="{{ $index }}"
                      data-root-type="{{ $question->root_type }}"
@@ -132,8 +132,7 @@
                     
                     <!-- Answer Options -->
                     <div class="space-y-3">
-                        @foreach($question->options as $optionIndex => $option)
-                        <label class="block cursor-pointer transform hover:scale-[1.01] transition-transform">
+                        @foreach(($quiz->shuffle_answers ? $question->shuffled_options : $question->options) as $optionIndex => $option)                        <label class="block cursor-pointer transform hover:scale-[1.01] transition-transform">
                             <input type="radio" 
                                    name="answers[{{ $question->id }}]" 
                                    value="{{ $option }}"
@@ -663,8 +662,11 @@ function startTimer(minutes) {
         
         if (timeLeft === 0) {
             clearInterval(interval);
-            alert('انتهى الوقت! سيتم إرسال الاختبار.');
-            document.getElementById('quiz-form').submit();
+            // Auto-submit the form
+            showNotification('انتهى الوقت! سيتم إرسال الاختبار تلقائياً.', 'error');
+            setTimeout(() => {
+                document.getElementById('quiz-form').submit();
+            }, 2000);
         }
         
         timeLeft--;

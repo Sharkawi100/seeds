@@ -124,8 +124,8 @@
                                 <!-- PIN Badge -->
 <div class="bg-white/20 backdrop-blur rounded-lg px-3 py-1 mt-2 inline-flex items-center gap-2">
     <i class="fas fa-key text-white/80"></i>
-    <span class="text-white font-mono tracking-wider">{{ $quiz->pin_code }}</span>
-    <button onclick="copyPIN('{{ $quiz->pin_code }}')" 
+    <span class="text-white font-mono tracking-wider">{{ $quiz->pin }}</span>
+    <button onclick="copyPIN('{{ $quiz->pin }}')" 
             class="text-white/80 hover:text-white transition ml-2">
         <i class="fas fa-copy"></i>
     </button>
@@ -134,8 +134,8 @@
                                     <div class="flex items-center justify-between">
                                         <span class="text-sm">رمز الدخول</span>
                                         <div class="flex items-center gap-2">
-                                            <span class="text-xl font-bold tracking-wider">{{ $quiz->pin_code }}</span>
-                                            <button onclick="copyPIN('{{ $quiz->pin_code }}')" 
+                                            <span class="text-xl font-bold tracking-wider">{{ $quiz->pin }}</span>
+                                            <button onclick="copyPIN('{{ $quiz->pin }}')" 
                                                     class="text-white/80 hover:text-white transition">
                                                 <i class="fas fa-copy"></i>
                                             </button>

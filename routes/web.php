@@ -155,14 +155,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/generate-text', [QuizController::class, 'generateText'])->name('generate-text');
 
         // Question Management
+        // Question Management
         Route::prefix('{quiz}/questions')->name('questions.')->controller(QuestionController::class)->group(function () {
             Route::get('/', 'index')->name('index');
+            Route::get('/bulk-edit', 'bulkEdit')->name('bulk-edit');
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');
+            Route::put('/bulk-update', 'bulkUpdate')->name('bulk-update');
+            Route::delete('/bulk-delete', 'bulkDelete')->name('bulk-delete');
             Route::get('/{question}/edit', 'edit')->name('edit');
             Route::put('/{question}', 'update')->name('update');
             Route::delete('/{question}', 'destroy')->name('destroy');
             Route::post('/{question}/update-text', 'updateText')->name('update-text');
+            Route::post('/{question}/clone', 'clone')->name('clone');
         });
     });
 

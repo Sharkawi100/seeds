@@ -167,9 +167,9 @@ class Quiz extends Model
     {
         do {
             $pin = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 6));
-        } while (static::where('pin_code', $pin)->exists());
+        } while (static::where('pin', $pin)->exists());
 
-        $this->pin_code = $pin;
+        $this->pin = $pin;
         $this->save();
 
         return $pin;

@@ -153,4 +153,90 @@ class QuestionController extends Controller
 
         return response()->json(['success' => true]);
     }
+    public function bulkEdit(Quiz $quiz)
+    {
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        $quiz->load('questions');
+        return view('quizzes.questions.bulk-edit', compact('quiz'));
+    }
+
+    public function bulkUpdate(Request $request, Quiz $quiz)
+    {
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
+        }
+
+        $validated = $request->validate([
+            'questions' => 'required|array',
+            'questions.*.id' => 'required|exists:questions,id',
+            'questions.*.question' => 'required|string',
+            'questions.*.root_type' => 'required|in:jawhar,zihn,waslat,roaya',
+            'questions.*.depth_level' => 'required|in:1,2,3',
+            'questions.*.options' => 'required|array|min:2|max:6',
+            'questions.*.correct_answer' => 'required|string'
+        ]);
+
+        foreach ($validated['questions'] as $questionData) {
+            Question::where('id', $questionData['id'])
+                ->where('quiz_id', $quiz->id)
+                ->update([
+                    'question' => $questionData['question'],
+                    'root_type' => $questionData['root_type'],
+                    'depth_level' => $questionData['depth_level'],
+                    'options' => $questionData['options'],
+                    'correct_answer' => $questionData['correct_answer']
+                ]);
+        }
+
+        return redirect()->route('quizzes.questions.index', $quiz)
+            ->with('success', 'تم تحديث جميع الأسئلة بنجاح.');
+    }
+    public function clone(Quiz $quiz, Question $question)
+    {
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.questions.index', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
+        }
+
+        $newQuestion = $question->replicate();
+        $newQuestion->save();
+
+        return redirect()->route('quizzes.questions.index', $quiz)
+            ->with('success', 'تم نسخ السؤال بنجاح.');
+    }
+    public function bulkDelete(Request $request, Quiz $quiz)
+    {
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.questions.index', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
+        }
+
+        $validated = $request->validate([
+            'question_ids' => 'required|array',
+            'question_ids.*' => 'exists:questions,id'
+        ]);
+
+        Question::whereIn('id', $validated['question_ids'])
+            ->where('quiz_id', $quiz->id)
+            ->delete();
+
+        return redirect()->route('quizzes.questions.index', $quiz)
+            ->with('success', 'تم حذف الأسئلة المحددة بنجاح.');
+    }
 }

@@ -107,8 +107,8 @@ class QuizController extends Controller
                     'allow_review' => $validated['allow_review'] ?? true,
                 ],
             ]);
-            // Generate PIN immediately
-            $quiz->generatePin();
+            // // Generate PIN immediately
+            // $quiz->generatePin();
 
             // Handle different creation methods
             switch ($validated['creation_method']) {
@@ -202,7 +202,7 @@ class QuizController extends Controller
                                 ? 'تم توليد الأسئلة بنجاح. يمكنك الآن تعديلها.'
                                 : 'تم إنشاء الاختبار وتوليد الأسئلة بنجاح.')
                             ->with('quiz_created', true)
-                            ->with('quiz_pin', $quiz->pin_code)
+                            ->with('quiz_pin', $quiz->pin)
                             ->with('quiz_id', $quiz->id);
 
                     } catch (\Exception $e) {
@@ -250,7 +250,7 @@ class QuizController extends Controller
     }
     public function generateMissingPins()
     {
-        $quizzes = Quiz::whereNull('pin_code')->orWhere('pin_code', '')->get();
+        $quizzes = Quiz::whereNull('pin')->orWhere('pin', '')->get();
 
         foreach ($quizzes as $quiz) {
             $quiz->generatePin();
@@ -304,6 +304,16 @@ class QuizController extends Controller
         ]);
 
         $quiz->update($validated);
+        // Update passage if provided
+        if ($request->has('passage')) {
+            $firstQuestion = $quiz->questions()->first();
+            if ($firstQuestion) {
+                $firstQuestion->update([
+                    'passage' => $request->input('passage'),
+                    'passage_title' => $request->input('passage_title')
+                ]);
+            }
+        }
 
         return redirect()->route('quizzes.show', $quiz)
             ->with('success', 'تم تحديث الاختبار بنجاح.');
@@ -359,6 +369,7 @@ class QuizController extends Controller
         if (!Auth::check() && !session('guest_name')) {
             return view('quiz.guest-info', compact('quiz'));
         }
+
         $quiz->load('questions');
 
         if ($quiz->questions->isEmpty()) {
@@ -366,7 +377,28 @@ class QuizController extends Controller
                 ->with('error', 'لا يحتوي هذا الاختبار على أسئلة بعد.');
         }
 
-        return view('quizzes.take', compact('quiz'));
+        // Apply question shuffling if enabled
+        $questions = $quiz->questions;
+        if ($quiz->shuffle_questions) {
+            $questions = $questions->shuffle();
+        }
+
+        // Apply answer shuffling if enabled
+        if ($quiz->shuffle_answers) {
+            $questions->transform(function ($question) {
+                $options = collect($question->options);
+                $shuffled = $options->shuffle();
+                $question->shuffled_options = $shuffled->values()->all();
+
+                // Map correct answer to new position
+                $correctIndex = array_search($question->correct_answer, $question->shuffled_options);
+                $question->shuffled_correct_index = $correctIndex;
+
+                return $question;
+            });
+        }
+
+        return view('quizzes.take', compact('quiz', 'questions'));
     }
 
     public function guestStart(Request $request, Quiz $quiz)
