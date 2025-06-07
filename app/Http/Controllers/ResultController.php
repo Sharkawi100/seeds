@@ -15,7 +15,13 @@ class ResultController extends Controller
 
         // Check authorization
         if ($this->canViewResult($result)) {
-            return view('results.show', compact('result'));
+            // If viewer is the quiz owner/teacher, show detailed view
+            if (Auth::check() && ((int) $result->quiz->user_id === Auth::id() || Auth::user()->is_admin)) {
+                return view('results.show', compact('result'));
+            }
+
+            // For students/guests, show the smart report
+            return view('results.student-report', compact('result'));
         }
 
         abort(403, 'غير مصرح لك بعرض هذه النتيجة');
@@ -53,6 +59,43 @@ class ResultController extends Controller
             return redirect()->route('login');
         }
 
+        // Check if user is a teacher
+        if (Auth::user()->is_admin || Auth::user()->user_type === 'teacher') {
+            // Show teacher's quizzes with result counts
+            $quizzes = \App\Models\Quiz::where('user_id', Auth::id())
+                ->withCount('results')
+                ->with([
+                    'results' => function ($query) {
+                        $query->latest()->limit(5);
+                    }
+                ])
+                ->latest()
+                ->paginate(10);
+
+            // Calculate statistics for all quizzes (not just current page)
+            $stats = \App\Models\Quiz::where('user_id', Auth::id())
+                ->withCount('results')
+                ->with('results')
+                ->get()
+                ->reduce(function ($carry, $quiz) {
+                    $carry['total_results'] += $quiz->results_count;
+                    $carry['total_quizzes']++;
+                    foreach ($quiz->results as $result) {
+                        if ($result->total_score >= 60) {
+                            $carry['passing_results']++;
+                        }
+                    }
+                    return $carry;
+                }, ['total_results' => 0, 'total_quizzes' => 0, 'passing_results' => 0]);
+
+            $stats['success_rate'] = $stats['total_results'] > 0
+                ? round(($stats['passing_results'] / $stats['total_results']) * 100)
+                : 0;
+
+            return view('results.teacher-index', compact('quizzes', 'stats'));
+        }
+
+        // For students, show their own results
         $results = Result::where('user_id', Auth::id())
             ->with(['quiz'])
             ->latest()
@@ -73,10 +116,11 @@ class ResultController extends Controller
         $quiz = \App\Models\Quiz::findOrFail($quizId);
 
         // Check if user owns the quiz
-        if ((int) $quiz->user_id !== Auth::id()) {
+        if ((int) $quiz->user_id !== Auth::id() && !Auth::user()->is_admin) {
             abort(403, 'غير مصرح لك بعرض نتائج هذا الاختبار');
         }
 
+        // Get ALL results (including guests)
         $results = Result::where('quiz_id', $quizId)
             ->with(['user'])
             ->latest()

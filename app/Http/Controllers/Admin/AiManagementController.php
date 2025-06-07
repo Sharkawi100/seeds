@@ -88,34 +88,107 @@ class AiManagementController extends Controller
     public function generateReport(Request $request, Quiz $quiz)
     {
         try {
-            // Get the latest result for the quiz
-            $result = $quiz->results()->latest()->first();
+            $type = $request->input('type', 'individual');
 
-            if (!$result) {
+            if ($type === 'class_analysis') {
+                // Get all results for this quiz
+                $results = $quiz->results()->with('answers.question')->get();
+
+                if ($results->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'لا توجد نتائج لتحليلها'
+                    ]);
+                }
+
+                // Prepare class-wide statistics
+                $prompt = $this->buildClassAnalysisPrompt($quiz, $results);
+
+                $report = $this->claudeService->generateCompletion($prompt);
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'لا توجد نتائج لهذا الاختبار'
-                ], 404);
+                    'success' => true,
+                    'report' => $report
+                ]);
             }
 
-            $report = $this->generateResultReport($result);
-
-            return response()->json([
-                'success' => true,
-                'report' => $report
-            ]);
-
+            // Original individual result code...
+            $resultId = $request->input('result_id');
+            // ... rest of existing code
         } catch (\Exception $e) {
-            Log::error('Report generation failed', [
-                'quiz_id' => $quiz->id,
-                'error' => $e->getMessage()
-            ]);
-
+            Log::error('Report generation failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'فشل توليد التقرير: ' . $e->getMessage()
-            ], 422);
+                'message' => 'فشل توليد التقرير'
+            ], 500);
         }
+    }
+
+    private function buildClassAnalysisPrompt($quiz, $results)
+    {
+        // Calculate aggregate statistics
+        $totalStudents = $results->count();
+        $avgScore = round($results->avg('total_score'), 1);
+        $passRate = round($results->where('total_score', '>=', 60)->count() / $totalStudents * 100, 1);
+
+        // Root analysis
+        $rootStats = [];
+        foreach (['jawhar', 'zihn', 'waslat', 'roaya'] as $root) {
+            $scores = $results->pluck('scores')->pluck($root)->filter();
+            $rootStats[$root] = [
+                'avg' => round($scores->avg(), 1),
+                'min' => $scores->min(),
+                'max' => $scores->max()
+            ];
+        }
+
+        // Common wrong answers
+        $wrongAnswers = [];
+        foreach ($quiz->questions as $question) {
+            $incorrect = $results->flatMap->answers
+                ->where('question_id', $question->id)
+                ->where('is_correct', false);
+
+            if ($incorrect->count() > $totalStudents * 0.5) {
+                $wrongAnswers[] = [
+                    'question' => $question->question,
+                    'root' => $question->root_type,
+                    'error_rate' => round($incorrect->count() / $totalStudents * 100)
+                ];
+            }
+        }
+
+        $prompt = "تحليل أداء الصف للاختبار: {$quiz->title}\n\n";
+        $prompt .= "إحصائيات عامة:\n";
+        $prompt .= "- عدد الطلاب: {$totalStudents}\n";
+        $prompt .= "- متوسط الدرجات: {$avgScore}%\n";
+        $prompt .= "- نسبة النجاح: {$passRate}%\n\n";
+
+        $prompt .= "أداء الجذور:\n";
+        foreach ($rootStats as $root => $stats) {
+            $rootNames = [
+                'jawhar' => 'جَوهر',
+                'zihn' => 'ذِهن',
+                'waslat' => 'وَصلات',
+                'roaya' => 'رُؤية'
+            ];
+            $prompt .= "- {$rootNames[$root]}: متوسط {$stats['avg']}% (أدنى: {$stats['min']}%, أعلى: {$stats['max']}%)\n";
+        }
+
+        if (!empty($wrongAnswers)) {
+            $prompt .= "\nالأسئلة الأكثر خطأ:\n";
+            foreach ($wrongAnswers as $wa) {
+                $prompt .= "- السؤال: {$wa['question']} (جذر {$wa['root']}, نسبة الخطأ: {$wa['error_rate']}%)\n";
+            }
+        }
+
+        $prompt .= "\nالرجاء تقديم:\n";
+        $prompt .= "1. تحليل لنقاط القوة والضعف في أداء الصف\n";
+        $prompt .= "2. تحديد المفاهيم الخاطئة الشائعة\n";
+        $prompt .= "3. توصيات تدريسية محددة لتحسين الأداء\n";
+        $prompt .= "4. استراتيجيات لتقوية كل جذر ضعيف\n";
+
+        return $prompt;
     }
 
     /**

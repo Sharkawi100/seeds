@@ -198,6 +198,11 @@
                     </div>
                     <p class="text-gray-400 text-xs">{{ $result->created_at->diffForHumans() }}</p>
                 </div>
+                <div class="mt-4 text-center">
+                    <a href="{{ route('results.index') }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                        عرض جميع النتائج ←
+                    </a>
+                </div>
             </div>
             @endforeach
         </div>

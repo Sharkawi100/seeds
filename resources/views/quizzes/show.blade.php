@@ -520,7 +520,13 @@
             <a href="{{ route('quizzes.index') }}" class="btn-secondary text-center">
                 ↩️ العودة للقائمة
             </a>
+            @if($quiz->results->count() > 0)
+    <a href="{{ route('results.quiz', $quiz->id) }}" class="btn-secondary">
+        📊 عرض النتائج ({{ $quiz->results->count() }})
+    </a>
+@endif
         </div>
+        
     </div>
 </div>
 
