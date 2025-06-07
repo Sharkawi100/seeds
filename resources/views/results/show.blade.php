@@ -10,6 +10,9 @@
                     <div>
                         <h2 class="text-3xl font-bold text-white mb-2">نتائج الاختبار</h2>
                         <h3 class="text-xl text-white/90">{{ $result->quiz->title }}</h3>
+                        @if($result->guest_name)
+                            <p class="text-white/80 mt-1">الطالب: {{ $result->guest_name }}</p>
+                        @endif
                     </div>
                     @if(Auth::check() && (Auth::user()->id == $result->quiz->user_id || Auth::user()->is_admin))
                     <button onclick="generateReport()" class="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg transition flex items-center gap-2" title="توليد تقرير بالذكاء الاصطناعي">

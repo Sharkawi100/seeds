@@ -318,6 +318,9 @@ class QuizController extends Controller
 
     public function take(Quiz $quiz)
     {
+        if (!Auth::check() && !session('guest_name')) {
+            return view('quiz.guest-info', compact('quiz'));
+        }
         $quiz->load('questions');
 
         if ($quiz->questions->isEmpty()) {
@@ -326,6 +329,21 @@ class QuizController extends Controller
         }
 
         return view('quizzes.take', compact('quiz'));
+    }
+
+    public function guestStart(Request $request, Quiz $quiz)
+    {
+        $validated = $request->validate([
+            'guest_name' => 'required|string|max:255',
+            'school_class' => 'nullable|string|max:255'
+        ]);
+
+        session([
+            'guest_name' => $validated['guest_name'],
+            'school_class' => $validated['school_class'] ?? null
+        ]);
+
+        return redirect()->route('quiz.take', $quiz);
     }
 
     public function submit(Request $request, Quiz $quiz)
@@ -343,6 +361,7 @@ class QuizController extends Controller
                 'quiz_id' => $quiz->id,
                 'user_id' => Auth::id(),
                 'guest_token' => !Auth::check() ? Str::random(32) : null,
+                'guest_name' => !Auth::check() ? session('guest_name') : null,
                 'scores' => ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0],
                 'total_score' => 0,
                 'expires_at' => !Auth::check() ? now()->addDays(7) : null
@@ -397,6 +416,10 @@ class QuizController extends Controller
             ]);
 
             DB::commit();
+            // Clear guest session data after submission
+            if (!Auth::check()) {
+                session()->forget(['guest_name', 'school_class']);
+            }
 
             return redirect()->route('results.show', $result);
 

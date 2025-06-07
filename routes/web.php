@@ -97,6 +97,8 @@ Route::prefix('quiz')->name('quiz.')->group(function () {
 // Results Viewing (Guest with Token or Authenticated)
 Route::get('/results/{result}', [ResultController::class, 'show'])->name('results.show');
 
+Route::post('/quiz/{quiz}/guest-start', [QuizController::class, 'guestStart'])->name('quiz.guest-start');
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes
