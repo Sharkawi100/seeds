@@ -221,11 +221,12 @@ function toggleReport() {
                     <a href="{{ route('quiz.take', $result->quiz) }}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition">
                         إعادة الاختبار
                     </a>
-                    @auth
-                        <a href="{{ route('quizzes.index') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-bold transition">
-                            عرض جميع الاختبارات
-                        </a>
-                    @endauth
+                    @if(Auth::check() && (Auth::user()->is_admin || Auth::user()->user_type === 'teacher'))
+    <a href="{{ route('quizzes.index') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+        <i class="fas fa-list"></i>
+        عرض جميع الاختبارات
+    </a>
+@endif
                 </div>
             </div>
         </div>

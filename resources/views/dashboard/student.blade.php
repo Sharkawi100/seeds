@@ -219,11 +219,11 @@
         @php
             $latestResult = Auth::user()->results->sortByDesc('created_at')->first();
             $averageScores = [
-                'jawhar' => Auth::user()->results->avg(function($r) { return json_decode($r->scores, true)['jawhar'] ?? 0; }) ?? 0,
-                'zihn' => Auth::user()->results->avg(function($r) { return json_decode($r->scores, true)['zihn'] ?? 0; }) ?? 0,
-                'waslat' => Auth::user()->results->avg(function($r) { return json_decode($r->scores, true)['waslat'] ?? 0; }) ?? 0,
-                'roaya' => Auth::user()->results->avg(function($r) { return json_decode($r->scores, true)['roaya'] ?? 0; }) ?? 0
-            ];
+    'jawhar' => Auth::user()->results->avg(function($r) { return $r->scores['jawhar'] ?? 0; }) ?? 0,
+    'zihn' => Auth::user()->results->avg(function($r) { return $r->scores['zihn'] ?? 0; }) ?? 0,
+    'waslat' => Auth::user()->results->avg(function($r) { return $r->scores['waslat'] ?? 0; }) ?? 0,
+    'roaya' => Auth::user()->results->avg(function($r) { return $r->scores['roaya'] ?? 0; }) ?? 0
+];
         @endphp
         
         @if($latestResult)

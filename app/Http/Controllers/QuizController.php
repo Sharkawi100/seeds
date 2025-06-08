@@ -22,8 +22,19 @@ class QuizController extends Controller
         $this->claudeService = $claudeService;
     }
 
+    /**
+     * Check if user can manage quizzes (teacher or admin only)
+     */
+    private function authorizeQuizManagement()
+    {
+        if (!Auth::check() || (Auth::user()->user_type === 'student' && !Auth::user()->is_admin)) {
+            abort(403, 'غير مصرح لك بإدارة الاختبارات. هذه الصفحة للمعلمين فقط.');
+        }
+    }
+
     public function index()
     {
+        $this->authorizeQuizManagement();
         $quizzes = Quiz::where('user_id', Auth::id())
             ->with('questions')
             ->latest()
@@ -34,11 +45,13 @@ class QuizController extends Controller
 
     public function create()
     {
+        $this->authorizeQuizManagement();
         return view('quizzes.create');
     }
 
     public function store(Request $request)
     {
+        $this->authorizeQuizManagement();
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'subject' => 'required|in:arabic,english,hebrew',
@@ -250,6 +263,7 @@ class QuizController extends Controller
     }
     public function generateMissingPins()
     {
+
         $quizzes = Quiz::whereNull('pin')->orWhere('pin', '')->get();
 
         foreach ($quizzes as $quiz) {
@@ -270,6 +284,7 @@ class QuizController extends Controller
 
     public function edit(Quiz $quiz)
     {
+        $this->authorizeQuizManagement();
         // Allow admin to edit any quiz
         if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
@@ -283,6 +298,7 @@ class QuizController extends Controller
 
     public function update(Request $request, Quiz $quiz)
     {
+        $this->authorizeQuizManagement();
         // Allow admin to update any quiz
         if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
@@ -321,6 +337,7 @@ class QuizController extends Controller
 
     public function destroy(Quiz $quiz)
     {
+        $this->authorizeQuizManagement();
         if ((int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }

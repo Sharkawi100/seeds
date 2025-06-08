@@ -15,13 +15,8 @@ class ResultController extends Controller
 
         // Check authorization
         if ($this->canViewResult($result)) {
-            // If viewer is the quiz owner/teacher, show detailed view
-            if (Auth::check() && ((int) $result->quiz->user_id === Auth::id() || Auth::user()->is_admin)) {
-                return view('results.show', compact('result'));
-            }
-
-            // For students/guests, show the smart report
-            return view('results.student-report', compact('result'));
+            // Show the same detailed view for everyone (teachers, students, admins)
+            return view('results.show', compact('result'));
         }
 
         abort(403, 'غير مصرح لك بعرض هذه النتيجة');
@@ -32,17 +27,22 @@ class ResultController extends Controller
      */
     private function canViewResult(Result $result): bool
     {
-        // Case 1: Authenticated user viewing their own result
+        // Case 1: Admin can view all results
+        if (Auth::check() && Auth::user()->is_admin) {
+            return true;
+        }
+
+        // Case 2: Authenticated user viewing their own result
         if (Auth::check() && $result->user_id !== null) {
             return (int) $result->user_id === Auth::id();
         }
 
-        // Case 2: Guest viewing their result with matching token
+        // Case 3: Guest viewing their result with matching token
         if (!Auth::check() && $result->guest_token !== null) {
             return $result->guest_token === session('guest_token');
         }
 
-        // Case 3: Authenticated user (teacher) viewing results for their quiz
+        // Case 4: Authenticated user (teacher) viewing results for their quiz
         if (Auth::check() && $result->quiz) {
             return (int) $result->quiz->user_id === Auth::id();
         }
