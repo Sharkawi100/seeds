@@ -253,39 +253,41 @@
                     </div>
                 @endif
 
-                {{-- Recent Results --}}
-                <div class="section-card">
-                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
-                        <i class="fas fa-chart-line text-green-500"></i>
-                        آخر النتائج
-                    </h3>
-                    @if($recentResults->count() > 0)
-                        <div class="space-y-3">
-                            @foreach($recentResults as $result)
-                                <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                                    <div>
-                                        <h4 class="font-semibold">{{ $result->quiz->title }}</h4>
-                                        <p class="text-sm">
-                                            النتيجة: 
-                                            <span class="font-bold {{ $result->total_score >= 80 ? 'text-green-600' : ($result->total_score >= 60 ? 'text-yellow-600' : 'text-red-600') }}">
-                                                {{ number_format($result->total_score, 1) }}%
-                                            </span>
-                                        </p>
-                                    </div>
-                                    <div class="text-left">
-                                        <p class="text-sm text-gray-500">{{ $result->created_at->diffForHumans() }}</p>
-                                        <a href="{{ route('results.show', $result) }}" 
-                                           class="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                                            عرض التفاصيل
-                                        </a>
-                                    </div>
-                                </div>
-                            @endforeach
+               {{-- Recent Results --}}
+<div class="section-card">
+    <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+        <i class="fas fa-chart-line text-green-500"></i>
+        آخر النتائج
+    </h3>
+    @if($recentResults->count() > 0)
+        <div class="space-y-3">
+            @foreach($recentResults as $result)
+                @if($result->quiz) {{-- Check if quiz exists --}}
+                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <div>
+                            <h4 class="font-semibold">{{ $result->quiz->title }}</h4>
+                            <p class="text-sm">
+                                النتيجة: 
+                                <span class="font-bold {{ $result->total_score >= 80 ? 'text-green-600' : ($result->total_score >= 60 ? 'text-yellow-600' : 'text-red-600') }}">
+                                    {{ number_format($result->total_score, 1) }}%
+                                </span>
+                            </p>
                         </div>
-                    @else
-                        <p class="text-gray-500 text-center py-8">لم يتم إكمال أي اختبارات بعد</p>
-                    @endif
-                </div>
+                        <div class="text-left">
+                            <p class="text-sm text-gray-500">{{ $result->created_at->diffForHumans() }}</p>
+                            <a href="{{ route('results.show', $result) }}" 
+                               class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                                عرض التفاصيل
+                            </a>
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+        </div>
+    @else
+        <p class="text-gray-500 text-center py-8">لم يتم إكمال أي اختبارات بعد</p>
+    @endif
+</div>
             </div>
         </div>
     </div>

@@ -1,7 +1,9 @@
 # Views Structure - جُذور (Juzoor) Project
-Last Updated: December 2024
+
+Last Updated: June 2025
 
 ## Layout Structure
+
 ```
 resources/views/
 ├── layouts/
@@ -9,12 +11,20 @@ resources/views/
 │   ├── guest.blade.php (for non-authenticated pages)
 │   └── navigation.blade.php (nav component)
 ├── auth/
+│   ├── role-selection.blade.php (NEW - role selection for login/register)
 │   ├── login.blade.php
 │   ├── register.blade.php
 │   ├── forgot-password.blade.php
 │   ├── reset-password.blade.php
 │   ├── verify-email.blade.php
-│   └── confirm-password.blade.php
+│   ├── confirm-password.blade.php
+│   ├── teacher/
+│   │   ├── login.blade.php (NEW - teacher login)
+│   │   ├── register.blade.php (NEW - teacher registration)
+│   │   └── pending-approval.blade.php (NEW - waiting for admin approval)
+│   └── student/
+│       ├── login.blade.php (NEW - student login with PIN option)
+│       └── register.blade.php (NEW - student registration)
 ├── components/
 │   ├── application-logo.blade.php
 │   ├── auth-session-status.blade.php
@@ -35,15 +45,18 @@ resources/views/
 │   ├── create.blade.php (create new quiz)
 │   ├── show.blade.php (display quiz details)
 │   ├── edit.blade.php (edit quiz)
-│   ├── take.blade.php (take quiz view)
+│   ├── take.blade.php (take quiz view - UPDATED with new UI)
+│   ├── guest-info.blade.php (NEW - guest name form)
 │   └── questions/
 │       ├── index.blade.php
 │       ├── create.blade.php
-│       └── edit.blade.php
+│       ├── edit.blade.php
+│       └── bulk-edit.blade.php (NEW - bulk editing)
 ├── results/
 │   ├── index.blade.php (list results)
 │   ├── show.blade.php (detailed result with Juzoor chart)
-│   └── quiz-results.blade.php
+│   ├── quiz-results.blade.php
+│   └── teacher-index.blade.php (NEW - teacher results view)
 ├── profile/
 │   ├── edit.blade.php
 │   └── partials/
@@ -52,8 +65,9 @@ resources/views/
 │       └── update-profile-information-form.blade.php
 ├── admin/
 │   ├── dashboard.blade.php
+│   ├── reports.blade.php (NEW - analytics and reports)
 │   ├── users/
-│   │   ├── index.blade.php
+│   │   ├── index.blade.php (UPDATED - improved UI)
 │   │   ├── create.blade.php
 │   │   ├── edit.blade.php
 │   │   └── show.blade.php
@@ -64,45 +78,86 @@ resources/views/
 │       └── index.blade.php
 ├── emails/
 │   └── contact-inquiry.blade.php
-├── dashboard.blade.php (user dashboard with Juzoor stats)
+├── dashboard/
+│   ├── teacher.blade.php (NEW - teacher dashboard component)
+│   └── student.blade.php (NEW - student dashboard component)
+├── dashboard.blade.php (user dashboard with role-based content)
 ├── welcome.blade.php (landing page with PIN entry)
 ├── about.blade.php
 ├── contact.blade.php
 ├── juzoor-model.blade.php (explains the educational model)
-└── question-guide.blade.php
+├── juzoor-growth.blade.php (NEW - growth model page)
+├── question-guide.blade.php
+├── for-teachers.blade.php (NEW - teachers landing page)
+└── for-students.blade.php (NEW - students landing page)
+```
 
-## Key Blade Components
+## Key Updates (June 2025)
 
-### Custom Components
-- **juzoor-chart.blade.php**: Displays the 4 roots (جَوهر، ذِهن، وَصلات، رُؤية) in a radar chart
-- **PIN input system**: On welcome page for quick quiz access
+### New Landing Pages
 
-### Layout Features
-- **RTL Support**: All layouts support Arabic RTL
-- **Multi-language**: Arabic, English, Hebrew support
-- **Responsive**: Tailwind CSS for mobile-first design
-- **Dark Mode**: Gradient backgrounds and modern UI
+-   **for-teachers.blade.php**: Professional landing page showcasing features for educators
 
-## Styling
-- **CSS Framework**: Tailwind CSS
-- **Custom CSS**: 
-  - resources/css/app.css
-  - resources/css/landing.css
-- **JavaScript**: 
-  - resources/js/app.js
-  - resources/js/landing.js
-  - Alpine.js for interactivity
+    -   AI-powered quiz generation
+    -   Analytics and progress tracking
+    -   Multi-language support
+    -   Testimonials section
+    -   Clear CTAs for registration
 
-## Important Blade Directives Used
-- @extends('layouts.app') - For authenticated pages
-- @extends('layouts.guest') - For public pages
-- @section('content') - Main content area
-- @push('styles') / @push('scripts') - Page-specific assets
-- @auth / @guest - Authentication checks
-- {{ __() }} - Translation helpers
+-   **for-students.blade.php**: Fun, engaging landing page for students
+    -   Gamified presentation
+    -   Achievement system preview
+    -   Easy-to-understand 4 roots explanation
+    -   Colorful, animated design
+    -   PIN entry promotion
 
-## View Data Flow
-1. **Dashboard**: Shows user's quiz statistics and Juzoor root progress
-2. **Quiz Creation**: Multi-step form with AI generation options
-3. **Quiz Taking**: Displays questions with passage support
-4. **Results**: Shows detailed analysis with root-wise scoring
+### Enhanced Authentication Views
+
+-   **Role-based login/registration**: Separate flows for teachers and students
+-   **Teacher approval workflow**: Pending approval page while waiting for admin
+-   **Student PIN login**: Quick access option for classroom use
+
+### Dashboard Components
+
+-   **dashboard/teacher.blade.php**: Teacher-specific stats and quick actions
+-   **dashboard/student.blade.php**: Student progress and achievements
+
+### UI/UX Improvements
+
+-   Modern glassmorphism effects
+-   Animated backgrounds
+-   Better color contrast for accessibility
+-   Mobile-responsive designs
+-   RTL support enhanced
+
+## Blade Component Features
+
+### Custom Components Usage
+
+-   **juzoor-chart.blade.php**:
+    ```blade
+    <x-juzoor-chart :scores="$result->scores" size="medium" />
+    ```
+
+### Layout Selection
+
+-   Guest pages use `@extends('layouts.guest')`
+-   Authenticated pages use `@extends('layouts.app')`
+-   Role-specific content with `@if(Auth::user()->user_type === 'teacher')`
+
+## Styling Approach
+
+-   **CSS Framework**: Tailwind CSS
+-   **Custom Animations**: Float, bounce, wiggle, gradient animations
+-   **Color Scheme**:
+    -   Teachers: Professional purple/blue gradients
+    -   Students: Vibrant, playful colors
+-   **Accessibility**: High contrast text, proper spacing
+
+## JavaScript Enhancements
+
+-   Alpine.js for interactivity
+-   Confetti effects for student achievements
+-   Smooth scroll behavior
+-   Form validation feedback
+-   Progress tracking animations

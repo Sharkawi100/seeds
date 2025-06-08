@@ -55,24 +55,24 @@
                     </div>
                 </div>
 
-                <!-- Quiz Activity -->
-                <div class="bg-black/50 backdrop-blur rounded-2xl p-6">
-                    <h2 class="text-2xl font-bold text-white mb-6">🎮 نشاط الاختبارات</h2>
-                    <div class="space-y-4">
-                        @foreach(\App\Models\Quiz::with('user')->latest()->take(5)->get() as $quiz)
-                        <div class="flex items-center justify-between p-3 bg-black/40 rounded-lg">
-                            <div>
-                                <p class="text-white font-medium">{{ $quiz->title }}</p>
-                                <p class="text-gray-400 text-sm">{{ $quiz->user->name }}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-white font-bold">{{ $quiz->results->count() }}</p>
-                                <p class="text-gray-400 text-xs">محاولة</p>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
+               {{-- Quiz Activity --}}
+<div class="bg-black/50 backdrop-blur rounded-2xl p-6">
+    <h2 class="text-2xl font-bold text-white mb-6">🎮 نشاط الاختبارات</h2>
+    <div class="space-y-4">
+        @foreach(\App\Models\Quiz::with('user')->latest()->take(5)->get() as $quiz)
+        <div class="flex items-center justify-between p-3 bg-black/40 rounded-lg">
+            <div>
+                <p class="text-white font-medium">{{ $quiz->title }}</p>
+                <p class="text-gray-400 text-sm">{{ $quiz->user->name ?? 'مستخدم محذوف' }}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-white font-bold">{{ $quiz->results->count() }}</p>
+                <p class="text-gray-400 text-xs">محاولة</p>
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
 
                <!-- Root Performance -->
 <div class="bg-black/50 backdrop-blur rounded-2xl p-6">
