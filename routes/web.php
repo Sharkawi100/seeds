@@ -49,6 +49,9 @@ Route::get('/lang/{locale}', function ($locale) {
 
 // Quiz Taking (Public Access)
 Route::prefix('quiz')->name('quiz.')->group(function () {
+    Route::get('/', function () {
+        return redirect()->route('home');
+    })->name('index');
     Route::post('/enter-pin', [WelcomeController::class, 'enterPin'])->name('enter-pin');
     Route::get('/demo', [WelcomeController::class, 'demo'])->name('demo');
     Route::get('/{quiz}/take', [QuizController::class, 'take'])->name('take');
