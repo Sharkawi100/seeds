@@ -23,7 +23,12 @@ class Quiz extends Model
         'subject',
         'grade_level',
         'settings',
-        'has_submissions'
+        'has_submissions',
+        'shuffle_questions',
+        'shuffle_answers',
+        'show_results',
+        'time_limit',
+        'passing_score'
     ];
     protected static function boot()
     {

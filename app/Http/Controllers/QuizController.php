@@ -62,6 +62,11 @@ class QuizController extends Controller
             'include_passage' => 'boolean',
             'passage_topic' => 'nullable|string|max:255',
             'educational_text' => 'nullable|string',
+            'shuffle_questions' => 'nullable',
+            'shuffle_answers' => 'nullable',
+            'show_results' => 'nullable',
+            'time_limit' => 'nullable|integer|min:0|max:180',
+            'passing_score' => 'nullable|integer|min:0|max:100',
             'text_source' => 'nullable|string',
             'text_type' => 'nullable|string',
             'text_length' => 'nullable|string'
@@ -112,7 +117,12 @@ class QuizController extends Controller
                 'title' => $validated['title'],
                 'subject' => $validated['subject'],
                 'grade_level' => $validated['grade_level'],
-                'pin' => strtoupper(Str::random(6)), // ? Add this line
+                'pin' => strtoupper(Str::random(6)),
+                'shuffle_questions' => isset($validated['shuffle_questions']) && $validated['shuffle_questions'] == '1',
+                'shuffle_answers' => isset($validated['shuffle_answers']) && $validated['shuffle_answers'] == '1',
+                'show_results' => !isset($validated['show_results']) || $validated['show_results'] == '1',
+                'time_limit' => $validated['time_limit'] ?? null,
+                'passing_score' => $validated['passing_score'] ?? 60,
                 'settings' => [
                     'creation_method' => $validated['creation_method'],
                     'question_count' => $validated['question_count'] ?? 0,

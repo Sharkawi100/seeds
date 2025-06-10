@@ -83,7 +83,7 @@
                             $options = $question->options;
                         @endphp
                         
-                        @foreach($options as $optionIndex => $option)
+                        @foreach(($question->shuffled_options ?? $question->options) as $optionIndex => $option)
                         @if($option)
                         <label class="block cursor-pointer transform hover:scale-[1.02] transition-transform">
                             <input type="radio" 
