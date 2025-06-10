@@ -374,14 +374,22 @@ document.querySelectorAll('.role-select').forEach(select => {
 
 function showNotification(message, type) {
     const notification = document.createElement('div');
-    notification.className = `fixed top-4 left-4 px-6 py-3 rounded-xl shadow-lg font-medium ${
-        type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-    }`;
+    
+    // Fix: Set classes individually, not as one string
+    notification.classList.add('fixed', 'top-4', 'left-4', 'px-6', 'py-3', 'rounded-xl', 'shadow-lg', 'font-medium', 'z-50', 'transition-opacity', 'duration-300');
+    
+    if (type === 'success') {
+        notification.classList.add('bg-green-500', 'text-white');
+    } else {
+        notification.classList.add('bg-red-500', 'text-white');
+    }
+    
     notification.textContent = message;
     document.body.appendChild(notification);
     
+    // Animate out
     setTimeout(() => {
-        notification.style.opacity = '0';
+        notification.classList.add('opacity-0');
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }

@@ -271,22 +271,25 @@ PROMPT;
     - المستوى 2: متوسط (تحليل وفهم أعمق)
     - المستوى 3: عميق (تفكير نقدي واستنتاج)
     
-    المطلوب إنشاء أسئلة بناءً على النص المعطى بالتوزيع التالي:
+    المطلوب إنشاء أسئلة بناءً على النص المعطى بالتوزيع التالي بدقة تامة:
     PROMPT;
 
+        $totalRequested = 0;
         foreach ($roots as $rootType => $levels) {
             $rootName = $this->getRootName($rootType);
             $prompt .= "\n\n{$rootName} ({$rootType}):";
             foreach ($levels as $level => $count) {
                 if ($count > 0) {
-                    $prompt .= "\n- المستوى {$level}: {$count} أسئلة";
+                    $prompt .= "\n- المستوى {$level}: {$count} أسئلة بالضبط";
+                    $totalRequested += $count;
                 }
             }
         }
+        $prompt .= "\n\nإجمالي الأسئلة المطلوبة: {$totalRequested} سؤال بالضبط";
 
         $prompt .= <<<PROMPT
     
-    قواعد مهمة جداً:
+    قواعد مهمة جداً - يجب اتباعها بدقة 100%:
     1. جميع الأسئلة يجب أن تكون مرتبطة مباشرة بالنص المعطى
     2. لا تسأل عن معلومات غير موجودة في النص
     3. كل سؤال يجب أن يكون واضحاً ومحدداً
@@ -296,6 +299,8 @@ PROMPT;
     7. استخدم EXACTLY الأرقام للـ depth_level: 1, 2, أو 3
     8. ممنوع منعاً باتاً استخدام خيارات مثل "جميع ما سبق" أو "كل ما ذكر" أو "لا شيء مما ذكر" أو "أ و ب"
     9. كل خيار يجب أن يكون مستقلاً ومختلفاً عن الخيارات الأخرى
+    10. يجب إنتاج العدد المطلوب بالضبط لكل نوع ومستوى
+    11. إذا لم تستطع إنتاج سؤال لنوع معين، اجعله من نوع "jawhar" بدلاً من تجاهله
 
 
     
@@ -311,7 +316,8 @@ PROMPT;
             }
         ]
     }
-    
+        تأكد من إنتاج {$totalRequested} سؤال بالضبط وفقاً للتوزيع المحدد أعلاه.
+
     مثال على سؤال صحيح:
     {
         "question": "ما هو لون السجادة المذكورة في النص؟",
@@ -320,7 +326,7 @@ PROMPT;
         "root_type": "jawhar",
         "depth_level": 1
     }
-    PROMPT;
+PROMPT;
 
         return $prompt;
     }
@@ -474,37 +480,71 @@ PROMPT;
 
         Log::info('Parsing quiz response', ['content_length' => strlen($content)]);
 
-        // Extract JSON from the response
+        // Try to find complete JSON structure
         $jsonStart = strpos($content, '{');
-        $jsonEnd = strrpos($content, '}');
 
-        if ($jsonStart !== false && $jsonEnd !== false && $jsonEnd > $jsonStart) {
-            $jsonString = substr($content, $jsonStart, $jsonEnd - $jsonStart + 1);
-            // Clean up common JSON issues from AI responses
-            $jsonString = preg_replace('/,\s*]/', ']', $jsonString);  // Remove trailing commas in arrays
-            $jsonString = preg_replace('/,\s*}/', '}', $jsonString);  // Remove trailing commas in objects
-            $data = json_decode($jsonString, true);
+        if ($jsonStart === false) {
+            Log::error('No JSON start found in response');
+            throw new \Exception('No valid JSON found in AI response');
+        }
 
-            if (json_last_error() === JSON_ERROR_NONE && isset($data['questions'])) {
-                Log::info('Successfully parsed questions', ['count' => count($data['questions'])]);
+        // Extract from first { to end of content, then try to find valid JSON
+        $potentialJson = substr($content, $jsonStart);
 
-                // Log first question structure for debugging
-                if (!empty($data['questions'])) {
-                    Log::info('Sample question structure', [
-                        'first_question' => $data['questions'][0]
-                    ]);
+        // Try to find the matching closing brace by counting braces
+        $braceCount = 0;
+        $jsonEnd = -1;
+
+        for ($i = 0; $i < strlen($potentialJson); $i++) {
+            if ($potentialJson[$i] === '{') {
+                $braceCount++;
+            } elseif ($potentialJson[$i] === '}') {
+                $braceCount--;
+                if ($braceCount === 0) {
+                    $jsonEnd = $i;
+                    break;
                 }
-
-                return $data['questions'];
-            } else {
-                Log::error('JSON parsing failed', [
-                    'json_error' => json_last_error_msg(),
-                    'json_string' => substr($jsonString, 0, 500)
-                ]);
             }
         }
 
-        throw new \Exception('Failed to parse quiz questions from AI response');
+        if ($jsonEnd === -1) {
+            Log::error('No matching closing brace found', [
+                'content_preview' => substr($content, 0, 500)
+            ]);
+            throw new \Exception('Incomplete JSON in AI response');
+        }
+
+        $jsonString = substr($potentialJson, 0, $jsonEnd + 1);
+
+        // Clean up common JSON issues from AI responses
+        $jsonString = preg_replace('/,\s*]/', ']', $jsonString);  // Remove trailing commas in arrays
+        $jsonString = preg_replace('/,\s*}/', '}', $jsonString);  // Remove trailing commas in objects
+
+        Log::info('Extracted JSON string', [
+            'length' => strlen($jsonString),
+            'preview' => substr($jsonString, 0, 200)
+        ]);
+
+        $data = json_decode($jsonString, true);
+
+        if (json_last_error() === JSON_ERROR_NONE && isset($data['questions'])) {
+            Log::info('Successfully parsed questions', ['count' => count($data['questions'])]);
+
+            // Log first question structure for debugging
+            if (!empty($data['questions'])) {
+                Log::info('Sample question structure', [
+                    'first_question' => $data['questions'][0]
+                ]);
+            }
+
+            return $data['questions'];
+        } else {
+            Log::error('JSON parsing failed', [
+                'json_error' => json_last_error_msg(),
+                'json_string_preview' => substr($jsonString, 0, 500)
+            ]);
+            throw new \Exception('Failed to parse quiz questions from AI response: ' . json_last_error_msg());
+        }
     }
 
     /**
@@ -635,16 +675,20 @@ PROMPT;
             }
         }
 
-        // If we have very few validated questions, try to add some unmatched ones
-        if (count($validated) < 3 && !empty($questions)) {
-            Log::warning('Too few validated questions, adding unvalidated ones', [
-                'validated_count' => count($validated),
-                'total_questions' => count($questions)
+        // Smart fallback: If we have missing questions, try to fill gaps
+        $totalRequested = array_sum(array_column($distribution, 'requested'));
+        $totalValidated = count($validated);
+
+        if ($totalValidated < $totalRequested && !empty($questions)) {
+            Log::info('Attempting to fill missing questions', [
+                'requested' => $totalRequested,
+                'validated' => $totalValidated,
+                'available' => count($questions)
             ]);
 
-            // Add up to 10 questions even if they don't match the distribution
+            // Try to add unmatched questions to fill gaps
             foreach ($questions as $question) {
-                if (count($validated) >= 10)
+                if ($totalValidated >= $totalRequested)
                     break;
 
                 // Normalize again for unmatched questions
@@ -678,11 +722,35 @@ PROMPT;
 
                 if (!$alreadyAdded) {
                     $validated[] = $question;
+                    $totalValidated++;
+                    Log::info('Added missing question', [
+                        'root_type' => $question['root_type'],
+                        'depth_level' => $question['depth_level']
+                    ]);
                 }
             }
         }
 
-        return $validated;
+        // Log final distribution summary
+        $finalDistribution = [];
+        foreach ($validated as $q) {
+            $key = $q['root_type'] . '_' . $q['depth_level'];
+            $finalDistribution[$key] = ($finalDistribution[$key] ?? 0) + 1;
+        }
+
+        Log::info('Final question distribution', [
+            'total_validated' => count($validated),
+            'distribution' => $finalDistribution,
+            'original_request' => array_map(fn($d) => $d['requested'], $distribution)
+        ]);
+
+        // Accept result if we have at least 50% of requested questions
+        if (count($validated) >= max(1, (int) ($totalRequested * 0.5))) {
+            return $validated;
+        }
+
+        // Last resort: if still too few questions, throw informative error
+        throw new \Exception("تم توليد عدد قليل جداً من الأسئلة المناسبة ({$totalValidated} من أصل {$totalRequested}). يرجى المحاولة مع نص أطول أو موضوع مختلف.");
     }
 
     /**

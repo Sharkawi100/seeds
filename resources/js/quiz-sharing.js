@@ -60,7 +60,11 @@ window.showNotification = function (message, type = "info") {
     document.body.appendChild(notification);
 
     setTimeout(() => {
-        notification.classList.add("opacity-0 transition-opacity duration-300");
+        notification.classList.add(
+            "opacity-0",
+            "transition-opacity",
+            "duration-300"
+        );
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 };

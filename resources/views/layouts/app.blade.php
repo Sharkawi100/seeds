@@ -16,8 +16,8 @@
     
 <!-- Scripts -->
 {{-- @vite(['resources/css/app.css', 'resources/js/app.js']) --}}
-<link rel="stylesheet" href="{{ asset('build/assets/app-Dj5BByVQ.css') }}">
-<script src="{{ asset('build/assets/app-Bv74iOPe.js') }}" defer></script>
+<link rel="stylesheet" href="{{ asset('build/assets/app-BooDHNHA.css') }}">
+<script src="{{ asset('build/assets/app-ujfInKnC.js') }}" defer></script>
 <style>   
 * {
         font-family: 'Tajawal', sans-serif !important;
