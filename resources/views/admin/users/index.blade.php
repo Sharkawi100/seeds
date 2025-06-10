@@ -305,7 +305,7 @@ document.querySelectorAll('.status-toggle').forEach(toggle => {
         const isActive = this.dataset.active === '1';
         
         try {
-            const response = await fetch(`/admin/users/${userId}/toggle-status`, {
+            const response = await fetch(`{{ url('/admin/users') }}/${userId}/toggle-status`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -326,9 +326,12 @@ document.querySelectorAll('.status-toggle').forEach(toggle => {
                 statusText.className = `text-xs mt-1 font-medium ${data.is_active ? 'text-green-600' : 'text-red-600'}`;
                 
                 showNotification(data.message, 'success');
+            } else {
+                showNotification(data.message || 'حدث خطأ', 'error');
             }
         } catch (error) {
-            showNotification('حدث خطأ', 'error');
+            console.error('Status toggle error:', error);
+            showNotification('حدث خطأ في الاتصال', 'error');
         }
     });
 });
@@ -344,7 +347,7 @@ document.querySelectorAll('.role-select').forEach(select => {
         const userType = newRole === 'admin' ? this.dataset.currentType : newRole;
         
         try {
-            const response = await fetch(`/admin/users/${userId}/update-role`, {
+            const response = await fetch(`{{ url('/admin/users') }}/${userId}/update-role`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -360,34 +363,35 @@ document.querySelectorAll('.role-select').forEach(select => {
             const data = await response.json();
             
             if (data.success) {
+                this.dataset.currentType = userType;
+                this.dataset.isAdmin = isAdmin ? '1' : '0';
                 showNotification(data.message, 'success');
             } else {
+                // Revert to previous value
                 this.value = this.dataset.isAdmin === '1' ? 'admin' : this.dataset.currentType;
                 showNotification(data.error || 'حدث خطأ', 'error');
             }
         } catch (error) {
+            console.error('Role update error:', error);
+            // Revert to previous value
             this.value = this.dataset.isAdmin === '1' ? 'admin' : this.dataset.currentType;
-            showNotification('حدث خطأ', 'error');
+            showNotification('حدث خطأ في الاتصال', 'error');
         }
     });
 });
 
 function showNotification(message, type) {
     const notification = document.createElement('div');
-    
-    // Fix: Set classes individually, not as one string
-    notification.classList.add('fixed', 'top-4', 'left-4', 'px-6', 'py-3', 'rounded-xl', 'shadow-lg', 'font-medium', 'z-50', 'transition-opacity', 'duration-300');
-    
-    if (type === 'success') {
-        notification.classList.add('bg-green-500', 'text-white');
-    } else {
-        notification.classList.add('bg-red-500', 'text-white');
-    }
-    
+    notification.className = `fixed top-4 left-4 px-6 py-3 rounded-xl shadow-lg font-medium z-50 transition-all duration-300 ${
+        type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+    }`;
     notification.textContent = message;
     document.body.appendChild(notification);
     
-    // Animate out
+    // Animate in
+    setTimeout(() => notification.classList.add('opacity-100'), 100);
+    
+    // Remove after 3 seconds
     setTimeout(() => {
         notification.classList.add('opacity-0');
         setTimeout(() => notification.remove(), 300);

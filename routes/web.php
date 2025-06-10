@@ -200,8 +200,8 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
 
     // User Management
     Route::resource('users', AdminUserController::class);
-    Route::post('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
-    Route::post('users/{user}/update-role', [AdminUserController::class, 'updateRole'])->name('admin.users.update-role');
+    Route::post('users/{user}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::post('users/{user}/update-role', [AdminUserController::class, 'updateRole'])->name('users.update-role');
     Route::post('users/{user}/disconnect-social', [AdminUserController::class, 'disconnectSocial'])->name('users.disconnect-social');
     Route::get('users/{user}/impersonate', [AdminUserController::class, 'impersonate'])->name('users.impersonate');
     Route::get('users-export', [AdminUserController::class, 'export'])->name('users.export');
