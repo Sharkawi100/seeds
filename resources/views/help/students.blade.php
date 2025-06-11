@@ -197,7 +197,9 @@
                     </p>
                     
                     <!-- Image Placeholder -->
-                    <div class="image-placeholder h-48 rounded-xl mb-4">
+                    <img src="{{ asset('images/help/pin-entry-interface.png') }}" 
+     alt="واجهة إدخال رمز الاختبار" 
+     class="w-full h-48 object-cover rounded-xl mb-4 shadow-lg hover:shadow-xl transition-shadow">
                         <div class="text-center">
                             <i class="fas fa-image text-4xl mb-2"></i>
                             <p class="font-medium">صورة: إدخال رمز الاختبار</p>
@@ -222,7 +224,9 @@
                     </p>
                     
                     <!-- Image Placeholder -->
-                    <div class="image-placeholder h-48 rounded-xl mb-4">
+                    <img src="{{ asset('images/help/quiz-interface.png') }}" 
+     alt="واجهة الاختبار" 
+     class="w-full h-48 object-cover rounded-xl mb-4 shadow-lg hover:shadow-xl transition-shadow">
                         <div class="text-center">
                             <i class="fas fa-image text-4xl mb-2"></i>
                             <p class="font-medium">صورة: واجهة الاختبار</p>
@@ -247,8 +251,9 @@
                     </p>
                     
                     <!-- Image Placeholder -->
-                    <div class="image-placeholder h-48 rounded-xl mb-4">
-                        <div class="text-center">
+                    <img src="{{ asset('images/help/results-screen.png') }}" 
+                    alt="شاشة النتائج" 
+                    class="w-full h-48 object-cover rounded-xl mb-4 shadow-lg hover:shadow-xl transition-shadow">                        <div class="text-center">
                             <i class="fas fa-image text-4xl mb-2"></i>
                             <p class="font-medium">صورة: شاشة النتائج</p>
                         </div>
@@ -343,8 +348,9 @@
                 </h3>
                 
                 <!-- Image Placeholder for Juzoor Chart -->
-                <div class="image-placeholder h-64 rounded-2xl mb-6">
-                    <div class="text-center">
+                <img src="{{ asset('images/help/juzoor-chart-example.png') }}" 
+                alt="مثال على رسم جُذور البياني" 
+                class="w-full h-64 object-contain rounded-2xl mb-6 bg-white p-4 shadow-lg">                    <div class="text-center">
                         <i class="fas fa-chart-radar text-5xl mb-3"></i>
                         <p class="font-bold text-lg">رسم بياني لنموذج جُذور</p>
                         <p class="text-sm">يوضح أداءك في الجذور الأربعة</p>
@@ -438,8 +444,9 @@
                         </div>
                     </div>
                     
-                    <div class="image-placeholder h-96 rounded-2xl">
-                        <div class="text-center">
+                    <img src="{{ asset('images/help/access-methods.png') }}" 
+                    alt="طرق الدخول المختلفة" 
+                    class="w-full h-96 object-cover rounded-2xl shadow-xl">                        <div class="text-center">
                             <i class="fas fa-mobile-alt text-6xl mb-4"></i>
                             <p class="font-bold text-xl">لقطة شاشة</p>
                             <p class="text-lg">طرق الدخول المختلفة</p>
@@ -450,8 +457,9 @@
 
             <div id="taking-tab" class="tab-content hidden">
                 <div class="grid lg:grid-cols-2 gap-12 items-center">
-                    <div class="image-placeholder h-96 rounded-2xl">
-                        <div class="text-center">
+                    <img src="{{ asset('images/help/quiz-demo-preview.jpg') }}" 
+                    alt="معاينة الاختبار التجريبي" 
+                    class="w-full h-32 object-cover rounded-xl mb-4 shadow-lg">                        <div class="text-center">
                             <i class="fas fa-laptop text-6xl mb-4"></i>
                             <p class="font-bold text-xl">فيديو تفاعلي</p>
                             <p class="text-lg">كيفية أخذ الاختبار</p>
@@ -506,8 +514,9 @@
                     <div class="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
                         <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8">
                             <h4 class="text-2xl font-bold text-green-900 mb-4">🎯 النتيجة الإجمالية</h4>
-                            <div class="image-placeholder h-32 rounded-xl mb-4">
-                                <div class="text-center">
+                            <img src="{{ asset('images/help/juzoor-chart-mini.svg') }}" 
+                            alt="رسم جُذور مصغر" 
+                            class="w-full h-32 object-contain rounded-xl mb-4">                                <div class="text-center">
                                     <span class="text-4xl">85%</span>
                                     <p class="text-sm">مثال النتيجة</p>
                                 </div>
