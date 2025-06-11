@@ -69,14 +69,16 @@ class WelcomeController extends Controller
      *
      * @return \Illuminate\Http\RedirectResponse
      */
+    // In WelcomeController.php
     public function demo()
     {
-        // Find or create demo quiz
-        $demoQuiz = Quiz::where('is_demo', true)->first();
+        $demoQuiz = Quiz::where('is_demo', true)
+            ->where('is_active', true)
+            ->inRandomOrder()
+            ->first();
 
         if (!$demoQuiz) {
-            return redirect()->route('home')
-                ->with('error', 'الاختبار التجريبي غير متوفر حالياً');
+            abort(404, 'الاختبار التجريبي غير متاح حالياً');
         }
 
         return redirect()->route('quiz.take', $demoQuiz);
@@ -123,7 +125,7 @@ class WelcomeController extends Controller
     {
         return [
             'total_quizzes' => Quiz::count(),
-            'total_attempts' => Result::whereMonth('created_at', now()->month)->count(),
+            'total_attempts' => Result::nonDemo()->whereMonth('created_at', now()->month)->count(),
             'active_schools' => User::where('is_school', true)->where('last_login_at', '>=', now()->subDays(30))->count(),
             'total_questions' => DB::table('questions')->count(),
         ];
@@ -139,8 +141,7 @@ class WelcomeController extends Controller
         // Calculate average improvement per root type this week
         $weekAgo = now()->subWeek();
 
-        $improvements = Result::where('created_at', '>=', $weekAgo)
-            ->select(DB::raw('
+        $improvements = Result::nonDemo()->where('created_at', '>=', $weekAgo)->select(DB::raw('
                 AVG(JSON_EXTRACT(scores, "$.jawhar")) as avg_jawhar,
                 AVG(JSON_EXTRACT(scores, "$.zihn")) as avg_zihn,
                 AVG(JSON_EXTRACT(scores, "$.waslat")) as avg_waslat,

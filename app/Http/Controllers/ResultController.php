@@ -61,21 +61,41 @@ class ResultController extends Controller
 
         // Check if user is a teacher
         if (Auth::user()->is_admin || Auth::user()->user_type === 'teacher') {
-            // Show teacher's quizzes with result counts
+            // Show teacher's quizzes with result counts (excluding demo results)
             $quizzes = \App\Models\Quiz::where('user_id', Auth::id())
-                ->withCount('results')
+                ->withCount([
+                    'results' => function ($query) {
+                        $query->whereHas('quiz', function ($q) {
+                            $q->where('is_demo', false);
+                        });
+                    }
+                ])
                 ->with([
                     'results' => function ($query) {
-                        $query->latest()->limit(5);
+                        $query->whereHas('quiz', function ($q) {
+                            $q->where('is_demo', false);
+                        })->latest()->limit(5);
                     }
                 ])
                 ->latest()
                 ->paginate(10);
 
-            // Calculate statistics for all quizzes (not just current page)
+            // Calculate statistics for all quizzes (excluding demo results)
             $stats = \App\Models\Quiz::where('user_id', Auth::id())
-                ->withCount('results')
-                ->with('results')
+                ->withCount([
+                    'results' => function ($query) {
+                        $query->whereHas('quiz', function ($q) {
+                            $q->where('is_demo', false);
+                        });
+                    }
+                ])
+                ->with([
+                    'results' => function ($query) {
+                        $query->whereHas('quiz', function ($q) {
+                            $q->where('is_demo', false);
+                        });
+                    }
+                ])
                 ->get()
                 ->reduce(function ($carry, $quiz) {
                     $carry['total_results'] += $quiz->results_count;
@@ -95,8 +115,8 @@ class ResultController extends Controller
             return view('results.teacher-index', compact('quizzes', 'stats'));
         }
 
-        // For students, show their own results
-        $results = Result::where('user_id', Auth::id())
+        // For students, show their own results (excluding demo results)
+        $results = Result::nonDemo()->where('user_id', Auth::id())
             ->with(['quiz'])
             ->latest()
             ->paginate(10);
@@ -106,6 +126,8 @@ class ResultController extends Controller
 
     /**
      * Show results for a specific quiz (for quiz owners)
+     * Note: This shows ALL results for the specific quiz, including demo if the quiz is demo
+     * because teachers should see all results for their own quizzes
      */
     public function quizResults($quizId)
     {
@@ -120,7 +142,8 @@ class ResultController extends Controller
             abort(403, 'غير مصرح لك بعرض نتائج هذا الاختبار');
         }
 
-        // Get ALL results (including guests)
+        // Get ALL results for this specific quiz (including demo results if this quiz is demo)
+        // Teachers should see all results for their own quizzes
         $results = Result::where('quiz_id', $quizId)
             ->with(['user'])
             ->latest()

@@ -179,4 +179,14 @@ class User extends Authenticatable
     {
         return $this->is_admin || $this->user_type === 'teacher';
     }
+
+    public function scopeTeachers($query)
+    {
+        return $query->where('user_type', 'teacher');
+    }
+
+    public function scopeStudents($query)
+    {
+        return $query->where('user_type', 'student');
+    }
 }

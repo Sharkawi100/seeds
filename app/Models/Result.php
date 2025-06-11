@@ -19,7 +19,12 @@ class Result extends Model
     {
         return $this->belongsTo(Quiz::class);
     }
-
+    public function scopeNonDemo($query)
+    {
+        return $query->whereHas('quiz', function ($q) {
+            $q->where('is_demo', false);
+        });
+    }
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

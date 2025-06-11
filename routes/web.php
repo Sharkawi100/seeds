@@ -61,6 +61,8 @@ Route::prefix('quiz')->name('quiz.')->group(function () {
 
 // Results Viewing (Guest with Token or Authenticated)
 Route::get('/results/{result}', [ResultController::class, 'show'])->name('results.show');
+Route::get('/help/students', fn() => view('help.students'))->name('help.students');
+
 
 /*
 |--------------------------------------------------------------------------
