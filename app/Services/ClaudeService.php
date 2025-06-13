@@ -3,69 +3,27 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use App\Models\Quiz;
-use App\Models\Question;
 
-class ClaudeService  // MAKE SURE THIS SAYS ClaudeService NOT QuizController
+class ClaudeService
 {
-    private string $apiKey;
-    private string $model;
-    private int $maxTokens;
-    private float $temperature;
-    private bool $cacheEnabled;
-    private array $httpOptions;
+    private $apiKey;
+    private $baseUrl = 'https://api.anthropic.com/v1';
+    private $model = 'claude-3-5-sonnet-20241022';
+    private $maxTokens = 4000;
+    private $temperature = 0.5;
 
     public function __construct()
     {
-        $this->apiKey = config('services.claude.key');
-        $this->model = config('services.claude.model', 'claude-3-5-sonnet-20241022');
-        $this->maxTokens = (int) config('services.claude.max_tokens', 4000);
-        $this->temperature = (float) config('services.claude.temperature', 0.7);
-        $this->cacheEnabled = (bool) config('services.claude.cache_enabled', true);
+        $this->apiKey = config('services.claude.api_key');
 
-        // INCREASED TIMEOUT SETTINGS HERE
-        $this->httpOptions = [
-            'timeout' => (int) config('services.claude.timeout', 120),  // Use config or default to 120
-            'connect_timeout' => 30,    // Increased from 10 to 30 seconds
-            'headers' => [
-                'anthropic-version' => '2023-06-01',
-                'anthropic-beta' => 'messages-2023-12-15',
-                'x-api-key' => $this->apiKey,
-                'content-type' => 'application/json',
-            ]
-        ];
-
-        $this->configureProxy();
-
-        // Debug logging for initialization
-        Log::info('ClaudeService initialized', [
-            'model' => $this->model,
-            'timeout' => $this->httpOptions['timeout'],
-            'api_key_exists' => !empty($this->apiKey)
-        ]);
-    }
-
-    /**
-     * Configure proxy settings if available
-     */
-    private function configureProxy(): void
-    {
-        $httpProxy = env('HTTP_PROXY');
-        $httpsProxy = env('HTTPS_PROXY', $httpProxy);
-
-        if ($httpProxy || $httpsProxy) {
-            $this->httpOptions['proxy'] = [
-                'http' => $httpProxy,
-                'https' => $httpsProxy,
-            ];
+        if (!$this->apiKey) {
+            throw new \Exception('Claude API key not configured');
         }
     }
 
     /**
-     * Generate educational text/passage
+     * Generate educational text
      */
     public function generateEducationalText(
         string $subject,
@@ -99,45 +57,6 @@ class ClaudeService  // MAKE SURE THIS SAYS ClaudeService NOT QuizController
                 'params' => compact('subject', 'gradeLevel', 'topic', 'textType', 'length')
             ]);
             throw new \Exception('فشل توليد النص: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Generate questions from provided text
-     */
-    public function generateQuestionsFromText(
-        string $text,
-        string $subject,
-        int $gradeLevel,
-        array $roots
-    ): array {
-        Log::info('Generating questions from text', [
-            'text_length' => strlen($text),
-            'subject' => $subject,
-            'roots' => $roots
-        ]);
-
-        $prompt = $this->buildQuestionsFromTextPrompt($text, $subject, $gradeLevel, $roots);
-
-        try {
-            $response = $this->sendRequest($prompt, [
-                'temperature' => 0.5,
-                'max_tokens' => 3000
-            ]);
-
-            $questions = $this->parseQuizResponse($response);
-            $validatedQuestions = $this->validateQuestionDistribution($questions, $roots);
-
-            $this->trackUsage('questions_from_text', count($validatedQuestions));
-
-            Log::info('Questions generated successfully', ['count' => count($validatedQuestions)]);
-            return $validatedQuestions;
-        } catch (\Exception $e) {
-            Log::error('Question generation from text failed', [
-                'error' => $e->getMessage(),
-                'text_length' => strlen($text)
-            ]);
-            throw new \Exception('فشل توليد الأسئلة من النص: ' . $e->getMessage());
         }
     }
 
@@ -176,6 +95,13 @@ class ClaudeService  // MAKE SURE THIS SAYS ClaudeService NOT QuizController
             ]);
 
             $result = $this->parseCompleteQuizResponse($response);
+
+            // Enhanced validation and filtering
+            if (isset($result['questions'])) {
+                $result['questions'] = $this->filterSimilarQuestions($result['questions']);
+                $result['questions'] = $this->validateQuestionQuality($result['questions']);
+            }
+
             $this->trackUsage('complete_quiz_generation', count($result['questions']));
 
             Log::info('Juzoor quiz generated successfully', [
@@ -193,6 +119,557 @@ class ClaudeService  // MAKE SURE THIS SAYS ClaudeService NOT QuizController
             throw new \Exception('فشل توليد الاختبار: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Generate questions from provided text with enhanced coverage
+     */
+    public function generateQuestionsFromText(
+        string $text,
+        string $subject,
+        int $gradeLevel,
+        array $roots
+    ): array {
+        Log::info('Generating questions from text', [
+            'text_length' => strlen($text),
+            'subject' => $subject,
+            'roots' => $roots
+        ]);
+
+        // Split text into segments for better coverage
+        $textSegments = $this->splitTextIntoSegments($text);
+
+        $allQuestions = [];
+
+        // Generate questions for each root type separately to ensure distinctness
+        foreach ($roots as $rootType => $levels) {
+            foreach ($levels as $level => $count) {
+                for ($i = 0; $i < $count; $i++) {
+                    $prompt = $this->buildRootSpecificPrompt(
+                        $text,
+                        $subject,
+                        $gradeLevel,
+                        $rootType,
+                        (int) $level,
+                        $textSegments
+                    );
+
+                    try {
+                        $response = $this->sendRequest($prompt, [
+                            'temperature' => 0.4, // Lower temperature for more focused questions
+                            'max_tokens' => 800
+                        ]);
+
+                        $question = $this->parseQuestionResponse($response, $rootType, (int) $level);
+                        if ($question && $this->isQuestionValid($question)) {
+                            $allQuestions[] = $question;
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to generate question', [
+                            'root' => $rootType,
+                            'level' => $level,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+            }
+        }
+
+        // Filter similar questions and validate quality
+        $filteredQuestions = $this->filterSimilarQuestions($allQuestions);
+        $validatedQuestions = $this->validateQuestionQuality($filteredQuestions);
+
+        $this->trackUsage('questions_from_text', count($validatedQuestions));
+
+        Log::info('Questions generated successfully', [
+            'initial_count' => count($allQuestions),
+            'after_filtering' => count($filteredQuestions),
+            'final_count' => count($validatedQuestions)
+        ]);
+
+        return $validatedQuestions;
+    }
+
+    /**
+     * Generate smart suggestions for question improvement
+     */
+    public function generateQuestionSuggestions(
+        string $questionText,
+        array $options,
+        string $correctAnswer,
+        string $rootType,
+        int $depthLevel,
+        string $context = ''
+    ): array {
+        Log::info('Generating question suggestions', [
+            'root_type' => $rootType,
+            'depth_level' => $depthLevel
+        ]);
+
+        $prompt = $this->buildSuggestionPrompt(
+            $questionText,
+            $options,
+            $correctAnswer,
+            $rootType,
+            $depthLevel,
+            $context
+        );
+
+        try {
+            $response = $this->sendRequest($prompt, [
+                'temperature' => 0.7,
+                'max_tokens' => 1000
+            ]);
+
+            $suggestions = $this->parseSuggestionsResponse($response);
+            $this->trackUsage('question_suggestions', 1);
+
+            Log::info('Question suggestions generated successfully', [
+                'suggestions_count' => count($suggestions)
+            ]);
+
+            return $suggestions;
+        } catch (\Exception $e) {
+            Log::error('Question suggestions failed', [
+                'error' => $e->getMessage()
+            ]);
+            throw new \Exception('فشل توليد الاقتراحات: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Build root-specific prompt for precise question generation
+     */
+    private function buildRootSpecificPrompt(
+        string $text,
+        string $subject,
+        int $gradeLevel,
+        string $rootType,
+        int $depthLevel,
+        array $textSegments
+    ): string {
+        $subjectName = $this->getSubjectName($subject);
+        $rootDefinition = $this->getRootDefinition($rootType);
+        $levelDescription = $this->getDepthLevelDescription($depthLevel);
+
+        // Select a random text segment to ensure coverage
+        $selectedSegment = $textSegments[array_rand($textSegments)];
+
+        $prompt = <<<PROMPT
+أنت خبير تعليمي متخصص في نموذج جُذور. مهمتك إنشاء سؤال واحد فقط من نوع {$rootDefinition['name']}.
+
+النص المرجعي:
+{$text}
+
+التركيز على هذا الجزء (لضمان التغطية):
+{$selectedSegment}
+
+المعلومات:
+- المادة: {$subjectName}
+- الصف: {$gradeLevel}
+- نوع الجذر: {$rootDefinition['name']} ({$rootDefinition['focus']})
+- المستوى: {$depthLevel} ({$levelDescription})
+
+{$rootDefinition['detailed_instructions']}
+
+قواعد صارمة:
+1. سؤال واحد فقط يركز على {$rootDefinition['focus']}
+2. يجب أن يكون مختلفاً تماماً عن أسئلة الأنواع الأخرى
+3. أربعة خيارات مختلفة تماماً
+4. ممنوع "جميع ما سبق" أو "كل ما ذكر"
+5. الإجابة الصحيحة واضحة من النص
+
+أرجع JSON بالشكل التالي فقط:
+{
+    "question": "نص السؤال",
+    "options": ["خيار1", "خيار2", "خيار3", "خيار4"],
+    "correct_answer": "الإجابة الصحيحة",
+    "root_type": "{$rootType}",
+    "depth_level": {$depthLevel}
+}
+PROMPT;
+
+        return $prompt;
+    }
+
+    /**
+     * Build suggestion prompt for question improvement
+     */
+    private function buildSuggestionPrompt(
+        string $questionText,
+        array $options,
+        string $correctAnswer,
+        string $rootType,
+        int $depthLevel,
+        string $context
+    ): string {
+        $rootDefinition = $this->getRootDefinition($rootType);
+        $optionsText = implode(', ', $options);
+
+        $prompt = <<<PROMPT
+أنت خبير تعليمي متخصص في تحسين الأسئلة التعليمية لنموذج جُذور.
+
+السؤال الحالي:
+النص: {$questionText}
+الخيارات: {$optionsText}
+الإجابة الصحيحة: {$correctAnswer}
+نوع الجذر: {$rootDefinition['name']} ({$rootDefinition['focus']})
+المستوى: {$depthLevel}
+
+السياق: {$context}
+
+قدم اقتراحات للتحسين في المجالات التالية:
+1. وضوح صياغة السؤال
+2. جودة الخيارات المتاحة
+3. التأكد من مطابقة السؤال لنوع الجذر
+4. تحسين مستوى الصعوبة
+5. إضافة عمق أكثر للسؤال
+
+أرجع JSON بالشكل التالي:
+{
+    "suggestions": [
+        {
+            "type": "نوع التحسين",
+            "current": "الوضع الحالي",
+            "suggested": "التحسين المقترح",
+            "reason": "سبب التحسين"
+        }
+    ],
+    "improved_question": {
+        "question": "السؤال المحسن",
+        "options": ["خيار1", "خيار2", "خيار3", "خيار4"],
+        "correct_answer": "الإجابة الصحيحة"
+    }
+}
+PROMPT;
+
+        return $prompt;
+    }
+
+    /**
+     * Get detailed root definition with specific instructions
+     */
+    private function getRootDefinition(string $rootType): array
+    {
+        $definitions = [
+            'jawhar' => [
+                'name' => 'جَوهر (الماهية)',
+                'focus' => 'فهم المعاني والتعريفات الأساسية',
+                'detailed_instructions' => '
+                    أسئلة جَوهر تركز على:
+                    - ما معنى هذا المصطلح؟
+                    - ما هي الفكرة الأساسية؟
+                    - من هي الشخصية الرئيسية؟
+                    - ما هو تعريف هذا المفهوم؟
+                    - ما طبيعة هذا الشيء؟
+                    
+                    تجنب الأسئلة التحليلية أو السببية أو التطبيقية.'
+            ],
+            'zihn' => [
+                'name' => 'ذِهن (العقل)',
+                'focus' => 'التحليل والتفكير المنطقي',
+                'detailed_instructions' => '
+                    أسئلة ذِهن تركز على:
+                    - لماذا حدث هذا؟
+                    - كيف تعمل هذه العملية؟
+                    - ما العلاقة بين السبب والنتيجة؟
+                    - قارن بين X و Y
+                    - حلل هذا الموقف
+                    
+                    تجنب أسئلة التعريف البسيطة أو التطبيق العملي.'
+            ],
+            'waslat' => [
+                'name' => 'وَصلات (الروابط)',
+                'focus' => 'الربط بين المفاهيم والواقع',
+                'detailed_instructions' => '
+                    أسئلة وَصلات تركز على:
+                    - كيف يرتبط هذا بالحياة الواقعية؟
+                    - ما العلاقة بين هذا المفهوم ومجالات أخرى؟
+                    - كيف يؤثر هذا على المجتمع؟
+                    - ما الصلة بين هذا والثقافة؟
+                    - كيف يتصل هذا بتجربتك الشخصية؟
+                    
+                    تجنب الأسئلة النظرية المجردة أو التعريفات البسيطة.'
+            ],
+            'roaya' => [
+                'name' => 'رُؤية (البصيرة)',
+                'focus' => 'الإبداع والتطبيق المستقبلي',
+                'detailed_instructions' => '
+                    أسئلة رُؤية تركز على:
+                    - كيف يمكن استخدام هذا في المستقبل؟
+                    - ما الحلول الإبداعية لهذه المشكلة؟
+                    - كيف يمكن تطوير هذا الفكرة؟
+                    - ما النتائج المحتملة لهذا؟
+                    - كيف يمكن الاستفادة من هذا عملياً؟
+                    
+                    تجنب الأسئلة التحليلية أو التعريفية البسيطة.'
+            ]
+        ];
+
+        return $definitions[$rootType] ?? $definitions['jawhar'];
+    }
+
+    /**
+     * Get depth level description
+     */
+    private function getDepthLevelDescription(int $level): string
+    {
+        $descriptions = [
+            1 => 'سطحي - فهم أولي ومباشر',
+            2 => 'متوسط - فهم أعمق مع التحليل',
+            3 => 'عميق - فهم متقدم مع التطبيق المبتكر'
+        ];
+
+        return $descriptions[$level] ?? $descriptions[1];
+    }
+
+    /**
+     * Split text into segments for better coverage
+     */
+    private function splitTextIntoSegments(string $text): array
+    {
+        // Split by paragraphs first
+        $paragraphs = preg_split('/\n\s*\n/', $text);
+
+        $segments = [];
+        foreach ($paragraphs as $paragraph) {
+            $paragraph = trim($paragraph);
+            if (strlen($paragraph) > 50) { // Minimum segment length
+                // Further split long paragraphs by sentences
+                $sentences = preg_split('/[.!?]+/', $paragraph);
+                $currentSegment = '';
+
+                foreach ($sentences as $sentence) {
+                    $sentence = trim($sentence);
+                    if (strlen($sentence) > 20) {
+                        if (strlen($currentSegment) + strlen($sentence) > 200) {
+                            if (!empty($currentSegment)) {
+                                $segments[] = $currentSegment;
+                            }
+                            $currentSegment = $sentence;
+                        } else {
+                            $currentSegment .= ($currentSegment ? '. ' : '') . $sentence;
+                        }
+                    }
+                }
+
+                if (!empty($currentSegment)) {
+                    $segments[] = $currentSegment;
+                }
+            }
+        }
+
+        // Ensure we have at least one segment
+        if (empty($segments)) {
+            $segments[] = substr($text, 0, 200);
+        }
+
+        return $segments;
+    }
+
+    /**
+     * Filter similar questions using semantic comparison
+     */
+    private function filterSimilarQuestions(array $questions): array
+    {
+        $filtered = [];
+
+        foreach ($questions as $question) {
+            $isSimilar = false;
+
+            foreach ($filtered as $existingQuestion) {
+                $similarity = $this->calculateQuestionSimilarity(
+                    $question['question'],
+                    $existingQuestion['question']
+                );
+
+                // Also check option similarity
+                $optionSimilarity = $this->calculateOptionsSimilarity(
+                    $question['options'] ?? [],
+                    $existingQuestion['options'] ?? []
+                );
+
+                if ($similarity > 0.7 || $optionSimilarity > 0.6) {
+                    $isSimilar = true;
+                    Log::info('Filtered similar question', [
+                        'similarity' => $similarity,
+                        'option_similarity' => $optionSimilarity,
+                        'new_question' => substr($question['question'], 0, 50),
+                        'existing_question' => substr($existingQuestion['question'], 0, 50)
+                    ]);
+                    break;
+                }
+            }
+
+            if (!$isSimilar) {
+                $filtered[] = $question;
+            }
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * Calculate question similarity using simple text comparison
+     */
+    private function calculateQuestionSimilarity(string $q1, string $q2): float
+    {
+        // Remove common Arabic question words for better comparison
+        $commonWords = ['ما', 'من', 'متى', 'أين', 'كيف', 'لماذا', 'هل', 'أي', 'كم'];
+
+        foreach ($commonWords as $word) {
+            $q1 = str_replace($word, '', $q1);
+            $q2 = str_replace($word, '', $q2);
+        }
+
+        $q1 = preg_replace('/\s+/', ' ', trim($q1));
+        $q2 = preg_replace('/\s+/', ' ', trim($q2));
+
+        // Calculate word overlap
+        $words1 = explode(' ', $q1);
+        $words2 = explode(' ', $q2);
+
+        $intersection = count(array_intersect($words1, $words2));
+        $union = count(array_unique(array_merge($words1, $words2)));
+
+        return $union > 0 ? $intersection / $union : 0;
+    }
+
+    /**
+     * Calculate options similarity
+     */
+    private function calculateOptionsSimilarity(array $options1, array $options2): float
+    {
+        if (empty($options1) || empty($options2)) {
+            return 0;
+        }
+
+        $similarities = [];
+        foreach ($options1 as $opt1) {
+            foreach ($options2 as $opt2) {
+                $similarities[] = $this->calculateQuestionSimilarity($opt1, $opt2);
+            }
+        }
+
+        return count($similarities) > 0 ? max($similarities) : 0;
+    }
+
+    /**
+     * Validate question quality
+     */
+    private function validateQuestionQuality(array $questions): array
+    {
+        $validated = [];
+
+        foreach ($questions as $question) {
+            if ($this->isQuestionValid($question)) {
+                $validated[] = $question;
+            } else {
+                Log::warning('Invalid question filtered out', [
+                    'question' => substr($question['question'] ?? '', 0, 50),
+                    'reason' => 'Quality validation failed'
+                ]);
+            }
+        }
+
+        return $validated;
+    }
+
+    /**
+     * Check if question meets quality standards
+     */
+    private function isQuestionValid(array $question): bool
+    {
+        // Check required fields
+        if (empty($question['question']) || empty($question['options']) || empty($question['correct_answer'])) {
+            return false;
+        }
+
+        // Check options count
+        if (count($question['options']) !== 4) {
+            return false;
+        }
+
+        // Check if correct answer exists in options
+        if (!in_array($question['correct_answer'], $question['options'])) {
+            return false;
+        }
+
+        // Check for forbidden options
+        $forbiddenOptions = ['جميع ما سبق', 'كل ما ذكر', 'لا شيء مما ذكر', 'أ و ب', 'ب و ج'];
+        foreach ($question['options'] as $option) {
+            foreach ($forbiddenOptions as $forbidden) {
+                if (stripos($option, $forbidden) !== false) {
+                    return false;
+                }
+            }
+        }
+
+        // Check for duplicate options
+        if (count($question['options']) !== count(array_unique($question['options']))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse single question response
+     */
+    private function parseQuestionResponse(array $response, string $expectedRoot, int $expectedLevel): ?array
+    {
+        try {
+            $content = $this->extractContent($response);
+            $jsonStart = strpos($content, '{');
+
+            if ($jsonStart === false) {
+                return null;
+            }
+
+            $potentialJson = substr($content, $jsonStart);
+            $data = json_decode($potentialJson, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && isset($data['question'])) {
+                // Ensure correct root type and depth level
+                $data['root_type'] = $expectedRoot;
+                $data['depth_level'] = $expectedLevel;
+
+                return $data;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to parse question response', ['error' => $e->getMessage()]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse suggestions response
+     */
+    private function parseSuggestionsResponse(array $response): array
+    {
+        try {
+            $content = $this->extractContent($response);
+            $jsonStart = strpos($content, '{');
+
+            if ($jsonStart === false) {
+                return [];
+            }
+
+            $potentialJson = substr($content, $jsonStart);
+            $data = json_decode($potentialJson, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && isset($data['suggestions'])) {
+                return $data;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to parse suggestions response', ['error' => $e->getMessage()]);
+        }
+
+        return [];
+    }
+
+    // ... [Keep all existing helper methods like buildTextGenerationPrompt, buildJuzoorQuizPrompt, 
+    // sendRequest, extractContent, parseCompleteQuizResponse, getSubjectName, etc.]
 
     /**
      * Build prompt for text generation
@@ -240,98 +717,6 @@ PROMPT;
     }
 
     /**
-     * Build prompt for generating questions from text
-     */
-    private function buildQuestionsFromTextPrompt(
-        string $text,
-        string $subject,
-        int $gradeLevel,
-        array $roots
-    ): string {
-        $subjectName = $this->getSubjectName($subject);
-
-        $prompt = <<<PROMPT
-    أنت مساعد تعليمي متخصص في إنشاء أسئلة اختبار باستخدام نموذج جُذور التعليمي بناءً على نص معطى.
-    
-    النص المعطى:
-    {$text}
-    
-    المعلومات الأساسية:
-    - المادة: {$subjectName}
-    - الصف: {$gradeLevel}
-    
-    نموذج جُذور يتكون من أربعة أنواع:
-    1. جَوهر (jawhar): "ما هو؟" - أسئلة عن التعريفات والحقائق المباشرة من النص
-    2. ذِهن (zihn): "كيف يعمل؟" - أسئلة تحليلية عن العمليات والأسباب في النص
-    3. وَصلات (waslat): "كيف يرتبط؟" - أسئلة عن العلاقات والروابط بين عناصر النص
-    4. رُؤية (roaya): "كيف نستخدمه؟" - أسئلة تطبيقية وإبداعية مبنية على النص
-    
-    مستويات العمق:
-    - المستوى 1: سطحي (أسئلة مباشرة من النص)
-    - المستوى 2: متوسط (تحليل وفهم أعمق)
-    - المستوى 3: عميق (تفكير نقدي واستنتاج)
-    
-    المطلوب إنشاء أسئلة بناءً على النص المعطى بالتوزيع التالي بدقة تامة:
-    PROMPT;
-
-        $totalRequested = 0;
-        foreach ($roots as $rootType => $levels) {
-            $rootName = $this->getRootName($rootType);
-            $prompt .= "\n\n{$rootName} ({$rootType}):";
-            foreach ($levels as $level => $count) {
-                if ($count > 0) {
-                    $prompt .= "\n- المستوى {$level}: {$count} أسئلة بالضبط";
-                    $totalRequested += $count;
-                }
-            }
-        }
-        $prompt .= "\n\nإجمالي الأسئلة المطلوبة: {$totalRequested} سؤال بالضبط";
-
-        $prompt .= <<<PROMPT
-    
-    قواعد مهمة جداً - يجب اتباعها بدقة 100%:
-    1. جميع الأسئلة يجب أن تكون مرتبطة مباشرة بالنص المعطى
-    2. لا تسأل عن معلومات غير موجودة في النص
-    3. كل سؤال يجب أن يكون واضحاً ومحدداً
-    4. أربعة خيارات لكل سؤال، خيار واحد صحيح فقط
-    5. الخيارات الخاطئة يجب أن تكون منطقية ومعقولة
-    6. استخدم EXACTLY الكلمات الإنجليزية للـ root_type: "jawhar", "zihn", "waslat", "roaya"
-    7. استخدم EXACTLY الأرقام للـ depth_level: 1, 2, أو 3
-    8. ممنوع منعاً باتاً استخدام خيارات مثل "جميع ما سبق" أو "كل ما ذكر" أو "لا شيء مما ذكر" أو "أ و ب"
-    9. كل خيار يجب أن يكون مستقلاً ومختلفاً عن الخيارات الأخرى
-    10. يجب إنتاج العدد المطلوب بالضبط لكل نوع ومستوى
-    11. إذا لم تستطع إنتاج سؤال لنوع معين، اجعله من نوع "jawhar" بدلاً من تجاهله
-
-
-    
-    أرجع الأسئلة بصيغة JSON بالشكل التالي بالضبط:
-    {
-        "questions": [
-            {
-                "question": "نص السؤال",
-                "options": ["الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الخيار الرابع"],
-                "correct_answer": "الإجابة الصحيحة (يجب أن تكون واحدة من الخيارات الأربعة بالضبط)",
-                "root_type": "jawhar أو zihn أو waslat أو roaya (استخدم الكلمات الإنجليزية فقط)",
-                "depth_level": 1 أو 2 أو 3 (رقم فقط)
-            }
-        ]
-    }
-        تأكد من إنتاج {$totalRequested} سؤال بالضبط وفقاً للتوزيع المحدد أعلاه.
-
-    مثال على سؤال صحيح:
-    {
-        "question": "ما هو لون السجادة المذكورة في النص؟",
-        "options": ["أحمر", "أزرق", "أخضر", "ملونة"],
-        "correct_answer": "ملونة",
-        "root_type": "jawhar",
-        "depth_level": 1
-    }
-PROMPT;
-
-        return $prompt;
-    }
-
-    /**
      * Build prompt for complete Juzoor quiz
      */
     private function buildJuzoorQuizPrompt(
@@ -372,6 +757,7 @@ PROMPT;
                 $prompt .= "\n- المستوى {$depth}: {$count} أسئلة";
             }
         }
+
         $prompt .= "\n\nقواعد مهمة للأسئلة:";
         $prompt .= "\n- كل سؤال يحتوي على 4 خيارات مختلفة تماماً";
         $prompt .= "\n- ممنوع استخدام خيارات مثل 'جميع ما سبق' أو 'كل ما ذكر'";
@@ -412,47 +798,30 @@ PROMPT;
                 ]
             ],
             'max_tokens' => $overrides['max_tokens'] ?? $this->maxTokens,
-            'temperature' => $overrides['temperature'] ?? $this->temperature,
+            'temperature' => $overrides['temperature'] ?? $this->temperature
         ];
 
-        Log::info('Sending request to Claude API', [
-            'model' => $payload['model'],
-            'max_tokens' => $payload['max_tokens'],
-            'prompt_length' => strlen($prompt)
-        ]);
+        $response = Http::withHeaders([
+            'x-api-key' => $this->apiKey,
+            'anthropic-version' => '2023-06-01',
+            'content-type' => 'application/json'
+        ])->timeout(60)->post($this->baseUrl . '/messages', $payload);
 
-        try {
-            $response = Http::withOptions($this->httpOptions)
-                ->post('https://api.anthropic.com/v1/messages', $payload);
-
-            Log::info('Claude API response received', [
-                'status' => $response->status(),
-                'successful' => $response->successful()
-            ]);
-
-            if (!$response->successful()) {
-                $error = $response->json('error.message', 'Unknown error');
-                $statusCode = $response->status();
-                Log::error('Claude API error', [
-                    'status' => $statusCode,
-                    'error' => $error,
-                    'response' => $response->body()
-                ]);
-                throw new \Exception("Claude API Error ({$statusCode}): {$error}");
-            }
-
-            return $response->json();
-        } catch (\Exception $e) {
+        if (!$response->successful()) {
+            $errorMsg = $response->json('error.message') ?? 'Unknown API error';
             Log::error('Claude API request failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'status' => $response->status(),
+                'error' => $errorMsg,
+                'body' => $response->body()
             ]);
-            throw $e;
+            throw new \Exception("Claude API error: {$errorMsg}");
         }
+
+        return $response->json();
     }
 
     /**
-     * Extract content from Claude response
+     * Extract text content from Claude response
      */
     private function extractContent(array $response): string
     {
@@ -472,26 +841,21 @@ PROMPT;
     }
 
     /**
-     * Parse quiz response from AI
+     * Parse complete quiz response
      */
-    private function parseQuizResponse(array $response): array
+    private function parseCompleteQuizResponse(array $response): array
     {
         $content = $this->extractContent($response);
 
-        Log::info('Parsing quiz response', ['content_length' => strlen($content)]);
-
-        // Try to find complete JSON structure
+        // Find JSON content
         $jsonStart = strpos($content, '{');
-
         if ($jsonStart === false) {
-            Log::error('No JSON start found in response');
             throw new \Exception('No valid JSON found in AI response');
         }
 
-        // Extract from first { to end of content, then try to find valid JSON
         $potentialJson = substr($content, $jsonStart);
 
-        // Try to find the matching closing brace by counting braces
+        // Find matching closing brace
         $braceCount = 0;
         $jsonEnd = -1;
 
@@ -507,81 +871,16 @@ PROMPT;
             }
         }
 
-        if ($jsonEnd === -1) {
-            Log::error('No matching closing brace found', [
-                'content_preview' => substr($content, 0, 500)
-            ]);
-            throw new \Exception('Incomplete JSON in AI response');
-        }
-
-        $jsonString = substr($potentialJson, 0, $jsonEnd + 1);
-
-        // Clean up common JSON issues from AI responses
-        $jsonString = preg_replace('/,\s*]/', ']', $jsonString);  // Remove trailing commas in arrays
-        $jsonString = preg_replace('/,\s*}/', '}', $jsonString);  // Remove trailing commas in objects
-
-        Log::info('Extracted JSON string', [
-            'length' => strlen($jsonString),
-            'preview' => substr($jsonString, 0, 200)
-        ]);
-
-        $data = json_decode($jsonString, true);
-
-        if (json_last_error() === JSON_ERROR_NONE && isset($data['questions'])) {
-            Log::info('Successfully parsed questions', ['count' => count($data['questions'])]);
-
-            // Log first question structure for debugging
-            if (!empty($data['questions'])) {
-                Log::info('Sample question structure', [
-                    'first_question' => $data['questions'][0]
-                ]);
-            }
-
-            return $data['questions'];
-        } else {
-            Log::error('JSON parsing failed', [
-                'json_error' => json_last_error_msg(),
-                'json_string_preview' => substr($jsonString, 0, 500)
-            ]);
-            throw new \Exception('Failed to parse quiz questions from AI response: ' . json_last_error_msg());
-        }
-    }
-
-    /**
-     * Parse complete quiz response (with passage)
-     */
-    private function parseCompleteQuizResponse(array $response): array
-    {
-        $content = $this->extractContent($response);
-
-        Log::info('Parsing complete quiz response', ['content_length' => strlen($content)]);
-
-        // Extract JSON from the response
-        if (preg_match('/\{[\s\S]*\}/s', $content, $matches)) {
-
-            $jsonString = $matches[0];
-            // Clean up common JSON issues from AI responses
-            $jsonString = preg_replace('/,\s*]/', ']', $jsonString);  // Remove trailing commas in arrays
-            $jsonString = preg_replace('/,\s*}/', '}', $jsonString);  // Remove trailing commas in objects
+        if ($jsonEnd !== -1) {
+            $jsonString = substr($potentialJson, 0, $jsonEnd + 1);
             $data = json_decode($jsonString, true);
 
             if (json_last_error() === JSON_ERROR_NONE) {
-                $result = [
+                return [
                     'passage' => $data['passage'] ?? null,
                     'passage_title' => $data['passage_title'] ?? null,
                     'questions' => $data['questions'] ?? []
                 ];
-
-                Log::info('Successfully parsed complete quiz', [
-                    'has_passage' => !empty($result['passage']),
-                    'questions_count' => count($result['questions'])
-                ]);
-
-                return $result;
-            } else {
-                Log::error('JSON parsing failed for complete quiz', [
-                    'json_error' => json_last_error_msg()
-                ]);
             }
         }
 
@@ -589,235 +888,25 @@ PROMPT;
     }
 
     /**
-     * Validate question distribution matches request
+     * Track AI usage
      */
-    private function validateQuestionDistribution(array $questions, array $requestedRoots): array
+    private function trackUsage(string $operation, int $tokensUsed): void
     {
-        $validated = [];
-        $distribution = [];
-        $unmatchedQuestions = [];
-
-        // Count requested questions
-        foreach ($requestedRoots as $root => $levels) {
-            foreach ($levels as $level => $count) {
-                $key = "{$root}_{$level}";
-                $distribution[$key] = [
-                    'requested' => $count,
-                    'added' => 0
-                ];
-            }
-        }
-
-        // Process questions
-        foreach ($questions as $index => $question) {
-            // Normalize root_type (handle variations like Jawhar, JAWHAR, etc.)
-            $rootType = strtolower(trim($question['root_type'] ?? ''));
-
-            // Map Arabic or English variations to standard keys
-            $rootTypeMap = [
-                'jawhar' => 'jawhar',
-                'جوهر' => 'jawhar',
-                'جَوهر' => 'jawhar',
-                'zihn' => 'zihn',
-                'ذهن' => 'zihn',
-                'ذِهن' => 'zihn',
-                'waslat' => 'waslat',
-                'وصلات' => 'waslat',
-                'وَصلات' => 'waslat',
-                'roaya' => 'roaya',
-                'رؤية' => 'roaya',
-                'رُؤية' => 'roaya',
-            ];
-
-            $normalizedRoot = $rootTypeMap[$rootType] ?? $rootType;
-
-            // Ensure depth_level is an integer
-            $depthLevel = (int) ($question['depth_level'] ?? 0);
-
-            // Update question with normalized values
-            $question['root_type'] = $normalizedRoot;
-            $question['depth_level'] = $depthLevel;
-
-            $key = "{$normalizedRoot}_{$depthLevel}";
-
-            if (isset($distribution[$key]) && $distribution[$key]['added'] < $distribution[$key]['requested']) {
-                $validated[] = $question;
-                $distribution[$key]['added']++;
-            } else {
-                $unmatchedQuestions[] = [
-                    'index' => $index,
-                    'root_type' => $question['root_type'],
-                    'depth_level' => $question['depth_level'],
-                    'key' => $key
-                ];
-            }
-        }
-
-        // Log validation results
-        Log::info('Question validation complete', [
-            'validated_count' => count($validated),
-            'unmatched_count' => count($unmatchedQuestions),
-            'distribution_summary' => $distribution
-        ]);
-
-        if (!empty($unmatchedQuestions)) {
-            Log::warning('Unmatched questions', ['questions' => $unmatchedQuestions]);
-        }
-
-        // Log any mismatches in requested vs received
-        foreach ($distribution as $key => $counts) {
-            if ($counts['added'] < $counts['requested']) {
-                Log::warning('Question distribution mismatch', [
-                    'type' => $key,
-                    'requested' => $counts['requested'],
-                    'received' => $counts['added']
-                ]);
-            }
-        }
-
-        // Smart fallback: If we have missing questions, try to fill gaps
-        $totalRequested = array_sum(array_column($distribution, 'requested'));
-        $totalValidated = count($validated);
-
-        if ($totalValidated < $totalRequested && !empty($questions)) {
-            Log::info('Attempting to fill missing questions', [
-                'requested' => $totalRequested,
-                'validated' => $totalValidated,
-                'available' => count($questions)
-            ]);
-
-            // Try to add unmatched questions to fill gaps
-            foreach ($questions as $question) {
-                if ($totalValidated >= $totalRequested)
-                    break;
-
-                // Normalize again for unmatched questions
-                $rootType = strtolower(trim($question['root_type'] ?? 'jawhar'));
-                $rootTypeMap = [
-                    'jawhar' => 'jawhar',
-                    'جوهر' => 'jawhar',
-                    'جَوهر' => 'jawhar',
-                    'zihn' => 'zihn',
-                    'ذهن' => 'zihn',
-                    'ذِهن' => 'zihn',
-                    'waslat' => 'waslat',
-                    'وصلات' => 'waslat',
-                    'وَصلات' => 'waslat',
-                    'roaya' => 'roaya',
-                    'رؤية' => 'roaya',
-                    'رُؤية' => 'roaya',
-                ];
-
-                $question['root_type'] = $rootTypeMap[$rootType] ?? 'jawhar';
-                $question['depth_level'] = (int) ($question['depth_level'] ?? 1);
-
-                // Check if already added
-                $alreadyAdded = false;
-                foreach ($validated as $v) {
-                    if ($v['question'] === $question['question']) {
-                        $alreadyAdded = true;
-                        break;
-                    }
-                }
-
-                if (!$alreadyAdded) {
-                    $validated[] = $question;
-                    $totalValidated++;
-                    Log::info('Added missing question', [
-                        'root_type' => $question['root_type'],
-                        'depth_level' => $question['depth_level']
-                    ]);
-                }
-            }
-        }
-
-        // Log final distribution summary
-        $finalDistribution = [];
-        foreach ($validated as $q) {
-            $key = $q['root_type'] . '_' . $q['depth_level'];
-            $finalDistribution[$key] = ($finalDistribution[$key] ?? 0) + 1;
-        }
-
-        Log::info('Final question distribution', [
-            'total_validated' => count($validated),
-            'distribution' => $finalDistribution,
-            'original_request' => array_map(fn($d) => $d['requested'], $distribution)
-        ]);
-
-        // Accept result if we have at least 50% of requested questions
-        if (count($validated) >= max(1, (int) ($totalRequested * 0.5))) {
-            return $validated;
-        }
-
-        // Last resort: if still too few questions, throw informative error
-        throw new \Exception("تم توليد عدد قليل جداً من الأسئلة المناسبة ({$totalValidated} من أصل {$totalRequested}). يرجى المحاولة مع نص أطول أو موضوع مختلف.");
-    }
-
-    /**
-     * Track API usage
-     */
-    private function trackUsage(string $type, int $count = 1): void
-    {
-        $dateKey = today()->format('Y-m-d');
-
-        Cache::increment("ai_requests_{$dateKey}");
-        Cache::increment("ai_requests_{$type}_{$dateKey}", $count);
-
-        // Store usage in database for long-term tracking
         try {
-            DB::table('ai_usage_logs')->insert([
-                'type' => $type,
-                'model' => $this->model,
-                'count' => $count,
-                'created_at' => now(),
+            // Simple logging instead of database tracking
+            Log::info('AI Usage', [
+                'user_id' => auth()->check() ? auth()->id() : null,
+                'operation' => $operation,
+                'tokens_used' => $tokensUsed,
+                'model' => $this->model
             ]);
         } catch (\Exception $e) {
-            Log::warning('Failed to track AI usage in database', ['error' => $e->getMessage()]);
+            Log::error('Failed to track AI usage', ['error' => $e->getMessage()]);
         }
     }
 
     /**
-     * Get tokens based on length
-     */
-    private function getLengthTokens(string $length): int
-    {
-        return match ($length) {
-            'short' => 500,
-            'medium' => 1000,
-            'long' => 2000,
-            default => 1000
-        };
-    }
-
-    /**
-     * Get length description in Arabic
-     */
-    private function getLengthDescription(string $length): string
-    {
-        return match ($length) {
-            'short' => 'قصير (50-100 كلمة)',
-            'medium' => 'متوسط (150-250 كلمة)',
-            'long' => 'طويل (300-500 كلمة)',
-            default => 'متوسط'
-        };
-    }
-
-    /**
-     * Get text type name in Arabic
-     */
-    private function getTextTypeName(string $type): string
-    {
-        return match ($type) {
-            'story' => 'قصة',
-            'article' => 'مقال',
-            'dialogue' => 'حوار',
-            'description' => 'نص وصفي',
-            default => 'نص'
-        };
-    }
-
-    /**
-     * Get subject name in Arabic
+     * Helper methods
      */
     private function getSubjectName(string $subject): string
     {
@@ -829,29 +918,55 @@ PROMPT;
         };
     }
 
-    /**
-     * Get root name in Arabic
-     */
-    private function getRootName(string $root): string
+    private function getRootName(string $rootType): string
     {
-        return match ($root) {
-            'jawhar' => 'جَوهر',
-            'zihn' => 'ذِهن',
-            'waslat' => 'وَصلات',
-            'roaya' => 'رُؤية',
-            default => $root
+        return match ($rootType) {
+            'jawhar' => 'جَوهر (الماهية)',
+            'zihn' => 'ذِهن (العقل)',
+            'waslat' => 'وَصلات (الروابط)',
+            'roaya' => 'رُؤية (البصيرة)',
+            default => $rootType
+        };
+    }
+
+    private function getTextTypeName(string $textType): string
+    {
+        return match ($textType) {
+            'story' => 'قصة',
+            'article' => 'مقال',
+            'dialogue' => 'حوار',
+            'description' => 'وصف',
+            default => 'نص'
+        };
+    }
+
+    private function getLengthDescription(string $length): string
+    {
+        return match ($length) {
+            'short' => 'قصير (100-150 كلمة)',
+            'medium' => 'متوسط (150-250 كلمة)',
+            'long' => 'طويل (250-350 كلمة)',
+            default => 'متوسط'
+        };
+    }
+
+    private function getLengthTokens(string $length): int
+    {
+        return match ($length) {
+            'short' => 500,
+            'medium' => 800,
+            'long' => 1200,
+            default => 800
         };
     }
 
     /**
-     * Test connection to Claude API
+     * Test API connection
      */
     public function testConnection(): array
     {
         try {
-            Log::info('Testing Claude API connection');
-
-            $response = $this->sendRequest('مرحبا، أجب بكلمة "متصل" فقط', [
+            $response = $this->sendRequest('مرحبا', [
                 'max_tokens' => 50,
                 'temperature' => 0
             ]);
@@ -877,7 +992,6 @@ PROMPT;
 
     /**
      * Generate general AI completion
-     * Public method for general text generation
      */
     public function generateCompletion(string $prompt, array $options = []): string
     {

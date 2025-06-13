@@ -72,7 +72,7 @@
                         </div>
                         
                         <h2 class="text-white text-xl md:text-2xl lg:text-3xl font-bold drop-shadow-lg leading-relaxed">
-                            {{ $question->question }}
+                            {!! $question->question !!}
                         </h2>
                     </div>
                     
@@ -113,9 +113,7 @@
                                     <!-- Answer Text -->
                                     <p class="text-white text-lg md:text-xl lg:text-2xl font-bold text-center px-8 md:px-12
                                              peer-checked:text-white peer-checked:drop-shadow-lg leading-relaxed">
-                                        {{ $option }}
-                                    </p>
-                                    
+                                             {!! $option !!}                                    
                                     <!-- Selected Badge -->
                                     <span class="selected-badge absolute top-3 right-3 bg-white text-xs px-2 py-1 rounded-full font-bold
                                                opacity-0 transition-all duration-300
@@ -192,8 +190,7 @@
                 </div>
                 <div class="p-4 md:p-6 max-h-[70vh] overflow-y-auto">
                     <div class="prose prose-lg max-w-none text-gray-800 leading-relaxed">
-                        {!! nl2br(e($quiz->questions->first()->passage)) !!}
-                    </div>
+                        {!! $quiz->questions->first()->passage !!}                    </div>
                 </div>
             </div>
         </div>

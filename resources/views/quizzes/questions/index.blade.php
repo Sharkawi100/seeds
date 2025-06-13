@@ -1,340 +1,95 @@
 @extends('layouts.app')
 
-@push('styles')
-<!-- Tailwind CSS Fallback -->
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-<!-- Google Font -->
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
-<!-- TinyMCE -->
-<script src="https://cdn.tiny.cloud/1/cmtwmtmif3u7ducaiqvogvq1wvc280ugtxjzo2ffaymjmuxg/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-<style>
-    /* Root color definitions */
-    :root {
-        --jawhar-color: #dc2626;
-        --zihn-color: #2563eb;
-        --waslat-color: #ea580c;
-        --roaya-color: #7c3aed;
-    }
-    
-    /* Force Tailwind styles to load properly */
-    body {
-        font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    }
-    
-    /* Modern card with colored left accent */
-    .question-card {
-        position: relative;
-        background: #ffffff;
-        border-radius: 0.75rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        overflow: hidden;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .question-card::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 5px;
-        transition: width 0.3s ease;
-    }
-    
-    .question-card:hover::before {
-        width: 8px;
-    }
-    
-    .question-card:hover {
-        transform: translateX(6px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        border-color: #d1d5db;
-    }
-    
-    /* Root-specific accents */
-    .question-card.jawhar::before { background-color: var(--jawhar-color); }
-    .question-card.zihn::before { background-color: var(--zihn-color); }
-    .question-card.waslat::before { background-color: var(--waslat-color); }
-    .question-card.roaya::before { background-color: var(--roaya-color); }
-    
-    /* Stats card modern design */
-    .stats-card {
-        background: #ffffff;
-        border-radius: 1rem;
-        border: 2px solid #e5e7eb;
-        padding: 1.5rem;
-        position: relative;
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
-    
-    .stats-card::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        border-color: #d1d5db;
-    }
-    
-    .stats-card:hover::after {
-        opacity: 1;
-    }
-    
-    .stats-card.jawhar::after { background-color: var(--jawhar-color); }
-    .stats-card.zihn::after { background-color: var(--zihn-color); }
-    .stats-card.waslat::after { background-color: var(--waslat-color); }
-    .stats-card.roaya::after { background-color: var(--roaya-color); }
-    
-    /* Progress bar animations */
-    @keyframes fillProgress {
-        from { width: 0; }
-    }
-    
-    .progress-fill {
-        animation: fillProgress 1s ease-out forwards;
-    }
-    
-    /* Number badge modern style */
-    .number-badge {
-        width: 3.5rem;
-        height: 3.5rem;
-        background: #ffffff;
-        border: 3px solid;
-        border-radius: 0.75rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1.25rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    
-    .number-badge.jawhar { 
-        border-color: var(--jawhar-color); 
-        color: var(--jawhar-color);
-    }
-    .number-badge.zihn { 
-        border-color: var(--zihn-color); 
-        color: var(--zihn-color);
-    }
-    .number-badge.waslat { 
-        border-color: var(--waslat-color); 
-        color: var(--waslat-color);
-    }
-    .number-badge.roaya { 
-        border-color: var(--roaya-color); 
-        color: var(--roaya-color);
-    }
-    
-    .question-card:hover .number-badge {
-        transform: scale(1.1);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Root tag modern style */
-    .root-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.375rem 1rem;
-        border-radius: 9999px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        border: 1px solid;
-        transition: all 0.2s ease;
-    }
-    
-    .root-tag.jawhar {
-        background-color: #fee2e2;
-        color: var(--jawhar-color);
-        border-color: #fecaca;
-    }
-    .root-tag.zihn {
-        background-color: #dbeafe;
-        color: var(--zihn-color);
-        border-color: #bfdbfe;
-    }
-    .root-tag.waslat {
-        background-color: #fed7aa;
-        color: var(--waslat-color);
-        border-color: #fdba74;
-    }
-    .root-tag.roaya {
-        background-color: #e9d5ff;
-        color: var(--roaya-color);
-        border-color: #d8b4fe;
-    }
-    
-    /* Smooth transitions */
-    * {
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    /* Answer option cards */
-    .answer-option {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        padding: 0.75rem;
-        transition: all 0.2s ease;
-    }
-    
-    .answer-option.correct {
-        background: #dcfce7;
-        border-color: #86efac;
-    }
-    
-    .answer-option:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-</style>
-@endpush
+@section('title', 'إدارة الأسئلة - ' . $quiz->title)
 
 @section('content')
-<div class="min-h-screen bg-gray-50">
-    <!-- Modern Header -->
-    <div class="bg-white shadow-sm border-b sticky top-0 z-40 backdrop-blur-lg bg-white/95">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <a href="{{ route('quizzes.show', $quiz) }}" 
-                           class="text-gray-500 hover:text-gray-700 transition-all hover:scale-110">
-                            <i class="fas fa-arrow-right text-xl"></i>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <!-- Breadcrumb -->
+            <nav class="mb-6">
+                <ol class="flex items-center gap-3 text-sm">
+                    <li>
+                        <a href="{{ route('quizzes.index') }}" class="text-gray-500 hover:text-purple-600 transition-colors">
+                            <i class="fas fa-home"></i>
                         </a>
-                        <div>
-                            <h1 class="text-2xl font-bold text-gray-900">{{ $quiz->title }}</h1>
-                            <div class="flex items-center gap-4 mt-1">
-                                <span class="inline-flex items-center gap-2 text-sm text-gray-600">
-                                    <i class="fas fa-book"></i>
-                                    {{ $quiz->subject_name }}
-                                </span>
-                                <span class="text-gray-300">•</span>
-                                <span class="inline-flex items-center gap-2 text-sm text-gray-600">
-                                    <i class="fas fa-graduation-cap"></i>
-                                    الصف {{ $quiz->grade_level }}
-                                </span>
-                                <span class="text-gray-300">•</span>
-                                <span class="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full">
-                                    <i class="fas fa-key text-gray-500"></i>
-                                    <span class="font-mono font-bold">{{ $quiz->pin }}</span>
-                                    <button onclick="copyPIN('{{ $quiz->pin }}')" 
-                                            class="text-gray-500 hover:text-gray-700 ml-1">
-                                        <i class="fas fa-copy text-xs"></i>
-                                    </button>
-                                </span>
-                            </div>
-                        </div>
+                    </li>
+                    <li class="text-gray-400">/</li>
+                    <li>
+                        <a href="{{ route('quizzes.show', $quiz) }}" class="text-gray-500 hover:text-purple-600 transition-colors">
+                            {{ $quiz->title }}
+                        </a>
+                    </li>
+                    <li class="text-gray-400">/</li>
+                    <li class="text-gray-700 font-medium">إدارة الأسئلة</li>
+                </ol>
+            </nav>
+
+            <!-- Title & Actions -->
+            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                <div>
+                    <h1 class="text-4xl font-bold text-gray-900 mb-2">إدارة الأسئلة</h1>
+                    <p class="text-xl text-gray-600">{{ $quiz->title }}</p>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded-full">
+                        <i class="fas fa-question-circle"></i>
+                        <span class="font-medium">{{ $quiz->questions->count() }} سؤال</span>
                     </div>
                     
-                    <div class="flex items-center gap-3">
-                        @if($quiz->questions->count() > 0)
-                            <a href="{{ route('quiz.take', $quiz) }}" 
-                               class="px-5 py-2.5 rounded-lg font-medium transition-all transform hover:scale-105 shadow-md hover:shadow-lg flex items-center gap-2"
-                               style="background: linear-gradient(135deg, #d97706 0%, #dc2626 100%); color: white; padding: 0.625rem 1.25rem; border-radius: 0.5rem; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.3s;">
-                                <i class="fas fa-play-circle"></i>
-                                معاينة الاختبار
-                            </a>
-                        @endif
-                        
-                        @if(!$quiz->has_submissions)
-                            <a href="{{ route('quizzes.questions.bulk-edit', $quiz) }}" 
-                               class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg font-medium transition-all transform hover:scale-105 shadow-md hover:shadow-lg flex items-center gap-2">
-                                <i class="fas fa-edit"></i>
-                                تعديل جماعي
-                            </a>
-                            
-                            <a href="{{ route('quizzes.questions.create', $quiz) }}" 
-                               class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-all transform hover:scale-105 shadow-md hover:shadow-lg flex items-center gap-2">
-                                <i class="fas fa-plus-circle"></i>
-                                إضافة سؤال
-                            </a>
-                        @else
-                            <div class="bg-amber-50 border border-amber-200 text-amber-800 px-5 py-2.5 rounded-lg flex items-center gap-2">
-                                <i class="fas fa-lock"></i>
-                                <span class="font-medium">الاختبار مقفل - لا يمكن التعديل</span>
-                            </div>
-                        @endif
+                    @if(!$quiz->has_submissions)
+                    <a href="{{ route('quizzes.questions.create', $quiz) }}" class="btn-primary">
+                        <i class="fas fa-plus"></i>
+                        إضافة سؤال جديد
+                    </a>
+                    
+                    @if($quiz->questions->count() > 1)
+                    <a href="{{ route('quizzes.questions.bulk-edit', $quiz) }}" class="btn-secondary">
+                        <i class="fas fa-edit"></i>
+                        تعديل متعدد
+                    </a>
+                    @endif
+                    @else
+                    <div class="locked-badge">
+                        <i class="fas fa-lock"></i>
+                        لا يمكن التعديل - توجد محاولات
                     </div>
+                    @endif
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Modern Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            @php
-                $rootCounts = $quiz->questions->groupBy('root_type')->map->count();
-                $roots = [
-                    'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯'],
-                    'zihn' => ['name' => 'ذِهن', 'icon' => '🧠'],
-                    'waslat' => ['name' => 'وَصلات', 'icon' => '🔗'],
-                    'roaya' => ['name' => 'رُؤية', 'icon' => '👁️']
-                ];
-            @endphp
-            
-            @foreach($roots as $key => $root)
-            <div class="stats-card {{ $key }}">
-                <div class="flex items-center justify-between mb-4">
-                    <span class="text-4xl">{{ $root['icon'] }}</span>
-                    <span class="text-3xl font-bold text-gray-800">{{ $rootCounts[$key] ?? 0 }}</span>
-                </div>
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ $root['name'] }}</h3>
-                <div class="space-y-2">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-600">من إجمالي</span>
-                        <span class="font-bold text-gray-700">
-                            {{ $quiz->questions->count() > 0 ? round(($rootCounts[$key] ?? 0) / $quiz->questions->count() * 100) : 0 }}%
-                        </span>
-                    </div>
-                    <div class="bg-gray-200 rounded-full h-2 overflow-hidden">
-                        <div class="progress-fill h-full {{ $key }}" 
-                             style="width: {{ $quiz->questions->count() > 0 ? (($rootCounts[$key] ?? 0) / $quiz->questions->count() * 100) : 0 }}%; background-color: var(--{{ $key }}-color);"></div>
-                    </div>
-                </div>
-            </div>
-            @endforeach
-        </div>
-
-        <!-- Passage Section (if exists) -->
+        <!-- Educational Passage Section -->
         @if($quiz->passage)
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
-            <div class="passage-header-section p-6" style="background: linear-gradient(135deg, #1f2937 0%, #111827 100%);">
-                <div class="flex items-center justify-between" style="display: flex; align-items: center; justify-content: space-between;">
-                    <h2 class="text-xl font-semibold flex items-center gap-3" style="color: white; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.75rem;">
-                        <i class="fas fa-file-alt" style="font-size: 1.5rem; color: white;"></i>
-                        <span style="color: white;">{{ $quiz->passage_title ?: 'النص التعليمي' }}</span>
+        <div class="bg-white rounded-2xl shadow-lg mb-8 overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        📖 {{ $quiz->passage_title ?: 'النص التعليمي' }}
                     </h2>
                     @if(!$quiz->has_submissions)
                     <button onclick="togglePassageEdit()" 
-                            class="px-5 py-2.5 rounded-lg transition-all" 
-                            style="background: rgba(255, 255, 255, 0.2); color: white; padding: 0.625rem 1.25rem; border-radius: 0.5rem; border: 1px solid rgba(255, 255, 255, 0.3); transition: all 0.3s;"
-                            onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'"
-                            onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
-                        <i class="fas fa-pen" style="margin-right: 0.5rem;"></i>
+                            class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-pen"></i>
                         تعديل النص
                     </button>
                     @endif
                 </div>
             </div>
             
-            <div class="p-6 bg-gray-50">
-                <div id="passage-view" class="prose max-w-none">
-                    <p class="text-gray-700 leading-relaxed whitespace-pre-wrap text-lg">{{ $quiz->passage }}</p>
+            <div class="p-6">
+                <!-- View Mode -->
+                <div id="passage-view">
+                    <div class="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+                        {!! $quiz->passage !!}
+                    </div>
                 </div>
                 
+                <!-- Edit Mode -->
                 @if(!$quiz->has_submissions)
                 <form id="passage-edit" class="hidden" action="{{ route('quizzes.update', $quiz) }}" method="POST">
                     @csrf
@@ -347,19 +102,18 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">عنوان النص</label>
                             <input type="text" name="passage_title" value="{{ $quiz->passage_title }}" 
-                                   class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900">
+                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">النص</label>
-                            <textarea name="passage" id="passage-editor" class="text-gray-900">{{ $quiz->passage }}</textarea>
+                            <textarea name="passage" id="passage-editor" class="tinymce-editor">{!! $quiz->passage !!}</textarea>
                         </div>
                         <div class="flex gap-3">
-                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg font-medium">
-                                <i class="fas fa-save mr-2"></i>
+                            <button type="submit" class="btn-success">
+                                <i class="fas fa-save"></i>
                                 حفظ التغييرات
                             </button>
-                            <button type="button" onclick="togglePassageEdit()" 
-                                    class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-2.5 rounded-lg font-medium">
+                            <button type="button" onclick="togglePassageEdit()" class="btn-cancel">
                                 إلغاء
                             </button>
                         </div>
@@ -371,180 +125,447 @@
         @endif
 
         <!-- Questions Section -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-3">
-                        <i class="fas fa-question-circle text-gray-600"></i>
-                        الأسئلة
-                        <span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-bold">
-                            {{ $quiz->questions->count() }}
-                        </span>
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        ❓ قائمة الأسئلة
                     </h2>
-                </div>
-            </div>
-
-            @if($quiz->questions->isEmpty())
-                <div class="p-20 text-center">
-                    <div class="inline-flex items-center justify-center w-24 h-24 bg-gray-100 rounded-full mb-6">
-                        <i class="fas fa-inbox text-4xl text-gray-400"></i>
+                    @if($quiz->questions->count() > 0)
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-gray-500">{{ $quiz->questions->count() }} سؤال</span>
+                        @if(!$quiz->has_submissions)
+                        <button onclick="toggleSelectAll()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            تحديد الكل
+                        </button>
+                        @endif
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-700 mb-3">لا توجد أسئلة بعد</h3>
-                    <p class="text-gray-500 mb-8 max-w-md mx-auto">ابدأ بإضافة أسئلة لهذا الاختبار لتوفير تقييم شامل وفقاً لنموذج جُذور التعليمي</p>
-                    @if(!$quiz->has_submissions)
-                    <a href="{{ route('quizzes.questions.create', $quiz) }}" 
-                       class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg">
-                        <i class="fas fa-plus-circle"></i>
-                        إضافة أول سؤال
-                    </a>
                     @endif
                 </div>
-            @else
-                <div class="divide-y divide-gray-100">
-                    @foreach($quiz->questions as $index => $question)
-                    <div class="question-card {{ $question->root_type }} p-6 group">
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0">
-                                <div class="number-badge {{ $question->root_type }}">
-                                    {{ $index + 1 }}
-                                </div>
-                            </div>
-                            
-                            <div class="flex-1">
-                                <div class="flex items-start justify-between mb-3">
-                                    <div class="flex-1">
-                                        <div class="flex items-center gap-3 mb-3">
-                                            <span class="root-tag {{ $question->root_type }}">
-                                                {{ $roots[$question->root_type]['icon'] }} {{ $roots[$question->root_type]['name'] }}
-                                            </span>
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
-                                                <i class="fas fa-layer-group mr-1.5"></i>
-                                                مستوى {{ $question->depth_level }}
-                                            </span>
-                                        </div>
-                                        <p class="text-lg text-gray-900 font-medium leading-relaxed">{!! $question->question !!}</p>
-                                    </div>
-                                    
-                                    @if(!$quiz->has_submissions)
-                                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 mr-4">
-                                        <a href="{{ route('quizzes.questions.edit', [$quiz, $question]) }}" 
-                                           class="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-all">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        
-                                        <form action="{{ route('quizzes.questions.clone', [$quiz, $question]) }}" method="POST" class="inline">
-                                            @csrf
-                                            <button type="submit" 
-                                                    class="text-purple-600 hover:text-purple-700 p-2 hover:bg-purple-50 rounded-lg transition-all">
-                                                <i class="fas fa-copy"></i>
-                                            </button>
-                                        </form>
-                                        
-                                        <form action="{{ route('quizzes.questions.destroy', [$quiz, $question]) }}" method="POST" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" 
-                                                    onclick="return confirm('هل أنت متأكد من حذف هذا السؤال؟')"
-                                                    class="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-all">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                    @endif
-                                </div>
-                                
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                                    @foreach($question->options as $optionIndex => $option)
-                                    <div class="answer-option {{ $option === $question->correct_answer ? 'correct' : '' }} flex items-center gap-3">
-                                        <span class="flex-shrink-0 w-8 h-8 {{ $option === $question->correct_answer ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700' }} rounded-full flex items-center justify-center text-sm font-bold">
-                                            {{ ['أ', 'ب', 'ج', 'د', 'هـ', 'و'][$optionIndex] ?? $optionIndex + 1 }}
-                                        </span>
-                                        <span class="{{ $option === $question->correct_answer ? 'text-green-700 font-medium' : 'text-gray-700' }}">
-                                            {{ $option }}
-                                        </span>
-                                        @if($option === $question->correct_answer)
-                                        <i class="fas fa-check-circle text-green-500 mr-auto"></i>
-                                        @endif
-                                    </div>
-                                    @endforeach
-                                </div>
+            </div>
+            
+            <div class="divide-y divide-gray-100">
+                @forelse($quiz->questions as $index => $question)
+                <div class="question-card {{ $question->root_type }} p-6 group relative">
+                    <!-- Root color stripe -->
+                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-{{ $roots[$question->root_type]['color'] ?? 'gray' }}-500"></div>
+                    
+                    <div class="flex items-start gap-4 mr-3">
+                        <div class="flex-shrink-0">
+                            <div class="number-badge {{ $question->root_type }} w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-lg">
+                                {{ $index + 1 }}
                             </div>
                         </div>
+                        
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-3 mb-4">
+                                <span class="root-tag {{ $question->root_type }} inline-flex items-center px-3 py-1 rounded-full text-sm font-medium">
+                                    @php
+                                        $rootData = [
+                                            'jawhar' => ['icon' => '🎯', 'name' => 'جَوهر', 'color' => 'red'],
+                                            'zihn' => ['icon' => '🧠', 'name' => 'ذِهن', 'color' => 'blue'],
+                                            'waslat' => ['icon' => '🔗', 'name' => 'وَصلات', 'color' => 'orange'],
+                                            'roaya' => ['icon' => '👁️', 'name' => 'رُؤية', 'color' => 'purple']
+                                        ];
+                                        $root = $rootData[$question->root_type] ?? $rootData['jawhar'];
+                                    @endphp
+                                    {{ $root['icon'] }} {{ $root['name'] }}
+                                </span>
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                                    <i class="fas fa-layer-group mr-1.5"></i>
+                                    مستوى {{ $question->depth_level }}
+                                </span>
+                                <span class="text-sm text-gray-500">
+                                    @for($i = 1; $i <= 3; $i++)
+                                        @if($i <= $question->depth_level)
+                                            <span class="text-yellow-500">●</span>
+                                        @else
+                                            <span class="text-gray-300">●</span>
+                                        @endif
+                                    @endfor
+                                </span>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <h3 class="text-lg font-bold text-gray-900 leading-relaxed">
+                                    {!! $question->question !!}
+                                </h3>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                @foreach($question->options as $optionIndex => $option)
+                                <div class="answer-option flex items-center gap-3 p-3 bg-gray-50 rounded-lg {{ $option === $question->correct_answer ? 'bg-green-50 border border-green-200' : '' }}">
+                                    <span class="flex-shrink-0 w-8 h-8 {{ $option === $question->correct_answer ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700' }} rounded-full flex items-center justify-center text-sm font-bold">
+                                        {{ ['أ', 'ب', 'ج', 'د', 'هـ', 'و'][$optionIndex] ?? $optionIndex + 1 }}
+                                    </span>
+                                    <span class="{{ $option === $question->correct_answer ? 'text-green-700 font-medium' : 'text-gray-700' }} flex-1">
+                                        {!! $option !!}
+                                    </span>
+                                    @if($option === $question->correct_answer)
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    @endif
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        
+                        @if(!$quiz->has_submissions)
+                        <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                            <a href="{{ route('quizzes.questions.edit', [$quiz, $question]) }}" 
+                               class="action-btn edit-btn">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            
+                            <form action="{{ route('quizzes.questions.clone', [$quiz, $question]) }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit" class="action-btn clone-btn" title="نسخ السؤال">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </form>
+                            
+                            <form action="{{ route('quizzes.questions.destroy', [$quiz, $question]) }}" method="POST" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" 
+                                        onclick="return confirm('هل أنت متأكد من حذف هذا السؤال؟')"
+                                        class="action-btn delete-btn">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        @endif
                     </div>
-                    @endforeach
                 </div>
-            @endif
+                @empty
+                <div class="p-12 text-center">
+                    <div class="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                        <span class="text-4xl text-gray-400">❓</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-700 mb-2">لا توجد أسئلة بعد</h3>
+                    <p class="text-gray-500 mb-6">ابدأ بإضافة أسئلة لهذا الاختبار</p>
+                    <a href="{{ route('quizzes.questions.create', $quiz) }}" class="btn-primary">
+                        <i class="fas fa-plus"></i>
+                        إضافة السؤال الأول
+                    </a>
+                </div>
+                @endforelse
+            </div>
         </div>
+
+        <!-- Quick Actions -->
+        @if($quiz->questions->count() > 0)
+        <div class="mt-8 text-center">
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="{{ route('quiz.take', $quiz) }}" 
+                   class="btn-success" target="_blank">
+                    <i class="fas fa-play"></i>
+                    تجربة الاختبار
+                </a>
+                
+                <a href="{{ route('quizzes.show', $quiz) }}" class="btn-secondary">
+                    <i class="fas fa-eye"></i>
+                    عرض الاختبار
+                </a>
+                
+                @if(!$quiz->has_submissions)
+                <a href="{{ route('quizzes.questions.create', $quiz) }}" class="btn-primary">
+                    <i class="fas fa-plus"></i>
+                    إضافة أسئلة جديدة
+                </a>
+                @endif
+            </div>
+        </div>
+        @endif
     </div>
 </div>
 @endsection
 
+@push('styles')
+<style>
+    /* Button Styles */
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 12px;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .btn-secondary {
+        background: white;
+        color: #4f46e5;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: 2px solid #4f46e5;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+    }
+    
+    .btn-secondary:hover {
+        background: #eff6ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        color: #4f46e5;
+        text-decoration: none;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 12px;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .btn-cancel {
+        background: #f3f4f6;
+        color: #6b7280;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: none;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .btn-cancel:hover {
+        background: #e5e7eb;
+        color: #374151;
+    }
+    
+    /* Root-specific colors */
+    .question-card.jawhar .number-badge { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+    .question-card.zihn .number-badge { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .question-card.waslat .number-badge { background: linear-gradient(135deg, #ea580c, #c2410c); }
+    .question-card.roaya .number-badge { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+    
+    .root-tag.jawhar { background: #fef2f2; color: #dc2626; }
+    .root-tag.zihn { background: #eff6ff; color: #2563eb; }
+    .root-tag.waslat { background: #fff7ed; color: #ea580c; }
+    .root-tag.roaya { background: #f5f3ff; color: #7c3aed; }
+    
+    /* Action buttons */
+    .action-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .edit-btn {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+    
+    .edit-btn:hover {
+        background: #bfdbfe;
+        transform: scale(1.1);
+    }
+    
+    .clone-btn {
+        background: #f3e8ff;
+        color: #7c3aed;
+    }
+    
+    .clone-btn:hover {
+        background: #e9d5ff;
+        transform: scale(1.1);
+    }
+    
+    .delete-btn {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .delete-btn:hover {
+        background: #fecaca;
+        transform: scale(1.1);
+    }
+    
+    .locked-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #fef3c7;
+        color: #d97706;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 500;
+        border: 1px solid #fcd34d;
+        font-size: 14px;
+    }
+    
+    /* TinyMCE styling */
+    .tox-tinymce {
+        border-radius: 0.75rem !important;
+        border-color: #d1d5db !important;
+        border-width: 2px !important;
+    }
+    
+    .tox-tinymce:focus-within {
+        border-color: #a855f7 !important;
+        box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1) !important;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .btn-primary, .btn-secondary, .btn-success {
+            padding: 10px 16px;
+            font-size: 14px;
+        }
+        
+        .number-badge {
+            width: 10px;
+            height: 10px;
+            font-size: 14px;
+        }
+        
+        .action-btn {
+            width: 36px;
+            height: 36px;
+        }
+    }
+</style>
+@endpush
+
 @push('scripts')
+<!-- TinyMCE -->
+<script src="https://cdn.tiny.cloud/1/cmtwmtmif3u7ducaiqvogvq1wvc280ugtxjzo2ffaymjmuxg/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
+
 <script>
+// Initialize TinyMCE for passage editing
+function initializeTinyMCE() {
+    tinymce.init({
+        selector: '.tinymce-editor',
+        language: 'ar',
+        directionality: 'rtl',
+        height: 400,
+        menubar: false,
+        plugins: 'lists link charmap preview searchreplace autolink directionality code fullscreen table emoticons image media wordcount textcolor colorpicker',
+        toolbar: 'undo redo | formatselect | bold italic underline strikethrough | forecolor backcolor | bullist numlist | link image media | alignleft aligncenter alignright alignjustify | outdent indent | removeformat | preview fullscreen | emoticons | wordcount',
+        content_style: 'body { font-family: "Tajawal", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; line-height: 1.6; direction: rtl; }',
+        branding: false,
+        promotion: false,
+        entity_encoding: 'raw',
+        paste_as_text: false
+    });
+}
+
+// Toggle passage edit mode
 function togglePassageEdit() {
     const view = document.getElementById('passage-view');
     const edit = document.getElementById('passage-edit');
     
     if (view.classList.contains('hidden')) {
+        // Switch to view mode
         view.classList.remove('hidden');
         edit.classList.add('hidden');
         if (tinymce.get('passage-editor')) {
             tinymce.get('passage-editor').remove();
         }
     } else {
+        // Switch to edit mode
         view.classList.add('hidden');
         edit.classList.remove('hidden');
-        tinymce.init({
-            selector: '#passage-editor',
-            height: 400,
-            language: 'ar',
-            directionality: 'rtl',
-            plugins: 'lists link image table code fullscreen',
-            toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist | link image | code fullscreen',
-            menubar: false,
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; line-height: 1.6; }'
-        });
+        initializeTinyMCE();
     }
 }
 
-function copyPIN(pin) {
-    navigator.clipboard.writeText(pin).then(() => {
-        // Create toast notification
-        const toast = document.createElement('div');
-        toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2';
-        toast.innerHTML = '<i class="fas fa-check-circle"></i> تم نسخ رمز الدخول';
-        document.body.appendChild(toast);
-        
-        // Animate in
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-20px)';
-        }, 2000);
-        
-        setTimeout(() => toast.remove(), 2500);
+// Select all functionality
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
     });
 }
 
-// Add smooth scroll animations
-document.addEventListener('DOMContentLoaded', function() {
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }
-        });
-    }, {
-        threshold: 0.1
+// Copy PIN function
+function copyPIN(pin) {
+    navigator.clipboard.writeText(pin).then(() => {
+        showNotification('تم نسخ رمز الدخول بنجاح', 'success');
+    }).catch(() => {
+        showNotification('فشل في نسخ الرمز', 'error');
     });
+}
+
+// Notification system
+function showNotification(message, type = 'success') {
+    const colors = {
+        success: 'from-green-500 to-emerald-500',
+        error: 'from-red-500 to-pink-500',
+        warning: 'from-yellow-500 to-orange-500',
+        info: 'from-blue-500 to-cyan-500'
+    };
     
-    // Observe all question cards
-    document.querySelectorAll('.question-card').forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        card.style.transitionDelay = `${index * 50}ms`;
-        observer.observe(card);
-    });
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 bg-gradient-to-r ${colors[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 transform translate-x-full transition-transform duration-300 z-50`;
+    notification.innerHTML = `
+        <i class="fas ${icons[type]} text-xl"></i>
+        <p class="font-medium">${message}</p>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Any additional initialization can go here
+    console.log('Questions management page loaded');
 });
 </script>
 @endpush

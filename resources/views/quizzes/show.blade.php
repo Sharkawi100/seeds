@@ -2,401 +2,166 @@
 
 @section('title', $quiz->title)
 
-@push('styles')
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
-<style>
-    body, * {
-        font-family: 'Tajawal', sans-serif !important;
-    }
-    
-    .hover-lift {
-        transition: all 0.3s ease;
-    }
-    .hover-lift:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-    }
-    
-    .root-stripe {
-        width: 6px;
-        height: 100%;
-        position: absolute;
-        left: 0;
-        top: 0;
-        border-radius: 8px 0 0 8px;
-    }
-    
-    .root-stripe.jawhar { background: #ef4444; }
-    .root-stripe.zihn { background: #06b6d4; }
-    .root-stripe.waslat { background: #eab308; }
-    .root-stripe.roaya { background: #9333ea; }
-    
-    .progress-ring {
-        transform: rotate(-90deg);
-    }
-    
-    .progress-ring__circle {
-        transition: stroke-dashoffset 0.5s ease;
-    }
-    
-    .question-preview {
-        transition: all 0.3s ease;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .question-preview:hover {
-        border-color: #3b82f6;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-    }
-    
-    .option-badge {
-        background: #f9fafb;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 13px;
-        color: #4b5563;
-        border: 1px solid #e5e7eb;
-        transition: all 0.2s;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-        font-weight: 500;
-        padding: 12px 24px;
-        border-radius: 12px;
-        transition: all 0.3s;
-        border: none;
-        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 12px rgba(59, 130, 246, 0.3);
-    }
-    
-    .btn-secondary {
-        background: white;
-        color: #3b82f6;
-        font-weight: 500;
-        padding: 12px 24px;
-        border-radius: 12px;
-        border: 2px solid #3b82f6;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .btn-secondary:hover {
-        background: #eff6ff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .btn-danger {
-        background: white;
-        color: #ef4444;
-        font-weight: 500;
-        padding: 12px 24px;
-        border-radius: 12px;
-        border: 2px solid #ef4444;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .btn-danger:hover {
-        background: #fef2f2;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .pin-card {
-        background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
-        border: 2px solid #3b82f6;
-    }
-    
-    .locked-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: #fef3c7;
-        color: #d97706;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: 500;
-        border: 1px solid #fcd34d;
-    }
-    
-    .question-title {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: #111827;
-        line-height: 1.6;
-        margin-bottom: 1rem;
-    }
-    
-    .answers-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        margin-top: 16px;
-    }
-    
-    @media (max-width: 768px) {
-        .answers-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-    
-    .answer-option {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        background: #f9fafb;
-        padding: 12px 16px;
-        border-radius: 10px;
-        border: 1px solid #e5e7eb;
-        transition: all 0.2s;
-    }
-    
-    .answer-option:hover {
-        background: #f3f4f6;
-        border-color: #d1d5db;
-        transform: translateX(-2px);
-    }
-    
-    .answer-option-letter {
-        flex-shrink: 0;
-        width: 32px;
-        height: 32px;
-        background: white;
-        border: 2px solid #e5e7eb;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        color: #6b7280;
-    }
-    
-    .answer-option-text {
-        flex: 1;
-        color: #4b5563;
-        line-height: 1.5;
-    }
-    
-    .passage-collapsed {
-        max-height: 200px;
-        overflow: hidden;
-        position: relative;
-    }
-    
-    .passage-collapsed::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 80px;
-        background: linear-gradient(to bottom, transparent, white);
-    }
-    
-    .passage-content {
-        transition: all 0.3s ease;
-    }
-</style>
-@endpush
-
 @section('content')
-<div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Breadcrumb -->
-        <nav class="mb-6">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li><a href="{{ route('dashboard') }}" class="text-gray-600 hover:text-blue-600 transition">🏠 الرئيسية</a></li>
-                <li><span class="text-gray-400">/</span></li>
-                <li><a href="{{ route('quizzes.index') }}" class="text-gray-600 hover:text-blue-600 transition">📚 اختباراتي</a></li>
-                <li><span class="text-gray-400">/</span></li>
-                <li class="text-gray-900 font-medium">{{ $quiz->title }}</li>
-            </ol>
-        </nav>
-
-        <!-- Header Section -->
-        <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                <div class="mb-4 lg:mb-0">
-                    <h1 class="text-4xl font-bold text-gray-900 mb-3">{{ $quiz->title }}</h1>
-                    <div class="flex flex-wrap items-center gap-4">
-                        <span class="inline-flex items-center gap-2 text-gray-600">
-                            <span class="text-lg">📚</span>
-                            <span class="font-medium">{{ $quiz->subject_name }}</span>
-                        </span>
-                        <span class="inline-flex items-center gap-2 text-gray-600">
-                            <span class="text-lg">🎓</span>
-                            <span class="font-medium">الصف {{ $quiz->grade_level }}</span>
-                        </span>
-                        <span class="inline-flex items-center gap-2 text-gray-600">
-                            <span class="text-lg">📅</span>
-                            <span class="font-medium">{{ $quiz->created_at->format('Y/m/d') }}</span>
-                        </span>
-                        @if($quiz->has_submissions)
-                            <span class="locked-badge">
-                                🔒 الاختبار مقفل
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Quiz Header -->
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 px-8 py-12">
+                <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium">
+                                {{ $quiz->subject == 'arabic' ? '🌍 عربي' : ($quiz->subject == 'english' ? '🌎 إنجليزي' : '🌏 عبري') }}
                             </span>
+                            <span class="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium">
+                                الصف {{ $quiz->grade_level }}
+                            </span>
+                        </div>
+                        <h1 class="text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">
+                            {{ $quiz->title }}
+                        </h1>
+                        @if($quiz->description)
+                        <div class="text-white/90 text-lg leading-relaxed prose prose-lg max-w-none prose-invert">
+                            {!! $quiz->description !!}
+                        </div>
+                        @endif
+                    </div>
+                    
+                    <!-- Quiz Stats -->
+                    <div class="flex flex-col sm:flex-row lg:flex-col gap-4">
+                        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                            <div class="text-3xl font-bold text-white">{{ $quiz->questions->count() }}</div>
+                            <div class="text-white/80 text-sm">سؤال</div>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                            <div class="text-3xl font-bold text-white">{{ $quiz->results->count() }}</div>
+                            <div class="text-white/80 text-sm">محاولة</div>
+                        </div>
+                        @if($quiz->time_limit)
+                        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                            <div class="text-3xl font-bold text-white">{{ $quiz->time_limit }}</div>
+                            <div class="text-white/80 text-sm">دقيقة</div>
+                        </div>
                         @endif
                     </div>
                 </div>
-                
-                <div class="flex flex-wrap gap-3">
-                    <a href="{{ route('quiz.take', $quiz) }}" class="btn-primary">
-                        ▶️ بدء الاختبار
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="p-6 bg-gray-50 border-t">
+                <div class="flex flex-wrap items-center gap-4">
+                    <a href="{{ route('quizzes.edit', $quiz) }}" 
+                       class="btn-primary">
+                        <i class="fas fa-edit"></i>
+                        تعديل الاختبار
                     </a>
                     
-                    @if($quiz->has_submissions)
-                        <a href="#" class="btn-secondary" onclick="alert('يرجى إضافة وظيفة النسخ'); return false;">
-                            📋 نسخ الاختبار
-                        </a>
-                    @else
-                        <a href="{{ route('quizzes.edit', $quiz) }}" class="btn-secondary">
-                            ✏️ تعديل
-                        </a>
-                    @endif
-                </div>
-            </div>
-        </div>
-
-        <!-- PIN Display Card -->
-        <div class="pin-card rounded-2xl shadow-md p-6 mb-6">
-            <div class="flex flex-col md:flex-row items-center justify-between">
-                <div>
-                    <h3 class="text-2xl font-bold text-gray-900 mb-2">🚀 رمز الدخول السريع</h3>
-                    <p class="text-gray-600">شارك هذا الرمز مع الطلاب للدخول المباشر</p>
-                </div>
-                <div class="mt-4 md:mt-0 text-center">
-                    <div class="bg-white rounded-xl p-6 shadow-sm">
-                        <p class="text-4xl font-bold tracking-wider text-blue-600 mb-3">{{ $quiz->pin }}</p>
-                        <div class="flex gap-3 justify-center">
-                            <button onclick="copyPIN('{{ $quiz->pin }}')"
-                                    class="text-blue-600 hover:text-blue-800 font-medium transition">
-                                📋 نسخ
-                            </button>
-                            <button onclick="shareQuiz('{{ $quiz->pin }}', '{{ $quiz->title }}')"
-                                    class="text-blue-600 hover:text-blue-800 font-medium transition">
-                                📤 مشاركة
-                            </button>
+                    <a href="{{ route('quizzes.questions.index', $quiz) }}" 
+                       class="btn-secondary">
+                        <i class="fas fa-question-circle"></i>
+                        إدارة الأسئلة
+                    </a>
+                    
+                    <a href="{{ route('quiz.take', $quiz) }}" 
+                       class="btn-success" 
+                       target="_blank">
+                        <i class="fas fa-play"></i>
+                        بدء الاختبار
+                    </a>
+                    
+                    <!-- PIN Display -->
+                    <div class="mr-auto">
+                        <div class="pin-card">
+                            <div class="flex items-center gap-3">
+                                <div class="text-lg font-bold text-purple-600">{{ $quiz->pin }}</div>
+                                <button onclick="copyPIN('{{ $quiz->pin }}')" 
+                                        class="text-gray-500 hover:text-purple-600 transition-colors">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">رمز الدخول</div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="mt-4 text-sm text-gray-600">
-                <span class="font-medium">رابط الدخول المباشر:</span> {{ url('/') }}/?pin={{ $quiz->pin }}
-            </div>
         </div>
 
-        <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <!-- Total Questions -->
-            <div class="bg-white rounded-xl shadow-sm p-5 hover-lift">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">عدد الأسئلة</p>
-                        <p class="text-3xl font-bold text-gray-900">{{ $quiz->questions->count() }}</p>
-                    </div>
-                    <div class="relative w-16 h-16">
-                        <svg class="progress-ring w-16 h-16">
-                            <circle class="progress-ring__circle" stroke="#e5e7eb" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"></circle>
-                            <circle class="progress-ring__circle" stroke="#3b82f6" stroke-width="4" fill="transparent" r="28" cx="32" cy="32" 
-                                    style="stroke-dasharray: 176; stroke-dashoffset: {{ 176 - (176 * min($quiz->questions->count() / 50, 1)) }}"></circle>
-                        </svg>
-                        <span class="absolute inset-0 flex items-center justify-center text-2xl">📝</span>
+        <!-- Quiz Analytics -->
+        @if($quiz->results->count() > 0)
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">متوسط الدرجات</h3>
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-chart-line text-green-600 text-xl"></i>
                     </div>
                 </div>
+                <div class="text-3xl font-bold text-gray-900">
+                    {{ round($quiz->results->avg('total_score')) }}%
+                </div>
+                <p class="text-sm text-gray-500 mt-1">من جميع المحاولات</p>
             </div>
-
-            <!-- Attempts -->
-            <div class="bg-white rounded-xl shadow-sm p-5 hover-lift">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">المحاولات</p>
-                        <p class="text-3xl font-bold text-gray-900">{{ $quiz->results->count() }}</p>
-                    </div>
-                    <div class="relative w-16 h-16">
-                        <svg class="progress-ring w-16 h-16">
-                            <circle class="progress-ring__circle" stroke="#e5e7eb" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"></circle>
-                            <circle class="progress-ring__circle" stroke="#10b981" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"
-                                    style="stroke-dasharray: 176; stroke-dashoffset: {{ 176 - (176 * min($quiz->results->count() / 100, 1)) }}"></circle>
-                        </svg>
-                        <span class="absolute inset-0 flex items-center justify-center text-2xl">👥</span>
+            
+            <div class="bg-white rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">معدل النجاح</h3>
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-trophy text-blue-600 text-xl"></i>
                     </div>
                 </div>
+                <div class="text-3xl font-bold text-gray-900">
+                    {{ $quiz->results->where('total_score', '>=', $quiz->passing_score ?? 60)->count() }}
+                </div>
+                <p class="text-sm text-gray-500 mt-1">من {{ $quiz->results->count() }} محاولة</p>
             </div>
-
-            <!-- Average Score -->
-            <div class="bg-white rounded-xl shadow-sm p-5 hover-lift">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">متوسط النجاح</p>
-                        <p class="text-3xl font-bold text-gray-900">
-                            {{ $quiz->results->count() > 0 ? round($quiz->results->avg('total_score')) : '--' }}%
-                        </p>
-                    </div>
-                    <div class="relative w-16 h-16">
-                        @php $avgScore = $quiz->results->avg('total_score') ?? 0; @endphp
-                        <svg class="progress-ring w-16 h-16">
-                            <circle class="progress-ring__circle" stroke="#e5e7eb" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"></circle>
-                            <circle class="progress-ring__circle" stroke="#eab308" stroke-width="4" fill="transparent" r="28" cx="32" cy="32"
-                                    style="stroke-dasharray: 176; stroke-dashoffset: {{ 176 - (176 * ($avgScore / 100)) }}"></circle>
-                        </svg>
-                        <span class="absolute inset-0 flex items-center justify-center text-2xl">⭐</span>
+            
+            <div class="bg-white rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">آخر نشاط</h3>
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-clock text-purple-600 text-xl"></i>
                     </div>
                 </div>
-            </div>
-
-            <!-- Last Update -->
-            <div class="bg-white rounded-xl shadow-sm p-5 hover-lift">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600 mb-1">آخر تحديث</p>
-                        <p class="text-base font-bold text-gray-900">{{ $quiz->updated_at->diffForHumans() }}</p>
-                    </div>
-                    <span class="text-3xl">🕐</span>
+                <div class="text-lg font-bold text-gray-900">
+                    {{ $quiz->results->latest()->first()?->created_at?->diffForHumans() ?? 'لا يوجد' }}
                 </div>
+                <p class="text-sm text-gray-500 mt-1">آخر محاولة</p>
             </div>
         </div>
+        @endif
 
-        <!-- Root Distribution -->
-        <div class="mb-6">
-            <h2 class="text-xl font-bold text-gray-900 mb-4">📊 توزيع الأسئلة حسب الجذور</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                @php
-                    $rootCounts = $quiz->questions->groupBy('root_type')->map->count();
-                    $totalQuestions = $quiz->questions->count();
-                    $roots = [
-                        'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => 'red'],
-                        'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => 'cyan'],
-                        'waslat' => ['name' => 'وَصلات', 'icon' => '🔗', 'color' => 'yellow'],
-                        'roaya' => ['name' => 'رُؤية', 'icon' => '👁️', 'color' => 'purple']
-                    ];
-                @endphp
-                
+        <!-- Roots Distribution -->
+        @if($quiz->questions->count() > 0)
+        @php
+            $roots = [
+                'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => 'red'],
+                'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => 'blue'],
+                'waslat' => ['name' => 'وَصلات', 'icon' => '🔗', 'color' => 'orange'],
+                'roaya' => ['name' => 'رُؤية', 'icon' => '👁️', 'color' => 'purple']
+            ];
+            $rootCounts = $quiz->questions->groupBy('root_type')->map->count();
+            $totalQuestions = $quiz->questions->count();
+        @endphp
+        
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                🌳 توزيع الجذور التعليمية
+            </h2>
+            
+            <div class="grid md:grid-cols-4 gap-6">
                 @foreach($roots as $key => $root)
-                <div class="bg-white rounded-xl shadow-sm p-4 hover-lift border-r-4 border-{{ $root['color'] }}-500">
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="text-2xl">{{ $root['icon'] }}</span>
-                            <h3 class="font-bold text-gray-900">{{ $root['name'] }}</h3>
-                        </div>
+                <div class="text-center">
+                    <div class="w-20 h-20 mx-auto mb-4 bg-{{ $root['color'] }}-100 rounded-full flex items-center justify-center">
+                        <span class="text-3xl">{{ $root['icon'] }}</span>
+                    </div>
+                    <h3 class="font-bold text-gray-800 mb-2">{{ $root['name'] }}</h3>
+                    <div class="text-center">
                         <span class="text-2xl font-bold text-{{ $root['color'] }}-600">
                             {{ $rootCounts[$key] ?? 0 }}
                         </span>
                     </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
                         <div class="bg-{{ $root['color'] }}-500 h-2 rounded-full transition-all duration-500" 
                              style="width: {{ $totalQuestions > 0 ? (($rootCounts[$key] ?? 0) / $totalQuestions) * 100 : 0 }}%"></div>
                     </div>
@@ -407,14 +172,15 @@
                 @endforeach
             </div>
         </div>
+        @endif
 
         <!-- Educational Passage -->
-        @if($quiz->passage)
-        <div class="bg-white rounded-2xl shadow-sm mb-6 overflow-hidden">
+        @if($quiz->questions->where('passage', '!=', null)->first())
+        <div class="bg-white rounded-2xl shadow-lg mb-8 overflow-hidden">
             <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                        📖 {{ $quiz->passage_title ?: 'النص التعليمي' }}
+                        📖 {{ $quiz->questions->where('passage', '!=', null)->first()->passage_title ?: 'النص التعليمي' }}
                     </h2>
                     <button onclick="togglePassage()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
                         <span id="toggleText">إخفاء</span>
@@ -427,7 +193,7 @@
             <div id="passageContent" class="passage-content">
                 <div class="p-6">
                     <div class="prose prose-lg max-w-none text-gray-700 leading-relaxed">
-                        {!! nl2br(e($quiz->passage)) !!}
+                        {!! $quiz->questions->where('passage', '!=', null)->first()->passage !!}
                     </div>
                 </div>
             </div>
@@ -435,26 +201,42 @@
         @endif
 
         <!-- Questions Preview -->
-        <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    ❓ معاينة الأسئلة
-                </h2>
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        ❓ معاينة الأسئلة
+                    </h2>
+                    @if($quiz->questions->count() > 0)
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-gray-500">{{ $quiz->questions->count() }} سؤال</span>
+                        <a href="{{ route('quizzes.questions.index', $quiz) }}" 
+                           class="text-blue-600 hover:text-blue-800 font-medium text-sm transition">
+                            إدارة الأسئلة →
+                        </a>
+                    </div>
+                    @endif
+                </div>
             </div>
             
-            <div class="divide-y divide-gray-200">
+            <div class="divide-y divide-gray-100">
                 @forelse($quiz->questions as $index => $question)
                 <div class="question-preview p-6 hover:bg-gray-50 transition-colors relative">
-                    <div class="root-stripe {{ $question->root_type }}"></div>
+                    <!-- Root indicator stripe -->
+                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-{{ $roots[$question->root_type]['color'] }}-500"></div>
                     
                     <div class="flex items-start gap-4 mr-3">
                         <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center font-bold text-gray-700 text-lg shadow-sm">
                             {{ $index + 1 }}
                         </div>
                         <div class="flex-1">
-                            <div class="flex items-center gap-3 mb-4">
+                            <div class="flex flex-wrap items-center gap-3 mb-4">
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-{{ $roots[$question->root_type]['color'] }}-100 text-{{ $roots[$question->root_type]['color'] }}-700 font-medium">
                                     {{ $roots[$question->root_type]['icon'] }} {{ $roots[$question->root_type]['name'] }}
+                                </span>
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
+                                    <i class="fas fa-layer-group mr-1.5"></i>
+                                    مستوى {{ $question->depth_level }}
                                 </span>
                                 <span class="text-sm text-gray-500">
                                     @for($i = 1; $i <= 3; $i++)
@@ -464,21 +246,25 @@
                                             <span class="text-gray-300">●</span>
                                         @endif
                                     @endfor
-                                    المستوى {{ $question->depth_level }}
                                 </span>
                             </div>
                             
-                            <h3 class="question-title">{!! $question->question !!}</h3>
+                            <h3 class="question-title text-lg font-bold text-gray-900 mb-4 leading-relaxed">
+                                {!! $question->question !!}
+                            </h3>
                             
-                            <div class="answers-grid">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 @foreach($question->options as $optionIndex => $option)
-                                <div class="answer-option">
-                                    <div class="answer-option-letter">
+                                <div class="answer-option flex items-center gap-3 p-3 bg-gray-50 rounded-lg {{ $option === $question->correct_answer ? 'bg-green-50 border border-green-200' : '' }}">
+                                    <span class="flex-shrink-0 w-8 h-8 {{ $option === $question->correct_answer ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700' }} rounded-full flex items-center justify-center text-sm font-bold">
                                         {{ ['أ', 'ب', 'ج', 'د', 'هـ', 'و'][$optionIndex] ?? $optionIndex + 1 }}
-                                    </div>
-                                    <div class="answer-option-text">
-                                        {{ $option }}
-                                    </div>
+                                    </span>
+                                    <span class="{{ $option === $question->correct_answer ? 'text-green-700 font-medium' : 'text-gray-700' }} flex-1">
+                                        {!! $option !!}
+                                    </span>
+                                    @if($option === $question->correct_answer)
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    @endif
                                 </div>
                                 @endforeach
                             </div>
@@ -487,106 +273,278 @@
                 </div>
                 @empty
                 <div class="p-12 text-center">
-                    <span class="text-6xl mb-4 block">❓</span>
+                    <div class="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                        <span class="text-4xl text-gray-400">❓</span>
+                    </div>
                     <h3 class="text-xl font-bold text-gray-700 mb-2">لا توجد أسئلة بعد</h3>
-                    <p class="text-gray-500">ابدأ بإضافة أسئلة لهذا الاختبار</p>
+                    <p class="text-gray-500 mb-6">ابدأ بإضافة أسئلة لهذا الاختبار</p>
+                    <a href="{{ route('quizzes.questions.create', $quiz) }}" 
+                       class="btn-primary">
+                        <i class="fas fa-plus"></i>
+                        إضافة سؤال جديد
+                    </a>
                 </div>
                 @endforelse
             </div>
-            
-            @if($quiz->questions->count() > 0)
-            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                <div class="flex items-center justify-between">
-                    <a href="{{ route('quizzes.questions.index', $quiz) }}" 
-                       class="text-blue-600 hover:text-blue-800 font-medium text-sm transition">
-                        🔧 إدارة الأسئلة
-                    </a>
-                    <span class="text-sm text-gray-600">
-                        إجمالي {{ $quiz->questions->count() }} سؤال
-                    </span>
-                </div>
-            </div>
-            @endif
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="{{ route('quiz.take', $quiz) }}" class="btn-primary text-center">
-                ▶️ بدء الاختبار
-            </a>
-            <a href="{{ route('quizzes.questions.create', $quiz) }}" class="btn-secondary text-center">
-                ➕ إضافة أسئلة
-            </a>
-            <a href="{{ route('quizzes.index') }}" class="btn-secondary text-center">
-                ↩️ العودة للقائمة
-            </a>
-            @if($quiz->results->count() > 0)
-    <a href="{{ route('results.quiz', $quiz->id) }}" class="btn-secondary">
-        📊 عرض النتائج ({{ $quiz->results->count() }})
-    </a>
-@endif
         </div>
         
+        <!-- Bottom Actions -->
+        @if($quiz->questions->count() > 0)
+        <div class="mt-8 text-center">
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="{{ route('quiz.take', $quiz) }}" 
+                   class="btn-success"
+                   target="_blank">
+                    <i class="fas fa-play"></i>
+                    تجربة الاختبار
+                </a>
+                
+                <a href="{{ route('quizzes.questions.create', $quiz) }}" 
+                   class="btn-secondary">
+                    <i class="fas fa-plus"></i>
+                    إضافة أسئلة جديدة
+                </a>
+                
+                @if($quiz->results->count() > 0)
+                <button onclick="showResults()" class="btn-info">
+                    <i class="fas fa-chart-bar"></i>
+                    عرض تقرير مفصل
+                </button>
+                @endif
+            </div>
+        </div>
+        @endif
     </div>
 </div>
 
-<script>
-function copyPIN(pin) {
-    navigator.clipboard.writeText(pin).then(() => {
-        const button = event.target;
-        const originalText = button.textContent;
-        button.textContent = '✅ تم النسخ';
-        setTimeout(() => {
-            button.textContent = originalText;
-        }, 2000);
-    });
-}
+<!-- Results Modal -->
+<div id="results-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div class="p-6 border-b">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold">تقرير النتائج المفصل</h3>
+                    <button onclick="closeResults()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[70vh]">
+                <!-- Results content will be loaded here -->
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+                    <p class="text-gray-500 mt-2">جاري تحميل البيانات...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
 
-function shareQuiz(pin, title) {
-    if (navigator.share) {
-        navigator.share({
-            title: title,
-            text: `رمز دخول الاختبار: ${pin}`,
-            url: window.location.href
-        });
-    } else {
-        copyPIN(pin);
+@push('styles')
+<style>
+    /* Button Styles */
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 12px;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
     }
-}
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .btn-secondary {
+        background: white;
+        color: #4f46e5;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: 2px solid #4f46e5;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+    }
+    
+    .btn-secondary:hover {
+        background: #eff6ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        color: #4f46e5;
+        text-decoration: none;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 12px;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+    }
+    
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .btn-info {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 12px;
+        border: none;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+    
+    .btn-info:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+    
+    .pin-card {
+        background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+        border: 2px solid #3b82f6;
+        padding: 12px 16px;
+        border-radius: 12px;
+        text-align: center;
+        min-width: 120px;
+    }
+    
+    .question-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+    
+    .passage-content {
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .passage-content.hidden {
+        max-height: 0;
+        padding: 0;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .btn-primary, .btn-secondary, .btn-success, .btn-info {
+            padding: 10px 16px;
+            font-size: 14px;
+        }
+        
+        .question-title {
+            font-size: 1rem;
+        }
+    }
+</style>
+@endpush
 
+@push('scripts')
+<script>
+// Toggle passage visibility
 function togglePassage() {
     const content = document.getElementById('passageContent');
     const toggleText = document.getElementById('toggleText');
     const toggleIcon = document.getElementById('toggleIcon');
     
-    if (!content) {
-        console.error('Passage content not found');
-        return;
-    }
-    
-    if (content.classList.contains('passage-collapsed')) {
-        content.classList.remove('passage-collapsed');
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
         toggleText.textContent = 'إخفاء';
         toggleIcon.style.transform = 'rotate(0deg)';
     } else {
-        content.classList.add('passage-collapsed');
-        toggleText.textContent = 'عرض';
+        content.classList.add('hidden');
+        toggleText.textContent = 'إظهار';
         toggleIcon.style.transform = 'rotate(180deg)';
     }
 }
 
-// Start with passage collapsed if it's longer than 400px
-window.addEventListener('load', function() {
-    const passageContent = document.getElementById('passageContent');
-    if (passageContent && passageContent.scrollHeight > 400) {
-        togglePassage();
+// Copy PIN to clipboard
+function copyPIN(pin) {
+    navigator.clipboard.writeText(pin).then(() => {
+        showNotification('تم نسخ رمز الدخول بنجاح', 'success');
+    }).catch(() => {
+        showNotification('فشل في نسخ الرمز', 'error');
+    });
+}
+
+// Show results modal
+function showResults() {
+    document.getElementById('results-modal').classList.remove('hidden');
+    // Here you would load the actual results data
+}
+
+// Close results modal
+function closeResults() {
+    document.getElementById('results-modal').classList.add('hidden');
+}
+
+// Notification system
+function showNotification(message, type = 'success') {
+    const colors = {
+        success: 'from-green-500 to-emerald-500',
+        error: 'from-red-500 to-pink-500',
+        warning: 'from-yellow-500 to-orange-500',
+        info: 'from-blue-500 to-cyan-500'
+    };
+    
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 bg-gradient-to-r ${colors[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 transform translate-x-full transition-transform duration-300 z-50`;
+    notification.innerHTML = `
+        <i class="fas ${icons[type]} text-xl"></i>
+        <p class="font-medium">${message}</p>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Close modal on background click
+document.getElementById('results-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeResults();
     }
 });
 </script>
-
-@push('scripts')
-<script>
-// Additional scripts can go here
-</script>
 @endpush
-@endsection

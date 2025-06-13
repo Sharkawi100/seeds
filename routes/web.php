@@ -171,6 +171,8 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{question}', 'destroy')->name('destroy');
             Route::post('/{question}/update-text', 'updateText')->name('update-text');
             Route::post('/{question}/clone', 'clone')->name('clone');
+            Route::post('/quizzes/{quiz}/questions/{question}/suggestions', [QuestionController::class, 'generateSuggestions'])
+                ->name('questions.suggestions');
         });
     });
 

@@ -551,14 +551,113 @@ function toggleAISuggestions() {
     chevron.classList.toggle('rotate-180');
 }
 
-function generateAISuggestions() {
-    showNotification('جاري توليد الاقتراحات...', 'info');
+async function generateAISuggestions() {
+    const submitBtn = document.querySelector('button[onclick="generateAISuggestions()"]');
+    const originalText = submitBtn.innerHTML;
     
-    // Simulate AI processing
-    setTimeout(() => {
-        showNotification('تم توليد الاقتراحات بنجاح', 'success');
-        // Here you would implement actual AI suggestions
-    }, 2000);
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التوليد...';
+    
+    try {
+        const response = await fetch(`{{ route('questions.suggestions', [$quiz, $question]) }}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.suggestions) {
+            displaySuggestions(data.suggestions);
+            showNotification('تم توليد الاقتراحات بنجاح', 'success');
+        } else {
+            showNotification(data.message || 'فشل توليد الاقتراحات', 'error');
+        }
+    } catch (error) {
+        showNotification('حدث خطأ في الاتصال', 'error');
+        console.error('Suggestions error:', error);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+}
+
+// Add function to display suggestions
+function displaySuggestions(suggestions) {
+    const container = document.getElementById('ai-suggestions');
+    const content = container.querySelector('.text-center');
+    
+    if (suggestions.suggestions && suggestions.suggestions.length > 0) {
+        let html = '<div class="space-y-4">';
+        
+        suggestions.suggestions.forEach((suggestion, index) => {
+            html += `
+                <div class="bg-white rounded-lg p-4 border border-purple-200">
+                    <h4 class="font-bold text-purple-600 mb-2">${suggestion.type}</h4>
+                    <p class="text-gray-600 text-sm mb-2">${suggestion.reason}</p>
+                    <div class="bg-gray-50 p-3 rounded">
+                        <strong>الحالي:</strong> ${suggestion.current}<br>
+                        <strong>المقترح:</strong> <span class="text-green-600">${suggestion.suggested}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        if (suggestions.improved_question) {
+            html += `
+                <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <h4 class="font-bold text-green-600 mb-3">السؤال المحسن</h4>
+                    <div class="space-y-2">
+                        <p><strong>السؤال:</strong> ${suggestions.improved_question.question}</p>
+                        <p><strong>الخيارات:</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            ${suggestions.improved_question.options.map(opt => `<li>${opt}</li>`).join('')}
+                        </ul>
+                        <p><strong>الإجابة الصحيحة:</strong> <span class="text-green-600">${suggestions.improved_question.correct_answer}</span></p>
+                    </div>
+                    <button onclick="applySuggestions(${JSON.stringify(suggestions.improved_question).replace(/"/g, '&quot;')})" 
+                            class="mt-3 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                        تطبيق التحسينات
+                    </button>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        content.innerHTML = html;
+    } else {
+        content.innerHTML = '<p class="text-gray-500">لا توجد اقتراحات متاحة</p>';
+    }
+}
+
+// Add function to apply suggestions
+function applySuggestions(improvedQuestion) {
+    if (confirm('هل تريد تطبيق التحسينات المقترحة؟')) {
+        // Update question text
+        if (tinymce.get('question-editor')) {
+            tinymce.get('question-editor').setContent(improvedQuestion.question);
+        }
+        
+        // Update options
+        const optionInputs = document.querySelectorAll('input[name="options[]"]');
+        improvedQuestion.options.forEach((option, index) => {
+            if (optionInputs[index]) {
+                optionInputs[index].value = option;
+            }
+        });
+        
+        // Update correct answer
+        const correctAnswerRadios = document.querySelectorAll('input[name="correct_answer_index"]');
+        const correctIndex = improvedQuestion.options.indexOf(improvedQuestion.correct_answer);
+        if (correctIndex !== -1 && correctAnswerRadios[correctIndex]) {
+            correctAnswerRadios[correctIndex].checked = true;
+        }
+        
+        showNotification('تم تطبيق التحسينات بنجاح', 'success');
+    }
 }
 
 // Preview Function

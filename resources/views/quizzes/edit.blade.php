@@ -3,6 +3,8 @@
 @section('title', 'تعديل الاختبار - ' . $quiz->title)
 
 @section('content')
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 <div class="min-h-screen py-12">
     <div class="max-w-5xl mx-auto px-4">
         <!-- Animated Background -->
@@ -88,8 +90,8 @@
                         <div class="relative">
                             <textarea name="description" 
                                       id="quiz-description" 
-                                      class="tinymce-editor">{{ old('description', $quiz->description) }}</textarea>
-                        </div>
+                                      class="tinymce-editor"
+                                      placeholder="اكتب وصفاً تفصيلياً للاختبار...">{!! old('description', $quiz->description) !!}</textarea>                        </div>
                         @error('description')
                         <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
                             <i class="fas fa-exclamation-circle"></i>
@@ -98,10 +100,42 @@
                         @enderror
                     </div>
                     
+                    <!-- Educational Text Section -->
+                    @if($quiz->questions->where('passage', '!=', null)->first())
+                    <div class="mb-8 animate-fade-in animation-delay-500">
+                        <label class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                            <i class="fas fa-book-open text-purple-600"></i>
+                            النص التعليمي
+                        </label>
+                        
+                        <!-- Passage Title -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">عنوان النص</label>
+                            <input type="text" 
+                                   name="passage_title" 
+                                   value="{{ old('passage_title', $quiz->questions->where('passage', '!=', null)->first()->passage_title) }}"
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                                   placeholder="أدخل عنوان النص التعليمي...">
+                        </div>
+                        
+                        <!-- Passage Content -->
+                        <div class="relative">
+                            <textarea name="passage" 
+                                      id="passage-editor" 
+                                      class="tinymce-editor"
+                                      placeholder="اكتب النص التعليمي هنا...">{!! old('passage', $quiz->questions->where('passage', '!=', null)->first()->passage) !!}</textarea>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">
+                            <i class="fas fa-info-circle"></i>
+                            النص التعليمي سيظهر للطلاب أثناء الاختبار
+                        </p>
+                    </div>
+                    @endif
+                    
                     <!-- Subject and Grade Grid -->
                     <div class="grid md:grid-cols-2 gap-6 mb-8">
                         <!-- Subject Field -->
-                        <div class="animate-fade-in animation-delay-500">
+                        <div class="animate-fade-in animation-delay-600">
                             <label class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
                                 <i class="fas fa-book text-purple-600"></i>
                                 المادة الدراسية
@@ -133,7 +167,7 @@
                         </div>
                         
                         <!-- Grade Level Field -->
-                        <div class="animate-fade-in animation-delay-600">
+                        <div class="animate-fade-in animation-delay-700">
                             <label class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
                                 <i class="fas fa-graduation-cap text-purple-600"></i>
                                 الصف الدراسي
@@ -157,29 +191,6 @@
                                         @endfor
                                     </optgroup>
                                 </select>
-                                @if($quiz->questions->where('passage', '!=', null)->first())
-<div class="mb-6">
-    <label for="passage" class="block text-sm font-medium text-gray-700 mb-2">
-        النص التعليمي
-    </label>
-    <textarea name="passage" 
-              id="passage" 
-              rows="6"
-              class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">{{ $quiz->questions->where('passage', '!=', null)->first()->passage }}</textarea>
-    <p class="mt-1 text-sm text-gray-500">يمكنك تعديل النص التعليمي المرتبط بالأسئلة</p>
-</div>
-
-<div class="mb-6">
-    <label for="passage_title" class="block text-sm font-medium text-gray-700 mb-2">
-        عنوان النص
-    </label>
-    <input type="text" 
-           name="passage_title" 
-           id="passage_title"
-           value="{{ $quiz->questions->where('passage', '!=', null)->first()->passage_title }}"
-           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
-</div>
-@endif
                                 <div class="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                                     <i class="fas fa-chevron-down text-gray-400"></i>
                                 </div>
@@ -192,27 +203,29 @@
                             @enderror
                         </div>
                     </div>
+                    
                     <!-- PIN Code Display -->
-<div class="mb-8 animate-fade-in animation-delay-600">
-    <div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-6">
-        <h3 class="text-lg font-bold text-gray-800 mb-3">
-            <i class="fas fa-key mr-2"></i>رمز الدخول
-        </h3>
-        <div class="bg-white rounded-lg p-4 text-center">
-            <p class="text-3xl font-bold tracking-wider text-purple-600">{{ $quiz->pin }}</p>
-            <button type="button" onclick="copyPIN('{{ $quiz->pin }}')"
-                    class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg mt-3 transition-colors">
-                <i class="fas fa-copy mr-2"></i>نسخ الرمز
-            </button>
-        </div>
-        <p class="text-xs text-gray-600 mt-3 text-center">
-            <i class="fas fa-info-circle"></i>
-            هذا الرمز ثابت ولا يمكن تغييره
-        </p>
-    </div>
-</div>
+                    <div class="mb-8 animate-fade-in animation-delay-800">
+                        <div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-3">
+                                <i class="fas fa-key mr-2"></i>رمز الدخول
+                            </h3>
+                            <div class="bg-white rounded-lg p-4 text-center">
+                                <p class="text-3xl font-bold tracking-wider text-purple-600">{{ $quiz->pin }}</p>
+                                <button type="button" onclick="copyPIN('{{ $quiz->pin }}')"
+                                        class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg mt-3 transition-colors">
+                                    <i class="fas fa-copy mr-2"></i>نسخ الرمز
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-600 mt-3 text-center">
+                                <i class="fas fa-info-circle"></i>
+                                هذا الرمز ثابت ولا يمكن تغييره
+                            </p>
+                        </div>
+                    </div>
+                    
                     <!-- Advanced Settings (Collapsible) -->
-                    <div class="mb-8 animate-fade-in animation-delay-700">
+                    <div class="mb-8 animate-fade-in animation-delay-900">
                         <button type="button" 
                                 onclick="toggleAdvancedSettings()" 
                                 class="w-full bg-gray-50 hover:bg-gray-100 rounded-xl p-4 flex items-center justify-between transition-all duration-200 group">
@@ -272,7 +285,7 @@
                     </div>
                     
                     <!-- Form Actions -->
-                    <div class="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t-2 border-gray-100 animate-fade-in animation-delay-800">
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t-2 border-gray-100 animate-fade-in animation-delay-1000">
                         <button type="submit" 
                                 class="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-lg hover:shadow-2xl transform hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
                             <span class="relative z-10 flex items-center justify-center gap-3">
@@ -302,7 +315,7 @@
             <!-- Quick Stats Cards -->
             <div class="grid md:grid-cols-3 gap-6 mt-8">
                 <!-- Questions Card -->
-                <div class="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-6 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 animate-fade-in animation-delay-900">
+                <div class="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-6 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 animate-fade-in animation-delay-1100">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-purple-100 rounded-xl p-3">
                             <i class="fas fa-question-circle text-2xl text-purple-600"></i>
@@ -317,7 +330,7 @@
                 </div>
                 
                 <!-- Results Card -->
-                <div class="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-6 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 animate-fade-in animation-delay-1000">
+                <div class="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-6 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 animate-fade-in animation-delay-1200">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-green-100 rounded-xl p-3">
                             <i class="fas fa-chart-line text-2xl text-green-600"></i>
@@ -331,7 +344,7 @@
                 </div>
                 
                 <!-- Last Activity Card -->
-                <div class="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-6 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 animate-fade-in animation-delay-1100">
+                <div class="bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg p-6 hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 animate-fade-in animation-delay-1300">
                     <div class="flex items-center justify-between mb-4">
                         <div class="bg-blue-100 rounded-xl p-3">
                             <i class="fas fa-clock text-2xl text-blue-600"></i>
@@ -388,6 +401,14 @@
 
 @push('styles')
 <style>
+    /* Gradient text effect */
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
     /* Animations */
     @keyframes blob {
         0% { transform: translate(0px, 0px) scale(1); }
@@ -434,6 +455,8 @@
     .animation-delay-900 { animation-delay: 900ms; }
     .animation-delay-1000 { animation-delay: 1000ms; }
     .animation-delay-1100 { animation-delay: 1100ms; }
+    .animation-delay-1200 { animation-delay: 1200ms; }
+    .animation-delay-1300 { animation-delay: 1300ms; }
     
     /* Custom select styling */
     select {
@@ -442,38 +465,27 @@
     
     /* Form validation states */
     input:valid:not(:placeholder-shown),
-    select:valid {
+    select:valid,
+    textarea:valid {
         border-color: #10b981;
     }
     
     input:invalid:not(:placeholder-shown),
-    select:invalid {
+    select:invalid,
+    textarea:invalid {
         border-color: #ef4444;
     }
     
-    /* Loading state for submit button */
-    .btn-loading {
-        position: relative;
-        color: transparent;
+    /* TinyMCE container styling */
+    .tox-tinymce {
+        border-radius: 0.75rem !important;
+        border-color: #e5e7eb !important;
+        border-width: 2px !important;
     }
     
-    .btn-loading::after {
-        content: "";
-        position: absolute;
-        width: 20px;
-        height: 20px;
-        top: 50%;
-        left: 50%;
-        margin-left: -10px;
-        margin-top: -10px;
-        border: 2px solid #ffffff;
-        border-radius: 50%;
-        border-top-color: transparent;
-        animation: spinner 0.8s linear infinite;
-    }
-    
-    @keyframes spinner {
-        to { transform: rotate(360deg); }
+    .tox-tinymce:focus-within {
+        border-color: #a855f7 !important;
+        box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.1) !important;
     }
 </style>
 @endpush
@@ -490,21 +502,23 @@ tinymce.init({
     directionality: 'rtl',
     height: 350,
     menubar: false,
-    plugins: 'lists link charmap preview searchreplace autolink directionality code fullscreen table emoticons image media',
-    toolbar: 'undo redo | formatselect | bold italic underline strikethrough | bullist numlist | link image media | alignleft aligncenter alignright alignjustify | outdent indent | removeformat | preview fullscreen | emoticons',
-    content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; line-height: 1.6; }',
+    plugins: 'lists link charmap preview searchreplace autolink directionality code fullscreen table emoticons image media wordcount textcolor colorpicker',
+    toolbar: 'undo redo | formatselect | bold italic underline strikethrough | forecolor backcolor | bullist numlist | link image media | alignleft aligncenter alignright alignjustify | outdent indent | removeformat | preview fullscreen | emoticons | wordcount',
+    content_style: 'body { font-family: "Tajawal", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; line-height: 1.6; direction: rtl; }',
     branding: false,
     promotion: false,
     entity_encoding: 'raw',
     toolbar_mode: 'sliding',
     image_advtab: true,
     link_default_target: '_blank',
-    placeholder: 'اكتب وصفاً تفصيلياً للاختبار...',
-    setup: function(editor) {
-        editor.on('change', function() {
-            // Auto-save draft
-            saveDraft();
-        });
+    paste_as_text: false,
+    paste_preprocess: function(plugin, args) {
+        // Preserve basic formatting when pasting
+        args.content = args.content.replace(/&nbsp;/g, ' ');
+    },
+    init_instance_callback: function(editor) {
+        // Add custom styling to editor
+        editor.getContainer().style.borderRadius = '0.75rem';
     }
 });
 
@@ -515,6 +529,15 @@ function toggleAdvancedSettings() {
     
     settings.classList.toggle('hidden');
     chevron.classList.toggle('rotate-180');
+}
+
+// Copy PIN function
+function copyPIN(pin) {
+    navigator.clipboard.writeText(pin).then(() => {
+        showNotification('تم نسخ الرمز بنجاح', 'success');
+    }).catch(() => {
+        showNotification('فشل في نسخ الرمز', 'error');
+    });
 }
 
 // Delete Confirmation Modal
@@ -535,74 +558,6 @@ function closeDeleteModal() {
         modal.classList.add('hidden');
     }, 300);
 }
-
-// Auto-save Draft
-let draftTimer;
-function saveDraft() {
-    clearTimeout(draftTimer);
-    draftTimer = setTimeout(() => {
-        // Show saving indicator
-        showNotification('جاري حفظ المسودة...', 'info');
-        
-        // In a real application, you would save to server here
-        localStorage.setItem('quiz_draft_{{ $quiz->id }}', JSON.stringify({
-            title: document.querySelector('[name="title"]').value,
-            description: tinymce.get('quiz-description').getContent(),
-            subject: document.querySelector('[name="subject"]').value,
-            grade_level: document.querySelector('[name="grade_level"]').value,
-            timestamp: new Date().toISOString()
-        }));
-        
-        setTimeout(() => {
-            showNotification('تم حفظ المسودة', 'success');
-        }, 500);
-    }, 2000);
-}
-
-// Load Draft on Page Load
-document.addEventListener('DOMContentLoaded', function() {
-    const draft = localStorage.getItem('quiz_draft_{{ $quiz->id }}');
-    if (draft) {
-        const data = JSON.parse(draft);
-        const timeDiff = new Date() - new Date(data.timestamp);
-        const minutesAgo = Math.floor(timeDiff / 60000);
-        
-        if (minutesAgo < 60) { // Show draft if less than 1 hour old
-            showNotification(`يوجد مسودة محفوظة منذ ${minutesAgo} دقيقة`, 'info');
-        }
-    }
-    
-    // Add form validation
-    const form = document.getElementById('quiz-edit-form');
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Show loading state on submit button
-        const submitBtn = form.querySelector('button[type="submit"]');
-        submitBtn.classList.add('btn-loading');
-        submitBtn.disabled = true;
-        
-        // Clear draft
-        localStorage.removeItem('quiz_draft_{{ $quiz->id }}');
-        
-        // Submit form
-        setTimeout(() => {
-            form.submit();
-        }, 500);
-    });
-    
-    // Add input animations
-    const inputs = form.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            this.parentElement.classList.add('scale-105');
-        });
-        
-        input.addEventListener('blur', function() {
-            this.parentElement.classList.remove('scale-105');
-        });
-    });
-});
 
 // Notification System
 function showNotification(message, type = 'success') {
@@ -641,22 +596,46 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
+// Form submission handling
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('quiz-edit-form');
+    
+    // Clean form submission without interference
+    form.addEventListener('submit', function(e) {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+    });
+    
+    // Input validation feedback
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.classList.remove('border-red-500');
+            this.classList.add('border-purple-500');
+        });
+        
+        input.addEventListener('blur', function() {
+            if (this.value && this.checkValidity()) {
+                this.classList.remove('border-red-500');
+                this.classList.add('border-green-500');
+            }
+        });
+    });
+});
+
 // Keyboard Shortcuts
 document.addEventListener('keydown', function(e) {
     // Ctrl/Cmd + S to save
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        document.getElementById('quiz-edit-form').requestSubmit();
+        document.getElementById('quiz-edit-form').submit();
     }
     
-    // Escape to cancel
+    // Escape to close modal
     if (e.key === 'Escape') {
         if (!document.getElementById('delete-modal').classList.contains('hidden')) {
             closeDeleteModal();
-        } else {
-            if (confirm('هل تريد إلغاء التعديلات والعودة؟')) {
-                window.location.href = '{{ route("quizzes.index") }}';
-            }
         }
     }
 });

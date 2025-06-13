@@ -239,4 +239,39 @@ class QuestionController extends Controller
         return redirect()->route('quizzes.questions.index', $quiz)
             ->with('success', 'تم حذف الأسئلة المحددة بنجاح.');
     }
+    /**
+     * Generate AI suggestions for question improvement
+     */
+    public function generateSuggestions(Request $request, Quiz $quiz, Question $question)
+    {
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        try {
+            $suggestions = $this->claudeService->generateQuestionSuggestions(
+                $question->question,
+                $question->options,
+                $question->correct_answer,
+                $question->root_type,
+                $question->depth_level,
+                $quiz->passage ?? ''
+            );
+
+            return response()->json([
+                'success' => true,
+                'suggestions' => $suggestions
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Question suggestions failed', [
+                'error' => $e->getMessage(),
+                'question_id' => $question->id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل توليد الاقتراحات: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
