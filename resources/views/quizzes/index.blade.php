@@ -122,6 +122,7 @@
                             <div>
                                 <h3 class="text-xl font-bold text-white mb-1">{{ $quiz->title }}</h3>
                                 <!-- PIN Badge -->
+<!-- PIN Badge -->
 <div class="bg-white/20 backdrop-blur rounded-lg px-3 py-1 mt-2 inline-flex items-center gap-2">
     <i class="fas fa-key text-white/80"></i>
     <span class="text-white font-mono tracking-wider">{{ $quiz->pin }}</span>
@@ -130,22 +131,10 @@
         <i class="fas fa-copy"></i>
     </button>
 </div>
-                                <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-3 mb-3">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-sm">رمز الدخول</span>
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-xl font-bold tracking-wider">{{ $quiz->pin }}</span>
-                                            <button onclick="copyPIN('{{ $quiz->pin }}')" 
-                                                    class="text-white/80 hover:text-white transition">
-                                                <i class="fas fa-copy"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex gap-3 text-sm text-white/80">
-                                    <span>{{ ['arabic' => '🌍 العربية', 'english' => '🌎 الإنجليزية', 'hebrew' => '🌏 العبرية'][$quiz->subject] }}</span>
-                                    <span>📚 الصف {{ $quiz->grade_level }}</span>
-                                </div>
+<div class="flex gap-3 text-sm text-white/80 mt-2">
+    <span>{{ ['arabic' => '🌍 العربية', 'english' => '🌎 الإنجليزية', 'hebrew' => '🌏 العبرية'][$quiz->subject] ?? '🌐 غير محدد' }}</span>
+    <span>📚 الصف {{ $quiz->grade_level ?? 'غير محدد' }}</span>
+</div>
                             </div>
                             <div class="bg-white/20 px-3 py-1 rounded-full text-sm text-white">
                                 {{ $totalQuestions }} سؤال

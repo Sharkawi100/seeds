@@ -10,7 +10,9 @@
                     <div>
                         <h1 class="text-3xl font-bold text-white mb-2">{{ $quiz->title }}</h1>
                         <div class="flex gap-4 text-white/90">
-                            <span>📚 {{ ['arabic' => 'اللغة العربية', 'english' => 'اللغة الإنجليزية', 'hebrew' => 'اللغة العبرية'][$quiz->subject] }}</span>
+                            <span class="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium">
+                                {{ ($quiz->subject ?? 'arabic') == 'arabic' ? '🌍 عربي' : (($quiz->subject ?? 'arabic') == 'english' ? '🌎 إنجليزي' : '🌏 عبري') }}
+                            </span>
                             <span>🎓 الصف {{ $quiz->grade_level }}</span>
                         </div>
                     </div>

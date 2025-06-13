@@ -12,7 +12,7 @@
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-4">
                             <span class="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium">
-                                {{ $quiz->subject == 'arabic' ? '🌍 عربي' : ($quiz->subject == 'english' ? '🌎 إنجليزي' : '🌏 عبري') }}
+                                {{ ($quiz->subject ?? 'arabic') == 'arabic' ? '🌍 عربي' : (($quiz->subject ?? 'arabic') == 'english' ? '🌎 إنجليزي' : '🌏 عبري') }}
                             </span>
                             <span class="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium">
                                 الصف {{ $quiz->grade_level }}
@@ -223,7 +223,11 @@
                 @forelse($quiz->questions as $index => $question)
                 <div class="question-preview p-6 hover:bg-gray-50 transition-colors relative">
                     <!-- Root indicator stripe -->
-                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-{{ $roots[$question->root_type]['color'] }}-500"></div>
+                    @php
+                        $questionRootType = $question->root_type ?: 'jawhar'; // Default to jawhar if empty
+                        $rootData = $roots[$questionRootType] ?? $roots['jawhar']; // Fallback to jawhar
+                    @endphp
+                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-{{ $rootData['color'] }}-500"></div>
                     
                     <div class="flex items-start gap-4 mr-3">
                         <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center font-bold text-gray-700 text-lg shadow-sm">
@@ -231,16 +235,16 @@
                         </div>
                         <div class="flex-1">
                             <div class="flex flex-wrap items-center gap-3 mb-4">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-{{ $roots[$question->root_type]['color'] }}-100 text-{{ $roots[$question->root_type]['color'] }}-700 font-medium">
-                                    {{ $roots[$question->root_type]['icon'] }} {{ $roots[$question->root_type]['name'] }}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-{{ $rootData['color'] }}-100 text-{{ $rootData['color'] }}-700 font-medium">
+                                    {{ $rootData['icon'] }} {{ $rootData['name'] }}
                                 </span>
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
                                     <i class="fas fa-layer-group mr-1.5"></i>
-                                    مستوى {{ $question->depth_level }}
+                                    مستوى {{ $question->depth_level ?? 1 }}
                                 </span>
                                 <span class="text-sm text-gray-500">
                                     @for($i = 1; $i <= 3; $i++)
-                                        @if($i <= $question->depth_level)
+                                        @if($i <= ($question->depth_level ?? 1))
                                             <span class="text-yellow-500">●</span>
                                         @else
                                             <span class="text-gray-300">●</span>
