@@ -184,14 +184,15 @@
                         </div>
 
                         <!-- Progress Visual -->
-                        <div class="mb-4">
-                            <x-juzoor-chart :scores="[
-                                'jawhar' => $totalQuestions > 0 ? ($rootCounts['jawhar'] ?? 0) / $totalQuestions * 100 : 0,
-                                'zihn' => $totalQuestions > 0 ? ($rootCounts['zihn'] ?? 0) / $totalQuestions * 100 : 0,
-                                'waslat' => $totalQuestions > 0 ? ($rootCounts['waslat'] ?? 0) / $totalQuestions * 100 : 0,
-                                'roaya' => $totalQuestions > 0 ? ($rootCounts['roaya'] ?? 0) / $totalQuestions * 100 : 0
-                            ]" size="small" />
-                        </div>
+<div class="mb-4">
+    {{-- <x-juzoor-chart :scores="[
+        'jawhar' => $totalQuestions > 0 ? ($rootCounts['jawhar'] ?? 0) / $totalQuestions * 100 : 0,
+        'zihn' => $totalQuestions > 0 ? ($rootCounts['zihn'] ?? 0) / $totalQuestions * 100 : 0,
+        'waslat' => $totalQuestions > 0 ? ($rootCounts['waslat'] ?? 0) / $totalQuestions * 100 : 0,
+        'roaya' => $totalQuestions > 0 ? ($rootCounts['roaya'] ?? 0) / $totalQuestions * 100 : 0
+    ]" size="small" /> --}}
+    <p class="text-sm text-gray-500">توزيع الأسئلة حسب الجذور</p>
+</div>
 
                        <!-- Action Buttons -->
 <div class="grid grid-cols-2 gap-2">

@@ -40,7 +40,15 @@ class QuizController extends Controller
             ->latest()
             ->get();
 
-        return view('quizzes.index', compact('quizzes'));
+        // Define roots array for view usage
+        $roots = [
+            'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => 'red'],
+            'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => 'cyan'],
+            'waslat' => ['name' => 'وَصلات', 'icon' => '🔗', 'color' => 'yellow'],
+            'roaya' => ['name' => 'رُؤية', 'icon' => '👁️', 'color' => 'purple']
+        ];
+
+        return view('quizzes.index', compact('quizzes', 'roots'));
     }
 
     public function create()
