@@ -93,24 +93,20 @@
 
                         <!-- Subject -->
                         <div>
-                            <label class="block text-lg font-bold text-gray-700 mb-3">
+                            <label for="subject_id" class="block text-lg font-bold text-gray-700 mb-3">
                                 المادة الدراسية
                                 <span class="text-red-500">*</span>
                             </label>
                             <div class="relative">
-                                <select name="subject" 
-                                        class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 appearance-none cursor-pointer transition-all"
-                                        required>
-                                    <option value="">اختر المادة</option>
-                                    <option value="arabic">🌍 اللغة العربية</option>
-                                    <option value="english">🌎 اللغة الإنجليزية</option>
-                                    <option value="hebrew">🌏 اللغة العبرية</option>
-                                </select>
-                                <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
-                                </div>
+                                <select name="subject_id" 
+        class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 appearance-none cursor-pointer transition-all"
+        required>
+    <option value="">اختر المادة</option>
+    @foreach($subjects as $subject)
+        <option value="{{ $subject->id }}">{{ $subject->name }}</option>
+    @endforeach
+</select>
+                                <i class="fas fa-chevron-down absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
                             </div>
                         </div>
 

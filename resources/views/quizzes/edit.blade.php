@@ -135,35 +135,18 @@
                     <!-- Subject and Grade Grid -->
                     <div class="grid md:grid-cols-2 gap-6 mb-8">
                         <!-- Subject Field -->
-                        <div class="animate-fade-in animation-delay-600">
-                            <label class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                <i class="fas fa-book text-purple-600"></i>
-                                المادة الدراسية
-                            </label>
-                            <div class="relative">
-                                <select name="subject" 
-                                        class="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200 appearance-none cursor-pointer @error('subject') border-red-500 @enderror" 
-                                        required>
-                                    <option value="arabic" {{ $quiz->subject == 'arabic' ? 'selected' : '' }}>
-                                        🌍 اللغة العربية
-                                    </option>
-                                    <option value="english" {{ $quiz->subject == 'english' ? 'selected' : '' }}>
-                                        🌎 اللغة الإنجليزية
-                                    </option>
-                                    <option value="hebrew" {{ $quiz->subject == 'hebrew' ? 'selected' : '' }}>
-                                        🌏 اللغة العبرية
-                                    </option>
-                                </select>
-                                <div class="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                                    <i class="fas fa-chevron-down text-gray-400"></i>
-                                </div>
-                            </div>
-                            @error('subject')
-                            <p class="mt-2 text-sm text-red-600 flex items-center gap-1">
-                                <i class="fas fa-exclamation-circle"></i>
-                                {{ $message }}
-                            </p>
-                            @enderror
+                        <div class="relative">
+                            <select name="subject_id" 
+        class="w-full px-5 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200 appearance-none cursor-pointer @error('subject_id') border-red-500 @enderror" 
+        required>
+    <option value="">اختر المادة</option>
+    @foreach($subjects as $subject)
+        <option value="{{ $subject->id }}" {{ $quiz->subject_id == $subject->id ? 'selected' : '' }}>
+            {{ $subject->name }}
+        </option>
+    @endforeach
+</select>
+                            <i class="fas fa-chevron-down absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
                         </div>
                         
                         <!-- Grade Level Field -->

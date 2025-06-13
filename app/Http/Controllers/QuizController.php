@@ -45,8 +45,8 @@ class QuizController extends Controller
 
     public function create()
     {
-        $this->authorizeQuizManagement();
-        return view('quizzes.create');
+        $subjects = \App\Models\Subject::active()->ordered()->get();
+        return view('quizzes.create', compact('subjects'));
     }
 
     public function store(Request $request)
@@ -54,7 +54,7 @@ class QuizController extends Controller
         $this->authorizeQuizManagement();
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'subject' => 'required|in:arabic,english,hebrew',
+            'subject_id' => 'required|exists:subjects,id',
             'grade_level' => 'required|integer|min:1|max:9',
             'creation_method' => 'required|in:ai,manual,hybrid',
             'roots' => 'required_if:creation_method,ai,hybrid|array',
@@ -299,11 +299,13 @@ class QuizController extends Controller
         if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
+        $subjects = \App\Models\Subject::active()->ordered()->get();
+
         if ($quiz->has_submissions) {
             return redirect()->route('quizzes.show', $quiz)
                 ->with('error', 'لا يمكن تعديل الاختبار بعد أن بدأ الطلاب في حله.');
         }
-        return view('quizzes.edit', compact('quiz'));
+        return view('quizzes.edit', compact('quiz', 'subjects'));
     }
 
     public function update(Request $request, Quiz $quiz)
@@ -321,7 +323,7 @@ class QuizController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'subject' => 'required|in:arabic,english,hebrew',
+            'subject_id' => 'required|exists:subjects,id',
             'grade_level' => 'required|integer|min:1|max:9',
             'description' => 'nullable|string',
             'time_limit' => 'nullable|integer|min:1',

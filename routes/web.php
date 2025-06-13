@@ -1,5 +1,4 @@
 <?php
-// File: routes/web.php
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuizController;
@@ -15,6 +14,8 @@ use App\Http\Controllers\Admin\AiManagementController;
 use App\Http\Middleware\IsAdmin;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Admin\SubjectController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -49,48 +50,25 @@ Route::get('/lang/{locale}', function ($locale) {
 
 // Quiz Taking (Public Access)
 Route::prefix('quiz')->name('quiz.')->group(function () {
-    Route::get('/', function () {
-        return redirect()->route('home');
-    })->name('index');
+    // PIN-based access (for guest users)
     Route::post('/enter-pin', [WelcomeController::class, 'enterPin'])->name('enter-pin');
-    Route::get('/demo', [WelcomeController::class, 'demo'])->name('demo');
-    Route::get('/{quiz}/take', [QuizController::class, 'take'])->name('take');
-    Route::post('/{quiz}/submit', [QuizController::class, 'submit'])->name('submit');
-    Route::post('/{quiz}/guest-start', [QuizController::class, 'guestStart'])->name('guest-start');
+    Route::get('/pin/{quiz:pin}/take', [QuizController::class, 'take'])->name('take-by-pin');
+    Route::post('/pin/{quiz:pin}/submit', [QuizController::class, 'submit'])->name('submit-by-pin');
+
+    // Guest results
+    Route::get('/result/{result:token}', [ResultController::class, 'guestShow'])->name('guest-result');
 });
 
-// Results Viewing (Guest with Token or Authenticated)
-Route::get('/results/{result}', [ResultController::class, 'show'])->name('results.show');
-Route::get('/help/students', fn() => view('help.students'))->name('help.students');
-
+// Quiz Taking by ID (separate from prefix to avoid conflicts)
+Route::get('/quiz/{quiz}/take', [QuizController::class, 'take'])->name('quiz.take');
+Route::post('/quiz/{quiz}/submit', [QuizController::class, 'submit'])->name('quiz.submit');
 
 /*
 |--------------------------------------------------------------------------
-| Guest Only Routes (Redirect to Dashboard if Authenticated)
+| Authentication Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware('guest')->group(function () {
-    // Role Selection Pages
-    Route::get('/login', fn() => view('auth.role-selection', ['action' => 'login']))->name('login');
-    Route::get('/register', fn() => view('auth.role-selection', ['action' => 'register']))->name('register');
-
-    // Teacher Authentication
-    Route::prefix('teacher')->name('teacher.')->group(function () {
-        Route::get('login', [App\Http\Controllers\Auth\Teacher\TeacherLoginController::class, 'showLoginForm'])->name('login');
-        Route::post('login', [App\Http\Controllers\Auth\Teacher\TeacherLoginController::class, 'login']);
-        Route::get('register', [App\Http\Controllers\Auth\Teacher\TeacherRegisterController::class, 'showRegistrationForm'])->name('register');
-        Route::post('register', [App\Http\Controllers\Auth\Teacher\TeacherRegisterController::class, 'register']);
-    });
-
-    // Student Authentication
-    Route::prefix('student')->name('student.')->group(function () {
-        Route::get('login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'showLoginForm'])->name('login');
-        Route::post('login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'login']);
-        Route::post('pin-login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'pinLogin'])->name('pin-login');
-        Route::get('register', [App\Http\Controllers\Auth\Student\StudentRegisterController::class, 'showRegistrationForm'])->name('register');
-        Route::post('register', [App\Http\Controllers\Auth\Student\StudentRegisterController::class, 'register']);
-    });
-});
+require __DIR__ . '/auth.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -154,26 +132,32 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('quizzes', QuizController::class);
     Route::post('/quizzes/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('quizzes.duplicate');
 
-    Route::prefix('quizzes')->name('quizzes.')->group(function () {
-        // AI Text Generation
-        Route::post('/generate-text', [QuizController::class, 'generateText'])->name('generate-text');
+    // AI Text Generation (outside of question management)
+    Route::post('/quizzes/generate-text', [QuizController::class, 'generateText'])->name('quizzes.generate-text');
 
-        // Question Management
-        Route::prefix('{quiz}/questions')->name('questions.')->controller(QuestionController::class)->group(function () {
-            Route::get('/', 'index')->name('index');
-            Route::get('/bulk-edit', 'bulkEdit')->name('bulk-edit');
-            Route::get('/create', 'create')->name('create');
-            Route::post('/', 'store')->name('store');
-            Route::put('/bulk-update', 'bulkUpdate')->name('bulk-update');
-            Route::delete('/bulk-delete', 'bulkDelete')->name('bulk-delete');
-            Route::get('/{question}/edit', 'edit')->name('edit');
-            Route::put('/{question}', 'update')->name('update');
-            Route::delete('/{question}', 'destroy')->name('destroy');
-            Route::post('/{question}/update-text', 'updateText')->name('update-text');
-            Route::post('/{question}/clone', 'clone')->name('clone');
-            Route::post('/quizzes/{quiz}/questions/{question}/suggestions', [QuestionController::class, 'generateSuggestions'])
-                ->name('questions.suggestions');
-        });
+    /*
+    |--------------------------------------------------------------------------
+    | Question Management Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('quizzes/{quiz}/questions')->name('quizzes.questions.')->group(function () {
+        // Basic CRUD operations
+        Route::get('/', [QuestionController::class, 'index'])->name('index');
+        Route::get('/bulk-edit', [QuestionController::class, 'bulkEdit'])->name('bulk-edit');
+        Route::get('/create', [QuestionController::class, 'create'])->name('create');
+        Route::post('/', [QuestionController::class, 'store'])->name('store');
+        Route::put('/bulk-update', [QuestionController::class, 'bulkUpdate'])->name('bulk-update');
+        Route::delete('/bulk-delete', [QuestionController::class, 'bulkDelete'])->name('bulk-delete');
+
+        // Individual question operations
+        Route::get('/{question}/edit', [QuestionController::class, 'edit'])->name('edit');
+        Route::put('/{question}', [QuestionController::class, 'update'])->name('update');
+        Route::delete('/{question}', [QuestionController::class, 'destroy'])->name('destroy');
+        Route::post('/{question}/update-text', [QuestionController::class, 'updateText'])->name('update-text');
+        Route::post('/{question}/clone', [QuestionController::class, 'clone'])->name('clone');
+
+        // AI Suggestions (Fixed route)
+        Route::post('/{question}/suggestions', [QuestionController::class, 'generateSuggestions'])->name('suggestions');
     });
 
     /*
@@ -184,6 +168,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('results')->name('results.')->controller(ResultController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/quiz/{quiz}', 'quizResults')->name('quiz');
+        Route::get('/{result}', 'show')->name('show');
     });
 });
 
@@ -199,7 +184,9 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
         Route::get('/reports', 'reports')->name('reports');
         Route::get('/settings', 'settings')->name('settings');
     });
-
+    // Subject Management
+    Route::resource('subjects', App\Http\Controllers\Admin\SubjectController::class);
+    Route::post('subjects/{subject}/toggle-status', [App\Http\Controllers\Admin\SubjectController::class, 'toggleStatus'])->name('subjects.toggle-status');
     // Quiz Management
     Route::resource('quizzes', AdminQuizController::class);
     Route::post('quizzes/{quiz}/toggle-status', [AdminQuizController::class, 'toggleStatus'])->name('quizzes.toggle-status');
@@ -220,11 +207,3 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
         Route::post('/quiz/{quiz}/report', 'generateReport')->name('generateReport');
     });
 });
-
-/*
-|--------------------------------------------------------------------------
-| Include Authentication Routes
-|--------------------------------------------------------------------------
-*/
-
-require __DIR__ . '/auth.php';

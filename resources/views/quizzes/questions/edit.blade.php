@@ -559,7 +559,7 @@ async function generateAISuggestions() {
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التوليد...';
     
     try {
-        const response = await fetch(`{{ route('questions.suggestions', [$quiz, $question]) }}`, {
+        const response = await fetch(`{{ route('quizzes.questions.suggestions', [$quiz, $question]) }}`, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

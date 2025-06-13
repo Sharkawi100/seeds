@@ -136,12 +136,7 @@ class Quiz extends Model
      */
     public function getSubjectNameAttribute(): string
     {
-        return match ($this->subject) {
-            'arabic' => 'اللغة العربية',
-            'english' => 'اللغة الإنجليزية',
-            'hebrew' => 'اللغة العبرية',
-            default => $this->subject
-        };
+        return $this->subject ? $this->subject->name : 'غير محدد';
     }
 
     /**
@@ -211,5 +206,9 @@ class Quiz extends Model
                 $q->whereNull('expires_at')
                     ->orWhere('expires_at', '>', now());
             });
+    }
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class);
     }
 }
