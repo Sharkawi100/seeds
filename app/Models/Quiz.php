@@ -20,16 +20,29 @@ class Quiz extends Model
     protected $fillable = [
         'user_id',
         'title',
-        'subject',
+        'description',
+        'subject_id', // Changed from 'subject' to 'subject_id'
         'grade_level',
-        'settings',
-        'has_submissions',
+        'pin',
+        'is_active',
+        'is_demo',
+        'is_public',
         'shuffle_questions',
         'shuffle_answers',
-        'show_results',
+        'group_by_root',
+        'maintain_difficulty_order',
         'time_limit',
-        'passing_score'
+        'passing_score',
+        'show_results',
+        'has_submissions',
+        'expires_at',
+        'settings',
+        'passage_data'
     ];
+
+    /**
+     * Boot method for generating PIN
+     */
     protected static function boot()
     {
         parent::boot();
@@ -44,6 +57,7 @@ class Quiz extends Model
             }
         });
     }
+
     /**
      * The attributes that should be cast.
      *
@@ -51,6 +65,17 @@ class Quiz extends Model
      */
     protected $casts = [
         'settings' => 'array',
+        'passage_data' => 'array',
+        'is_active' => 'boolean',
+        'is_demo' => 'boolean',
+        'is_public' => 'boolean',
+        'shuffle_questions' => 'boolean',
+        'shuffle_answers' => 'boolean',
+        'group_by_root' => 'boolean',
+        'maintain_difficulty_order' => 'boolean',
+        'show_results' => 'boolean',
+        'has_submissions' => 'boolean',
+        'expires_at' => 'datetime',
     ];
 
     /**
@@ -59,6 +84,14 @@ class Quiz extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the subject that belongs to the quiz.
+     */
+    public function subject(): BelongsTo
+    {
+        return $this->belongsTo(Subject::class);
     }
 
     /**
@@ -130,13 +163,18 @@ class Quiz extends Model
     }
 
     /**
-     * Get the subject name in Arabic
+     * Get the subject name (using the relationship)
      *
      * @return string
      */
     public function getSubjectNameAttribute(): string
     {
-        return $this->subject ? $this->subject->name : 'غير محدد';
+        if ($this->subject) {
+            return $this->subject->name;
+        }
+
+        // Fallback for old data that might still use direct subject field
+        return $this->attributes['subject'] ?? 'غير محدد';
     }
 
     /**
@@ -158,6 +196,7 @@ class Quiz extends Model
     {
         return $this->total_questions > 0;
     }
+
     /**
      * Generate a unique PIN for the quiz
      *
@@ -207,8 +246,26 @@ class Quiz extends Model
                     ->orWhere('expires_at', '>', now());
             });
     }
-    public function subject()
+
+    /**
+     * Scope for demo quizzes
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeDemo($query)
     {
-        return $this->belongsTo(Subject::class);
+        return $query->where('is_demo', true);
+    }
+
+    /**
+     * Scope for public quizzes
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopePublic($query)
+    {
+        return $query->where('is_public', true);
     }
 }

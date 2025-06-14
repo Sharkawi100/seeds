@@ -1,20 +1,20 @@
 <?php
-// File: app/Http/Controllers/WelcomeController.php
 
 namespace App\Http\Controllers;
 
 use App\Models\Quiz;
-use App\Models\Result;
 use App\Models\User;
+use App\Models\Result;
+use App\Models\Subject;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class WelcomeController extends Controller
 {
     /**
-     * Show the application welcome page.
+     * Display the welcome page with statistics
      *
      * @return \Illuminate\View\View
      */
@@ -44,7 +44,7 @@ class WelcomeController extends Controller
             'pin' => 'required|string|size:6'
         ]);
 
-        // Find quiz by PIN (you'll need to add a PIN column to quizzes table)
+        // Find quiz by PIN
         $quiz = Quiz::where('pin', $validated['pin'])
             ->where('is_active', true)
             ->first();
@@ -69,7 +69,6 @@ class WelcomeController extends Controller
      *
      * @return \Illuminate\Http\RedirectResponse
      */
-    // In WelcomeController.php
     public function demo()
     {
         $demoQuiz = Quiz::where('is_demo', true)
@@ -91,134 +90,98 @@ class WelcomeController extends Controller
      */
     private function getActiveSubjects()
     {
-        $subjects = Quiz::where('created_at', '>=', today())
-            ->groupBy('subject')
-            ->select('subject', DB::raw('count(*) as count'))
+        // Use the proper relationship with subjects table
+        $subjects = Quiz::join('subjects', 'quizzes.subject_id', '=', 'subjects.id')
+            ->where('quizzes.created_at', '>=', today())
+            ->where('subjects.is_active', true)
+            ->groupBy('subjects.id', 'subjects.name', 'subjects.slug')
+            ->select(
+                'subjects.id',
+                'subjects.name',
+                'subjects.slug',
+                DB::raw('count(quizzes.id) as count')
+            )
             ->orderBy('count', 'desc')
             ->limit(5)
             ->get();
 
         return $subjects->map(function ($item) {
-            $names = [
-                'arabic' => 'اللغة العربية',
-                'english' => 'اللغة الإنجليزية',
-                'hebrew' => 'اللغة العبرية',
-                'math' => 'الرياضيات',
-                'science' => 'العلوم',
-                'history' => 'التاريخ',
-                'geography' => 'الجغرافيا',
-            ];
-
             return [
-                'name' => $names[$item->subject] ?? $item->subject,
+                'name' => $item->name,
+                'slug' => $item->slug,
                 'count' => $item->count
             ];
         })->toArray();
     }
 
     /**
-     * Get general statistics
+     * Get general statistics for the welcome page
      *
      * @return array
      */
     private function getGeneralStats()
     {
         return [
-            'total_quizzes' => Quiz::count(),
-            'total_attempts' => Result::nonDemo()->whereMonth('created_at', now()->month)->count(),
-            'active_schools' => User::where('is_school', true)->where('last_login_at', '>=', now()->subDays(30))->count(),
-            'total_questions' => DB::table('questions')->count(),
+            'total_quizzes' => Quiz::where('is_active', true)->count(),
+            'total_users' => User::where('is_active', true)->count(),
+            'total_results' => Result::count(),
+            'demo_quizzes' => Quiz::where('is_demo', true)
+                ->where('is_active', true)
+                ->count(),
         ];
     }
 
     /**
-     * Get growth statistics for the week
+     * Get growth statistics (compared to last period)
      *
      * @return array
      */
     private function getGrowthStats()
     {
-        // Calculate average improvement per root type this week
-        $weekAgo = now()->subWeek();
+        $lastWeek = now()->subWeek();
+        $twoWeeksAgo = now()->subWeeks(2);
 
-        $improvements = Result::nonDemo()->where('created_at', '>=', $weekAgo)->select(DB::raw('
-                AVG(JSON_EXTRACT(scores, "$.jawhar")) as avg_jawhar,
-                AVG(JSON_EXTRACT(scores, "$.zihn")) as avg_zihn,
-                AVG(JSON_EXTRACT(scores, "$.waslat")) as avg_waslat,
-                AVG(JSON_EXTRACT(scores, "$.roaya")) as avg_roaya
-            '))
-            ->first();
+        $currentWeek = [
+            'quizzes' => Quiz::where('created_at', '>=', $lastWeek)->count(),
+            'users' => User::where('created_at', '>=', $lastWeek)->count(),
+            'results' => Result::where('created_at', '>=', $lastWeek)->count(),
+        ];
 
-        // Calculate week-over-week improvement (simulated for now)
+        $previousWeek = [
+            'quizzes' => Quiz::whereBetween('created_at', [$twoWeeksAgo, $lastWeek])->count(),
+            'users' => User::whereBetween('created_at', [$twoWeeksAgo, $lastWeek])->count(),
+            'results' => Result::whereBetween('created_at', [$twoWeeksAgo, $lastWeek])->count(),
+        ];
+
         return [
-            'jawhar' => [
-                'percentage' => round($improvements->avg_jawhar ?? 75),
-                'growth' => 15
-            ],
-            'zihn' => [
-                'percentage' => round($improvements->avg_zihn ?? 82),
-                'growth' => 22
-            ],
-            'waslat' => [
-                'percentage' => round($improvements->avg_waslat ?? 68),
-                'growth' => 18
-            ],
-            'roaya' => [
-                'percentage' => round($improvements->avg_roaya ?? 60),
-                'growth' => 12
-            ],
+            'quizzes_growth' => $this->calculateGrowthPercentage(
+                $currentWeek['quizzes'],
+                $previousWeek['quizzes']
+            ),
+            'users_growth' => $this->calculateGrowthPercentage(
+                $currentWeek['users'],
+                $previousWeek['users']
+            ),
+            'results_growth' => $this->calculateGrowthPercentage(
+                $currentWeek['results'],
+                $previousWeek['results']
+            ),
         ];
     }
-}
-
-// File: app/Http/Controllers/ContactController.php
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\ContactInquiry;
-
-class ContactController extends Controller
-{
-    /**
-     * Show contact form
-     *
-     * @return \Illuminate\View\View
-     */
-    public function show()
-    {
-        return view('contact');
-    }
 
     /**
-     * Handle contact form submission
+     * Calculate growth percentage between two numbers
      *
-     * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @param int $current
+     * @param int $previous
+     * @return float
      */
-    public function submit(Request $request)
+    private function calculateGrowthPercentage(int $current, int $previous): float
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'school' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'message' => 'required|string|max:2000',
-            'type' => 'required|in:demo,support,partnership'
-        ]);
-
-        // Send email notification
-        try {
-            Mail::to(config('mail.admin_email', 'admin@iseraj.com'))
-                ->send(new ContactInquiry($validated));
-
-            return redirect()->back()
-                ->with('success', 'تم إرسال رسالتك بنجاح. سنتواصل معك قريباً.');
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء إرسال الرسالة. الرجاء المحاولة مرة أخرى.')
-                ->withInput();
+        if ($previous == 0) {
+            return $current > 0 ? 100.0 : 0.0;
         }
+
+        return round((($current - $previous) / $previous) * 100, 1);
     }
 }
