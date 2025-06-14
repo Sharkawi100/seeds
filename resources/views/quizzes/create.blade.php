@@ -1,1189 +1,1099 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
-    <!-- Animated Background Elements -->
-    <div class="fixed inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div class="absolute top-40 left-40 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-    </div>
+{{-- 
+    WIZARD-BASED QUIZ CREATION FLOW
+    
+    This implements a step-by-step wizard where each step is submitted separately.
+    Backend routes needed:
+    - POST /quizzes/create-step-1 (basic info)
+    - POST /quizzes/{quiz}/update-method (creation method)
+    - POST /quizzes/{quiz}/generate-text (AI text generation)
+    - POST /quizzes/{quiz}/generate-questions (AI question generation)
+    - POST /quizzes/{quiz}/finalize (final settings)
+--}}
 
-    <div class="relative z-10 max-w-7xl mx-auto px-4 py-8">
-        <!-- Progress Steps -->
-        <div class="mb-12">
-            <div class="flex items-center justify-center">
-                <div class="flex items-center space-x-4 rtl:space-x-reverse">
-                    <!-- Step 1 -->
-                    <div class="step-item active" data-step="1">
-                        <div class="relative">
-                            <div class="step-circle">
-                                <span class="text-2xl">📝</span>
-                            </div>
-                            <span class="step-label">المعلومات الأساسية</span>
+<!-- Debug Panel (only in development) -->
+@if(config('app.debug'))
+<div class="fixed bottom-4 right-4 bg-black bg-opacity-75 text-white p-4 rounded-lg text-xs max-w-md" id="debug-panel" style="display: none;">
+    <div class="flex justify-between items-center mb-2">
+        <h4 class="font-bold">Debug Info</h4>
+        <button onclick="document.getElementById('debug-panel').style.display='none'" class="text-red-400">×</button>
+    </div>
+    <div>
+        <div>Current Step: <span id="debug-step">1</span></div>
+        <div>Quiz ID: <span id="debug-quiz-id">null</span></div>
+        <div>User ID: {{ Auth::id() ?? 'guest' }}</div>
+        <div>CSRF Token: {{ csrf_token() }}</div>
+        <div>Current URL: <span id="debug-url"></span></div>
+    </div>
+</div>
+<button onclick="document.getElementById('debug-panel').style.display='block'" 
+        class="fixed bottom-4 right-4 bg-red-600 text-white p-2 rounded-full text-xs">
+    Debug
+</button>
+@endif
+
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Wizard Header -->
+        <div class="mb-8">
+            <nav class="flex items-center space-x-4 text-sm text-gray-500 mb-6" dir="rtl">
+                <a href="{{ route('quizzes.index') }}" class="hover:text-gray-700 transition-colors">الاختبارات</a>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span class="text-gray-900 font-medium">إنشاء اختبار جديد</span>
+            </nav>
+            
+            <!-- Progress Steps -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
+                <div class="flex items-center justify-between" dir="rtl">
+                    <div class="flex items-center space-x-4">
+                        <div class="p-3 bg-gradient-to-r from-purple-100 to-blue-100 rounded-xl">
+                            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-900">معالج إنشاء الاختبار</h1>
+                            <p class="text-gray-600">دليلك خطوة بخطوة لإنشاء اختبار متميز</p>
                         </div>
                     </div>
-                    
-                    <!-- Connector -->
-                    <div class="step-connector"></div>
-                    
-                    <!-- Step 2 -->
-                    <div class="step-item" data-step="2">
-                        <div class="relative">
-                            <div class="step-circle">
-                                <span class="text-2xl">📚</span>
+                </div>
+                
+                <!-- Progress Indicator -->
+                <div class="mt-8">
+                    <div class="flex items-center justify-between" dir="rtl">
+                        <div class="flex items-center space-x-3" id="step-indicator-1">
+                            <div class="w-10 h-10 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold">1</div>
+                            <div>
+                                <div class="text-sm font-bold text-purple-600">المعلومات الأساسية</div>
+                                <div class="text-xs text-gray-500">العنوان والمادة والصف</div>
                             </div>
-                            <span class="step-label">النص التعليمي</span>
                         </div>
-                    </div>
-                    
-                    <!-- Connector -->
-                    <div class="step-connector"></div>
-                    
-                    <!-- Step 3 -->
-                    <div class="step-item" data-step="3">
-                        <div class="relative">
-                            <div class="step-circle">
-                                <span class="text-2xl">❓</span>
+                        
+                        <div class="w-20 h-1 bg-gray-300 rounded-full">
+                            <div class="h-1 bg-purple-600 rounded-full transition-all duration-500" style="width: 0%" id="progress-bar-1"></div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3" id="step-indicator-2">
+                            <div class="w-10 h-10 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center font-bold">2</div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-400">طريقة الإنشاء</div>
+                                <div class="text-xs text-gray-400">ذكي أو يدوي أو مختلط</div>
                             </div>
-                            <span class="step-label">توليد الأسئلة</span>
+                        </div>
+                        
+                        <div class="w-20 h-1 bg-gray-300 rounded-full">
+                            <div class="h-1 bg-gray-300 rounded-full transition-all duration-500" style="width: 0%" id="progress-bar-2"></div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3" id="step-indicator-3">
+                            <div class="w-10 h-10 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center font-bold">3</div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-400">المحتوى والأسئلة</div>
+                                <div class="text-xs text-gray-400">النصوص والتوزيع</div>
+                            </div>
+                        </div>
+                        
+                        <div class="w-20 h-1 bg-gray-300 rounded-full">
+                            <div class="h-1 bg-gray-300 rounded-full transition-all duration-500" style="width: 0%" id="progress-bar-3"></div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3" id="step-indicator-4">
+                            <div class="w-10 h-10 bg-gray-300 text-gray-500 rounded-full flex items-center justify-center font-bold">4</div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-400">الإعدادات النهائية</div>
+                                <div class="text-xs text-gray-400">الوقت والدرجات</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Page Title -->
-        <div class="text-center mb-10 animate-fade-in">
-            <h1 class="text-5xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-                إنشاء اختبار جديد ✨
-            </h1>
-            <p class="text-xl text-gray-600">ابدأ رحلة تعليمية جديدة مع نموذج جُذور</p>
-        </div>
-
-        <form id="quiz-form" class="space-y-8">
-            @csrf
+        <!-- Step Content Container -->
+        <div class="max-w-4xl mx-auto">
             
             <!-- Step 1: Basic Information -->
-            <div id="step-1" class="step-content">
-                <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 animate-scale-in">
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg">
-                            📋
-                        </div>
-                        <div>
-                            <h2 class="text-3xl font-bold text-gray-800">المعلومات الأساسية</h2>
-                            <p class="text-gray-600">ابدأ بتحديد معلومات الاختبار</p>
-                        </div>
+            <div class="step-content" id="step-1-content">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
+                        <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                            <span class="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold ml-3">1</span>
+                            المعلومات الأساسية للاختبار
+                        </h3>
+                        <p class="text-sm text-gray-600 mt-2">ابدأ بإدخال المعلومات الأساسية لاختبارك</p>
                     </div>
-
-                    <div class="grid lg:grid-cols-2 gap-6">
+                    
+                    <form id="step-1-form" class="p-6 space-y-6">
+                        @csrf
+                        
                         <!-- Title -->
-                        <div class="lg:col-span-2">
-                            <label class="block text-lg font-bold text-gray-700 mb-3">
+                        <div class="space-y-2">
+                            <label for="title" class="block text-sm font-bold text-gray-900">
                                 عنوان الاختبار
                                 <span class="text-red-500">*</span>
                             </label>
                             <input type="text" 
+                                   id="title" 
                                    name="title" 
-                                   class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
-                                   placeholder="مثال: اختبار الفصل الأول في اللغة العربية"
+                                   value="{{ old('title') }}" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200" 
+                                   placeholder="مثال: اختبار فهم المقروء - درس الأمانة"
                                    required>
+                            <div class="text-red-600 text-sm hidden" id="title-error"></div>
                         </div>
 
-                        <!-- Subject -->
-                        <div>
-                            <label for="subject_id" class="block text-lg font-bold text-gray-700 mb-3">
-                                المادة الدراسية
-                                <span class="text-red-500">*</span>
-                            </label>
-                            <div class="relative">
+                        <!-- Subject and Grade Row -->
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Subject -->
+                            <div class="space-y-2">
+                                <label for="subject_id" class="block text-sm font-bold text-gray-900">
+                                    المادة الدراسية
+                                    <span class="text-red-500">*</span>
+                                </label>
                                 <select name="subject_id" 
-        class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 appearance-none cursor-pointer transition-all"
-        required>
-    <option value="">اختر المادة</option>
-    @foreach($subjects as $subject)
-        <option value="{{ $subject->id }}">{{ $subject->name }}</option>
-    @endforeach
-</select>
-                                <i class="fas fa-chevron-down absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                        id="subject_id"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200" 
+                                        required>
+                                    <option value="">اختر المادة</option>
+                                    @foreach($subjects as $subject)
+                                        <option value="{{ $subject->id }}" {{ old('subject_id') == $subject->id ? 'selected' : '' }}>
+                                            {{ $subject->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="text-red-600 text-sm hidden" id="subject_id-error"></div>
                             </div>
-                        </div>
 
-                        <!-- Grade -->
-                        <div>
-                            <label class="block text-lg font-bold text-gray-700 mb-3">
-                                الصف الدراسي
-                                <span class="text-red-500">*</span>
-                            </label>
-                            <div class="relative">
+                            <!-- Grade Level -->
+                            <div class="space-y-2">
+                                <label for="grade_level" class="block text-sm font-bold text-gray-900">
+                                    الصف الدراسي
+                                    <span class="text-red-500">*</span>
+                                </label>
                                 <select name="grade_level" 
-                                        class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 appearance-none cursor-pointer transition-all"
+                                        id="grade_level"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200" 
                                         required>
                                     <option value="">اختر الصف</option>
-                                    <optgroup label="🏫 المرحلة الابتدائية">
+                                    <optgroup label="المرحلة الابتدائية">
                                         @for($i = 1; $i <= 6; $i++)
-                                        <option value="{{ $i }}">الصف {{ ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'][$i-1] }}</option>
+                                            <option value="{{ $i }}" {{ old('grade_level') == $i ? 'selected' : '' }}>
+                                                الصف {{ $i }}
+                                            </option>
                                         @endfor
                                     </optgroup>
-                                    <optgroup label="🎓 المرحلة الإعدادية">
+                                    <optgroup label="المرحلة المتوسطة">
                                         @for($i = 7; $i <= 9; $i++)
-                                        <option value="{{ $i }}">الصف {{ ['السابع', 'الثامن', 'التاسع'][$i-7] }}</option>
-                                        @endfor
-                                    </optgroup>
-                                    <optgroup label="🎯 المرحلة الثانوية">
-                                        @for($i = 10; $i <= 12; $i++)
-                                        <option value="{{ $i }}">الصف {{ ['العاشر', 'الحادي عشر', 'الثاني عشر'][$i-10] }}</option>
+                                            <option value="{{ $i }}" {{ old('grade_level') == $i ? 'selected' : '' }}>
+                                                الصف {{ $i }}
+                                            </option>
                                         @endfor
                                     </optgroup>
                                 </select>
-                                <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
+                                <div class="text-red-600 text-sm hidden" id="grade_level-error"></div>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="space-y-2">
+                            <label for="description" class="block text-sm font-bold text-gray-900">
+                                وصف الاختبار
+                                <span class="text-gray-500 font-normal">(اختياري)</span>
+                            </label>
+                            <textarea id="description" 
+                                      name="description" 
+                                      rows="3"
+                                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200" 
+                                      placeholder="وصف مختصر عن محتوى وأهداف الاختبار">{{ old('description') }}</textarea>
+                            <p class="text-sm text-gray-500">سيظهر هذا الوصف للطلاب عند دخولهم للاختبار</p>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex justify-between pt-6 border-t border-gray-200">
+                            <a href="{{ route('quizzes.index') }}" 
+                               class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                إلغاء
+                            </a>
+                            
+                            <button type="submit" 
+                                    class="inline-flex items-center px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200">
+                                <span id="step-1-btn-text">التالي: اختر طريقة الإنشاء</span>
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Step 2: Creation Method -->
+            <div class="step-content hidden" id="step-2-content">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+                        <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                            <span class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold ml-3">2</span>
+                            اختر طريقة إنشاء الاختبار
+                        </h3>
+                        <p class="text-sm text-gray-600 mt-2">حدد الطريقة التي تناسب احتياجاتك</p>
+                    </div>
+                    
+                    <form id="step-2-form" class="p-6">
+                        @csrf
+                        <input type="hidden" id="quiz_id" name="quiz_id" value="">
+                        
+                        <div class="grid md:grid-cols-3 gap-6 mb-8">
+                            <!-- AI Method -->
+                            <label class="cursor-pointer group">
+                                <input type="radio" name="creation_method" value="ai" class="sr-only" checked>
+                                <div class="p-6 border-2 border-purple-500 bg-purple-50 rounded-xl transition-all duration-200 hover:shadow-lg group-hover:transform group-hover:scale-105">
+                                    <div class="text-center space-y-4">
+                                        <div class="p-3 bg-purple-100 rounded-xl inline-block">
+                                            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-xl font-bold text-gray-900 mb-2">ذكي (AI)</h4>
+                                            <p class="text-sm text-gray-600 leading-relaxed">إنشاء تلقائي للنصوص والأسئلة باستخدام الذكاء الاصطناعي</p>
+                                            <div class="mt-3 text-xs text-purple-600 font-medium">
+                                                ✨ سريع ومتوازن وذكي
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Manual Method -->
+                            <label class="cursor-pointer group">
+                                <input type="radio" name="creation_method" value="manual" class="sr-only">
+                                <div class="p-6 border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-blue-300 hover:shadow-lg group-hover:transform group-hover:scale-105">
+                                    <div class="text-center space-y-4">
+                                        <div class="p-3 bg-blue-100 rounded-xl inline-block">
+                                            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-xl font-bold text-gray-900 mb-2">يدوي</h4>
+                                            <p class="text-sm text-gray-600 leading-relaxed">إنشاء النصوص والأسئلة يدوياً بالكامل</p>
+                                            <div class="mt-3 text-xs text-blue-600 font-medium">
+                                                🎯 تحكم كامل ودقيق
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Hybrid Method -->
+                            <label class="cursor-pointer group">
+                                <input type="radio" name="creation_method" value="hybrid" class="sr-only">
+                                <div class="p-6 border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-green-300 hover:shadow-lg group-hover:transform group-hover:scale-105">
+                                    <div class="text-center space-y-4">
+                                        <div class="p-3 bg-green-100 rounded-xl inline-block">
+                                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-xl font-bold text-gray-900 mb-2">مختلط</h4>
+                                            <p class="text-sm text-gray-600 leading-relaxed">ابدأ بالذكاء الاصطناعي ثم عدّل يدوياً</p>
+                                            <div class="mt-3 text-xs text-green-600 font-medium">
+                                                🚀 الأفضل من العالمين
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Method Description -->
+                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6" id="method-description">
+                            <div class="flex items-start space-x-3">
+                                <svg class="w-5 h-5 text-purple-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div>
+                                    <h4 class="font-bold text-purple-900 mb-1">الطريقة الذكية (الموصى بها)</h4>
+                                    <p class="text-sm text-purple-800">
+                                        سيقوم الذكاء الاصطناعي بإنشاء نص تعليمي مناسب للموضوع والصف، ثم توليد أسئلة متوازنة 
+                                        عبر جُذور التقييم الأربعة. يمكنك مراجعة وتعديل كل شيء قبل النشر.
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Topic -->
-                        <div class="lg:col-span-2">
-                            <label class="block text-lg font-bold text-gray-700 mb-3">
-                                موضوع الاختبار
-                                <span class="text-red-500">*</span>
-                            </label>
-                            <input type="text" 
-                                   name="topic" 
-                                   class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
-                                   placeholder="مثال: الفصول الأربعة، الحضارة الإسلامية، قواعد اللغة..."
-                                   required>
-                            <p class="mt-2 text-sm text-gray-500">حدد الموضوع الذي سيتناوله النص والأسئلة</p>
+                        <!-- Action Buttons -->
+                        <div class="flex justify-between pt-6 border-t border-gray-200">
+                            <button type="button" id="back-to-step-1" 
+                                    class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                </svg>
+                                السابق
+                            </button>
+                            
+                            <button type="submit" 
+                                    class="inline-flex items-center px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200">
+                                <span id="step-2-btn-text">التالي: إعداد المحتوى</span>
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                </svg>
+                            </button>
                         </div>
-                    </div>
+                    </form>
+                </div>
+            </div>
 
-                    <!-- Quiz Settings -->
-                    <div class="mt-8 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl">
-                        <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                            <span class="text-2xl">⚙️</span>
-                            إعدادات الاختبار
+            <!-- Step 3: Content & AI Settings -->
+            <div class="step-content hidden" id="step-3-content">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50">
+                        <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                            <span class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold ml-3">3</span>
+                            إعداد المحتوى والأسئلة
                         </h3>
-                        
-                        <div class="grid lg:grid-cols-2 gap-6">
-                            <!-- Time Duration -->
-                            <div>
-                                <label class="block text-lg font-bold text-gray-700 mb-3">
-                                    المدة الزمنية
-                                    <span class="text-sm font-normal text-gray-500 mr-2">(بالدقائق)</span>
+                        <p class="text-sm text-gray-600 mt-2">حدد موضوع الاختبار وتوزيع الأسئلة</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-8">
+                        <!-- Topic and Question Count -->
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="space-y-2">
+                                <label for="topic" class="block text-sm font-bold text-gray-900">
+                                    موضوع الاختبار
+                                    <span class="text-red-500">*</span>
                                 </label>
-                                <div class="relative">
-                                    <input type="number" 
-                                           name="time_limit" 
-                                           class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
-                                           placeholder="0 = غير محدد"
-                                           min="0"
-                                           max="180">
-                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                        <span class="text-2xl">⏰</span>
+                                <input type="text" 
+                                       id="topic" 
+                                       name="topic" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200" 
+                                       placeholder="مثال: الأمانة في الإسلام، النباتات، الكسور العادية"
+                                       required>
+                                <p class="text-sm text-gray-500">الموضوع الذي ستدور حوله الأسئلة</p>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <label for="question_count" class="block text-sm font-bold text-gray-900">
+                                    عدد الأسئلة
+                                    <span class="text-red-500">*</span>
+                                </label>
+                                <select name="question_count" 
+                                        id="question_count"
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200" 
+                                        required>
+                                    <option value="">اختر العدد</option>
+                                    <option value="8">8 أسئلة</option>
+                                    <option value="12" selected>12 سؤال</option>
+                                    <option value="16">16 سؤال</option>
+                                    <option value="20">20 سؤال</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Text Generation Section -->
+                        <div class="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-6">
+                            <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-6 h-6 text-blue-600 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                إنشاء النص التعليمي
+                            </h4>
+                            
+                            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                                <div class="space-y-2">
+                                    <label for="passage_topic" class="block text-sm font-bold text-gray-900">موضوع النص</label>
+                                    <input type="text" 
+                                           id="passage_topic" 
+                                           name="passage_topic" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+                                           placeholder="مثال: قصة عن الأمانة">
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <label for="text_type" class="block text-sm font-bold text-gray-900">نوع النص</label>
+                                    <select name="text_type" id="text_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="story">قصة</option>
+                                        <option value="article">مقال</option>
+                                        <option value="dialogue">حوار</option>
+                                        <option value="informational">معلوماتي</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <button type="button" id="generate-text-btn" 
+                                    class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center">
+                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                <span id="generate-text-btn-text">إنشاء النص التعليمي</span>
+                            </button>
+                            
+                            <!-- Generated Text Preview -->
+                            <div id="text-preview" class="hidden mt-6">
+                                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                                    <h5 class="font-bold text-gray-900 mb-3">النص المُنشأ:</h5>
+                                    <div id="text-content" class="text-gray-700 leading-relaxed"></div>
+                                    <div class="flex items-center space-x-3 mt-4 pt-4 border-t border-gray-200">
+                                        <button type="button" id="regenerate-text" class="text-blue-600 hover:text-blue-700 text-sm font-medium">إعادة إنشاء</button>
+                                        <button type="button" id="edit-text" class="text-green-600 hover:text-green-700 text-sm font-medium">تعديل</button>
+                                        <button type="button" id="approve-text" class="text-purple-600 hover:text-purple-700 text-sm font-medium">الموافقة والمتابعة</button>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Question Distribution -->
+                        <div class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-6" id="question-distribution" style="display: none;">
+                            <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                                <svg class="w-6 h-6 text-purple-600 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                توزيع الأسئلة على جُذور التقييم
+                            </h4>
+                            
+                            <div class="text-center mb-6">
+                                <button type="button" id="balanced-distribution" 
+                                        class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors">
+                                    توزيع متوازن تلقائي
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="roots-preview">
+                                <!-- Roots will be populated by JavaScript -->
+                            </div>
+                            
+                            <button type="button" id="generate-questions-btn" 
+                                    class="w-full mt-6 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center">
+                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span id="generate-questions-btn-text">إنشاء الأسئلة</span>
+                            </button>
+                        </div>
+
+                        <!-- Questions Preview -->
+                        <div id="questions-preview" class="hidden">
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                                <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                                    <svg class="w-6 h-6 text-green-600 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    الأسئلة المُنشأة
+                                </h4>
+                                <div id="questions-content">
+                                    <!-- Questions will be populated by JavaScript -->
+                                </div>
+                                <div class="flex items-center justify-center space-x-4 mt-6 pt-4 border-t border-green-200">
+                                    <button type="button" id="regenerate-questions" class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg">إعادة إنشاء</button>
+                                    <button type="button" id="proceed-to-final" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg">المتابعة للإعدادات النهائية</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Final Settings -->
+            <div class="step-content hidden" id="step-4-content">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+                        <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                            <span class="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center text-sm font-bold ml-3">4</span>
+                            الإعدادات النهائية
+                        </h3>
+                        <p class="text-sm text-gray-600 mt-2">أضبط الوقت والدرجات والخيارات الأخيرة</p>
+                    </div>
+                    
+                    <form id="step-4-form" class="p-6 space-y-6">
+                        @csrf
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Time Limit -->
+                            <div class="space-y-2">
+                                <label for="time_limit" class="block text-sm font-bold text-gray-900">
+                                    المدة الزمنية (بالدقائق)
+                                </label>
+                                <input type="number" 
+                                       id="time_limit" 
+                                       name="time_limit" 
+                                       min="5" 
+                                       max="180"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors duration-200" 
+                                       placeholder="30">
+                                <p class="text-sm text-gray-500">اترك فارغاً لعدم تحديد وقت</p>
                             </div>
 
                             <!-- Passing Score -->
-                            <div>
-                                <label class="block text-lg font-bold text-gray-700 mb-3">
-                                    درجة النجاح
-                                    <span class="text-sm font-normal text-gray-500 mr-2">(%)</span>
+                            <div class="space-y-2">
+                                <label for="passing_score" class="block text-sm font-bold text-gray-900">
+                                    درجة النجاح (%)
                                 </label>
-                                <div class="relative">
-                                    <input type="number" 
-                                           name="passing_score" 
-                                           class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
-                                           placeholder="60"
-                                           value="60"
-                                           min="0"
-                                           max="100">
-                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                        <span class="text-2xl">🎯</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                           <!-- Checkbox Options -->
-<div class="lg:col-span-2 space-y-4">
-    <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
-        <input type="hidden" name="shuffle_questions" value="0">
-        <input type="checkbox" 
-               name="shuffle_questions" 
-               value="1"
-               class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
-        <div>
-            <span class="text-lg font-medium text-gray-800">خلط ترتيب الأسئلة</span>
-            <p class="text-sm text-gray-600">عرض الأسئلة بترتيب عشوائي مختلف لكل طالب</p>
-        </div>
-    </label>
-
-    <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
-        <input type="hidden" name="shuffle_answers" value="0">
-        <input type="checkbox" 
-               name="shuffle_answers" 
-               value="1"
-               class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
-        <div>
-            <span class="text-lg font-medium text-gray-800">خلط خيارات الإجابة</span>
-            <p class="text-sm text-gray-600">عرض خيارات الإجابة بترتيب عشوائي</p>
-        </div>
-    </label>
-
-    <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
-        <input type="hidden" name="show_results" value="0">
-        <input type="checkbox" 
-               name="show_results" 
-               value="1"
-               checked
-               class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
-        <div>
-            <span class="text-lg font-medium text-gray-800">عرض النتائج للطلاب</span>
-            <p class="text-sm text-gray-600">السماح للطلاب بمشاهدة نتائجهم بعد إنهاء الاختبار</p>
-        </div>
-    </label>
-</div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end mt-8">
-                        <button type="button" 
-                                onclick="nextStep()"
-                                class="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transform hover:scale-105 transition-all">
-                            <span class="flex items-center gap-3">
-                                التالي
-                                <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                                </svg>
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 2: Educational Text -->
-            <div id="step-2" class="step-content hidden">
-                <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 animate-scale-in">
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg">
-                            📖
-                        </div>
-                        <div>
-                            <h2 class="text-3xl font-bold text-gray-800">النص التعليمي</h2>
-                            <p class="text-gray-600">اختر أو اكتب النص الذي ستبنى عليه الأسئلة</p>
-                        </div>
-                    </div>
-
-                    <!-- Text Source Selection -->
-                    <div class="mb-8">
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <button type="button" 
-                                    onclick="setTextSource('ai')"
-                                    class="text-source-card active"
-                                    data-source="ai">
-                                <div class="card-icon bg-gradient-to-br from-purple-500 to-pink-600">
-                                    <span class="text-4xl">🤖</span>
-                                </div>
-                                <h3 class="text-xl font-bold text-gray-900 mt-4">توليد بالذكاء الاصطناعي</h3>
-                                <p class="text-gray-600 mt-2">دع الذكاء الاصطناعي يكتب نصاً تعليمياً مناسباً</p>
-                            </button>
-                            
-                            <button type="button" 
-                                    onclick="setTextSource('manual')"
-                                    class="text-source-card"
-                                    data-source="manual">
-                                <div class="card-icon bg-gradient-to-br from-green-500 to-teal-600">
-                                    <span class="text-4xl">✍️</span>
-                                </div>
-                                <h3 class="text-xl font-bold text-gray-900 mt-4">كتابة يدوية</h3>
-                                <p class="text-gray-600 mt-2">اكتب أو الصق نصاً جاهزاً</p>
-                            </button>
-                        </div>
-                        <input type="hidden" name="text_source" id="text_source" value="ai">
-                    </div>
-
-                    <!-- AI Text Options -->
-                    <div id="ai-text-options" class="mb-8 space-y-6">
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-lg font-bold text-gray-700 mb-3">نوع النص</label>
-                                <select name="text_type"
-                                        class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100">
-                                    <option value="story">📖 قصة</option>
-                                    <option value="article">📰 مقال</option>
-                                    <option value="dialogue">💬 حوار</option>
-                                    <option value="description">📝 نص وصفي</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-lg font-bold text-gray-700 mb-3">طول النص</label>
-                                <select name="text_length"
-                                        class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100">
-                                    <option value="short">قصير (50-100 كلمة)</option>
-                                    <option value="medium" selected>متوسط (150-250 كلمة)</option>
-                                    <option value="long">طويل (300-500 كلمة)</option>
-                                </select>
+                                <input type="number" 
+                                       id="passing_score" 
+                                       name="passing_score" 
+                                       value="60" 
+                                       min="0" 
+                                       max="100"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors duration-200">
                             </div>
                         </div>
-                        
-                        <button type="button" 
-                                onclick="generateText()"
-                                class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transform hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
-                            <span class="text-2xl">✨</span>
-                            توليد النص
-                        </button>
-                    </div>
 
-                    <!-- Text Editor -->
-                    <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <label class="text-lg font-bold text-gray-700">النص التعليمي</label>
-                            <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                <span id="word-count">0</span> كلمة
-                            </span>
-                        </div>
-                        <textarea name="educational_text"
-                                  class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
-                                  rows="12"
-                                  placeholder="اكتب أو الصق النص التعليمي هنا..."
-                                  oninput="updateWordCount()"></textarea>
-                    </div>
-
-                    <div class="flex justify-between mt-8">
-                        <button type="button" 
-                                onclick="previousStep()"
-                                class="px-8 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-2xl font-bold text-lg transition-all flex items-center gap-3">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
-                            </svg>
-                            السابق
-                        </button>
-                        <button type="button" 
-                                onclick="nextStep()"
-                                class="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transform hover:scale-105 transition-all">
-                            <span class="flex items-center gap-3">
-                                التالي
-                                <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                                </svg>
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 3: Question Generation -->
-            <div id="step-3" class="step-content hidden">
-                <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 animate-scale-in">
-                    <div class="flex items-center gap-4 mb-8">
-                        <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg">
-                            🎯
-                        </div>
-                        <div>
-                            <h2 class="text-3xl font-bold text-gray-800">إعدادات توليد الأسئلة</h2>
-                            <p class="text-gray-600">حدد توزيع الأسئلة حسب نموذج جُذور</p>
-                        </div>
-                    </div>
-
-                    <!-- Text Preview -->
-                    <div class="mb-8 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6">
-                        <h4 class="text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
-                            <span>👁️</span> معاينة النص
-                        </h4>
-                        <div id="text-preview" class="text-gray-700 leading-relaxed max-h-40 overflow-y-auto line-clamp-5"></div>
-                    </div>
-
-                    <!-- Presets -->
-                    <div class="mb-8">
-                        <h3 class="text-xl font-bold text-gray-800 mb-4">قوالب جاهزة 🎨</h3>
-                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            <button type="button" onclick="applyPreset('balanced')" 
-                                    class="preset-btn">
-                                <span class="text-3xl mb-2">⚖️</span>
-                                <span class="font-bold">متوازن</span>
-                            </button>
-                            <button type="button" onclick="applyPreset('comprehension')" 
-                                    class="preset-btn">
-                                <span class="text-3xl mb-2">📚</span>
-                                <span class="font-bold">فهم قرائي</span>
-                            </button>
-                            <button type="button" onclick="applyPreset('analytical')" 
-                                    class="preset-btn">
-                                <span class="text-3xl mb-2">🔬</span>
-                                <span class="font-bold">تحليلي</span>
-                            </button>
-                            <button type="button" onclick="applyPreset('creative')" 
-                                    class="preset-btn">
-                                <span class="text-3xl mb-2">💡</span>
-                                <span class="font-bold">إبداعي</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Root Distribution -->
-                    <div class="grid lg:grid-cols-2 gap-6 mb-8">
-                        @php
-                        $roots = [
-                            'jawhar' => ['name' => 'جَوهر', 'desc' => 'أسئلة مباشرة من النص', 'emoji' => '🎯', 'color' => 'from-red-500 to-orange-500'],
-                            'zihn' => ['name' => 'ذِهن', 'desc' => 'تحليل وفهم العمليات', 'emoji' => '🧠', 'color' => 'from-cyan-500 to-blue-500'],
-                            'waslat' => ['name' => 'وَصلات', 'desc' => 'ربط المعلومات', 'emoji' => '🔗', 'color' => 'from-yellow-500 to-amber-500'],
-                            'roaya' => ['name' => 'رُؤية', 'desc' => 'تطبيق وإبداع', 'emoji' => '👁️', 'color' => 'from-purple-500 to-pink-500']
-                        ];
-                        @endphp
-                        
-                        @foreach($roots as $key => $root)
-                        <div class="root-card" data-root="{{ $key }}">
-                            <div class="root-header bg-gradient-to-r {{ $root['color'] }}">
-                                <div class="flex items-center gap-3">
-                                    <span class="text-4xl">{{ $root['emoji'] }}</span>
-                                    <div>
-                                        <h3 class="text-xl font-bold text-white">{{ $root['name'] }}</h3>
-                                        <p class="text-white/80 text-sm">{{ $root['desc'] }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="root-body">
-                                @foreach(['سطحي' => 1, 'متوسط' => 2, 'عميق' => 3] as $levelName => $levelValue)
-                                <div class="level-row">
-                                    <div class="level-info">
-                                        <span class="level-badge level-{{ $levelValue }}">{{ $levelName }}</span>
-                                    </div>
-                                    <div class="level-control">
-                                        <button type="button" 
-                                                onclick="decrementLevel('{{ $key }}', {{ $levelValue }})"
-                                                class="control-btn">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                                            </svg>
-                                        </button>
-                                        <input type="number" 
-                                               name="roots[{{ $key }}][levels][{{ $levelValue }}][count]" 
-                                               id="{{ $key }}-{{ $levelValue }}"
-                                               min="0" 
-                                               max="10" 
-                                               value="0"
-                                               class="level-input"
-                                               onchange="updateTotals()">
-                                        <input type="hidden" 
-                                               name="roots[{{ $key }}][levels][{{ $levelValue }}][depth]" 
-                                               value="{{ $levelValue }}">
-                                        <button type="button" 
-                                                onclick="incrementLevel('{{ $key }}', {{ $levelValue }})"
-                                                class="control-btn">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                                @endforeach
+                        <!-- Quiz Options -->
+                        <div class="space-y-4">
+                            <h4 class="text-lg font-bold text-gray-900">خيارات الاختبار</h4>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="shuffle_questions" value="1" class="form-checkbox h-5 w-5 text-amber-600 rounded">
+                                    <span class="mr-3 text-sm font-medium text-gray-900">خلط ترتيب الأسئلة</span>
+                                </label>
                                 
-                                <div class="root-total">
-                                    <span class="text-lg font-bold">المجموع:</span>
-                                    <span class="total-questions text-2xl font-black bg-gradient-to-r {{ $root['color'] }} bg-clip-text text-transparent" data-root="{{ $key }}">0</span>
-                                </div>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="shuffle_answers" value="1" class="form-checkbox h-5 w-5 text-amber-600 rounded">
+                                    <span class="mr-3 text-sm font-medium text-gray-900">خلط ترتيب الإجابات</span>
+                                </label>
+                                
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="show_results" value="1" class="form-checkbox h-5 w-5 text-amber-600 rounded" checked>
+                                    <span class="mr-3 text-sm font-medium text-gray-900">إظهار النتائج للطلاب</span>
+                                </label>
+                                
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="allow_retake" value="1" class="form-checkbox h-5 w-5 text-amber-600 rounded">
+                                    <span class="mr-3 text-sm font-medium text-gray-900">السماح بإعادة المحاولة</span>
+                                </label>
                             </div>
                         </div>
-                        @endforeach
-                    </div>
 
-                    <!-- Total Summary -->
-                    <div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-6 mb-8">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xl font-bold text-gray-800">إجمالي الأسئلة:</span>
-                            <span id="grand-total" class="text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">0</span>
+                        <!-- Final Actions -->
+                        <div class="flex items-center justify-between pt-6 border-t border-gray-200">
+                            <button type="button" id="back-to-step-3" 
+                                    class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
+                                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                </svg>
+                                السابق
+                            </button>
+                            
+                            <button type="submit" 
+                                    class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+                                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span id="step-4-btn-text">إنهاء وإنشاء الاختبار</span>
+                            </button>
                         </div>
-                    </div>
-
-                    <!-- Creation Method -->
-                    <div class="mb-8">
-                        <label class="block text-lg font-bold text-gray-700 mb-3">طريقة الإنشاء</label>
-                        <select name="creation_method"
-                                class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100">
-                            <option value="ai">🤖 توليد تلقائي بالذكاء الاصطناعي</option>
-                            <option value="hybrid">✨ توليد بالذكاء الاصطناعي مع إمكانية التعديل</option>
-                            <option value="manual">✍️ إضافة يدوية للأسئلة</option>
-                        </select>
-                    </div>
-
-                    <!-- Submit Actions -->
-                    <div class="flex justify-between items-center">
-                        <button type="button" 
-                                onclick="previousStep()"
-                                class="px-8 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-2xl font-bold text-lg transition-all flex items-center gap-3">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"></path>
-                            </svg>
-                            السابق
-                        </button>
-                        
-                        <button type="button"
-                                onclick="createQuiz()"
-                                class="group relative px-10 py-5 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-2xl font-black text-xl hover:shadow-2xl transform hover:scale-105 transition-all">
-                            <span class="flex items-center gap-3">
-                                <span class="text-2xl">🚀</span>
-                                إنشاء الاختبار
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </form>
-    </div>
-
-    <!-- Loading Modal -->
-    <div id="loading-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
-        <div class="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full mx-4 text-center animate-bounce-in">
-            <div class="mb-8">
-                <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full mb-6">
-                    <span class="text-5xl animate-spin">🤖</span>
-                </div>
-                <h3 class="text-3xl font-black text-gray-900 mb-3" id="loading-title">جاري المعالجة</h3>
-                <p class="text-lg text-gray-600" id="loading-message">يتم معالجة طلبك...</p>
-            </div>
-            <div class="space-y-4">
-                <div class="loading-step active">
-                    <span class="loading-icon">⚡</span>
-                    <span class="loading-text">معالجة البيانات</span>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Success Modal -->
-<div id="success-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full mx-4 text-center animate-bounce-in">
-        <div class="mb-6">
-            <span class="text-8xl">🎉</span>
-        </div>
-        <h2 class="text-3xl font-black text-gray-900 mb-4">تم إنشاء الاختبار بنجاح!</h2>
-        <div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-6 mb-6">
-            <p class="text-lg text-gray-700 mb-2">رمز الدخول للطلاب</p>
-            <p class="text-5xl font-black text-purple-600 tracking-wider" id="quiz-pin">XXXXX</p>
-        </div>
-        <div class="space-y-3">
-            <button onclick="copyPIN()" class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg hover:shadow-xl transition-all">
-                <span class="flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                    </svg>
-                    نسخ رمز الدخول
-                </span>
-            </button>
-            <a href="#" id="view-quiz-btn" class="block w-full py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-2xl font-bold text-lg transition-all">
-                عرض الاختبار
-            </a>
-        </div>
-    </div>
-</div>
-@endsection
-
-@push('styles')
-<style>
-/* Animation keyframes */
-@keyframes blob {
-    0% { transform: translate(0px, 0px) scale(1); }
-    33% { transform: translate(30px, -50px) scale(1.1); }
-    66% { transform: translate(-20px, 20px) scale(0.9); }
-    100% { transform: translate(0px, 0px) scale(1); }
-}
-
-@keyframes fade-in {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes scale-in {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes bounce-in {
-    0% { opacity: 0; transform: scale(0.3); }
-    50% { transform: scale(1.05); }
-    70% { transform: scale(0.9); }
-    100% { opacity: 1; transform: scale(1); }
-}
-
-/* Animations */
-.animate-blob { animation: blob 7s infinite; }
-.animation-delay-2000 { animation-delay: 2s; }
-.animation-delay-4000 { animation-delay: 4s; }
-.animate-fade-in { animation: fade-in 0.6s ease-out; }
-.animate-scale-in { animation: scale-in 0.4s ease-out; }
-.animate-bounce-in { animation: bounce-in 0.6s ease-out; }
-
-/* Progress Steps */
-.step-item {
-    position: relative;
-    text-align: center;
-}
-
-.step-circle {
-    width: 5rem;
-    height: 5rem;
-    border-radius: 50%;
-    background: #e5e7eb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 0.5rem;
-    transition: all 0.3s;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.step-item.active .step-circle {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    transform: scale(1.1);
-    box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.4);
-}
-
-.step-item.completed .step-circle {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.step-label {
-    font-size: 1rem;
-    color: #6b7280;
-    font-weight: 600;
-}
-
-.step-item.active .step-label {
-    color: #1f2937;
-    font-weight: 700;
-}
-
-.step-connector {
-    flex: 1;
-    height: 3px;
-    background: #e5e7eb;
-    margin-top: 2.5rem;
-}
-
-/* Text Source Cards */
-.text-source-card {
-    padding: 2rem;
-    border: 3px solid #e5e7eb;
-    border-radius: 1.5rem;
-    text-align: center;
-    transition: all 0.3s;
-    cursor: pointer;
-    background: white;
-}
-
-.text-source-card:hover {
-    border-color: #a78bfa;
-    transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-.text-source-card.active {
-    border-color: #7c3aed;
-    background: linear-gradient(to bottom right, #f3e8ff, #fce7f3);
-    transform: scale(1.05);
-}
-
-.card-icon {
-    width: 5rem;
-    height: 5rem;
-    border-radius: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-}
-
-/* Root Cards */
-.root-card {
-    border-radius: 1.5rem;
-    overflow: hidden;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s;
-}
-
-.root-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
-}
-
-.root-header {
-    padding: 1.5rem;
-    color: white;
-}
-
-.root-body {
-    background: white;
-    padding: 1.5rem;
-}
-
-.level-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 0;
-    border-bottom: 2px solid #f3f4f6;
-}
-
-.level-row:last-child {
-    border-bottom: none;
-}
-
-.level-badge {
-    padding: 0.5rem 1rem;
-    border-radius: 9999px;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-
-.level-badge.level-1 {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.level-badge.level-2 {
-    background: #fed7aa;
-    color: #7c2d12;
-}
-
-.level-badge.level-3 {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.level-control {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.control-btn {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 0.75rem;
-    border: 2px solid #e5e7eb;
-    background: white;
-    color: #6b7280;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.control-btn:hover {
-    background: #f3f4f6;
-    color: #1f2937;
-    border-color: #d1d5db;
-    transform: scale(1.1);
-}
-
-.level-input {
-    width: 4rem;
-    text-align: center;
-    border: 2px solid #e5e7eb;
-    border-radius: 0.75rem;
-    padding: 0.5rem;
-    font-size: 1.125rem;
-    font-weight: 600;
-}
-
-.root-total {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 3px solid #f3f4f6;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-/* Preset Buttons */
-.preset-btn {
-    padding: 1.5rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 1rem;
-    background: white;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.preset-btn:hover {
-    background: linear-gradient(to bottom right, #f3e8ff, #fce7f3);
-    border-color: #a78bfa;
-    transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-
-/* Loading Modal */
-.loading-step {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 1rem;
-    background: #f3f4f6;
-}
-
-.loading-step.active {
-    background: linear-gradient(to right, #f3e8ff, #fce7f3);
-}
-
-.loading-icon {
-    font-size: 1.5rem;
-    display: inline-block;
-    animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.2); }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .step-circle {
-        width: 4rem;
-        height: 4rem;
-    }
-    
-    .step-label {
-        font-size: 0.875rem;
-    }
-    
-    .text-source-card {
-        padding: 1.5rem;
-    }
-    
-    .card-icon {
-        width: 4rem;
-        height: 4rem;
-    }
-}
-</style>
-@endpush
-
-@push('scripts')
 <script>
-// Global state
-let currentStep = 1;
-let textSource = 'ai';
-
-// Step navigation
-function nextStep() {
-    if (validateStep(currentStep)) {
-        if (currentStep < 3) {
-            document.getElementById(`step-${currentStep}`).classList.add('hidden');
-            currentStep++;
-            document.getElementById(`step-${currentStep}`).classList.remove('hidden');
-            updateStepIndicators();
-            
-            if (currentStep === 3) {
-                updateTextPreview();
-            }
-        }
-    }
-}
-
-function previousStep() {
-    if (currentStep > 1) {
-        document.getElementById(`step-${currentStep}`).classList.add('hidden');
-        currentStep--;
-        document.getElementById(`step-${currentStep}`).classList.remove('hidden');
-        updateStepIndicators();
-    }
-}
-
-function validateStep(step) {
-    if (step === 1) {
-        const title = document.querySelector('[name="title"]').value;
-        const subject = document.querySelector('[name="subject"]').value;
-        const gradeLevel = document.querySelector('[name="grade_level"]').value;
-        const topic = document.querySelector('[name="topic"]').value;
-        
-        if (!title || !subject || !gradeLevel || !topic) {
-            showNotification('يرجى ملء جميع الحقول المطلوبة', 'error');
-            return false;
-        }
-    } else if (step === 2) {
-        const text = document.querySelector('[name="educational_text"]').value;
-        if (!text || text.length < 50) {
-            showNotification('النص يجب أن يكون 50 حرف على الأقل', 'error');
-            return false;
-        }
-    }
-    return true;
-}
-
-function updateStepIndicators() {
-    document.querySelectorAll('.step-item').forEach((item, index) => {
-        const stepNum = index + 1;
-        if (stepNum < currentStep) {
-            item.classList.add('completed');
-            item.classList.remove('active');
-        } else if (stepNum === currentStep) {
-            item.classList.add('active');
-            item.classList.remove('completed');
-        } else {
-            item.classList.remove('active', 'completed');
-        }
-    });
-}
-
-// Text source
-function setTextSource(source) {
-    textSource = source;
-    document.getElementById('text_source').value = source;
-    
-    document.querySelectorAll('.text-source-card').forEach(card => {
-        card.classList.toggle('active', card.dataset.source === source);
-    });
-    
-    document.getElementById('ai-text-options').style.display = source === 'ai' ? 'block' : 'none';
-}
-
-// Generate text
-async function generateText() {
-    const btn = event.target;
-    const originalContent = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="text-2xl animate-spin">⚡</span> جاري التوليد...';
-    
-    try {
-        const response = await fetch('{{ route("quizzes.generate-text") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: JSON.stringify({
-                subject: document.querySelector('[name="subject"]').value,
-                grade_level: document.querySelector('[name="grade_level"]').value,
-                topic: document.querySelector('[name="topic"]').value,
-                text_type: document.querySelector('[name="text_type"]').value,
-                length: document.querySelector('[name="text_length"]').value
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            document.querySelector('[name="educational_text"]').value = data.text;
-            updateWordCount();
-            showNotification('تم توليد النص بنجاح', 'success');
-        } else {
-            showNotification(data.message || 'فشل توليد النص', 'error');
-        }
-    } catch (error) {
-        showNotification('حدث خطأ في الاتصال', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalContent;
-    }
-}
-
-// Word count
-function updateWordCount() {
-    const text = document.querySelector('[name="educational_text"]').value;
-    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
-    document.getElementById('word-count').textContent = words.length;
-}
-
-// Text preview
-function updateTextPreview() {
-    const text = document.querySelector('[name="educational_text"]').value;
-    document.getElementById('text-preview').textContent = text || 'لا يوجد نص';
-}
-
-// Level controls
-function incrementLevel(root, level) {
-    const input = document.getElementById(`${root}-${level}`);
-    const currentValue = parseInt(input.value) || 0;
-    if (currentValue < 10) {
-        input.value = currentValue + 1;
-        updateTotals();
-    }
-}
-
-function decrementLevel(root, level) {
-    const input = document.getElementById(`${root}-${level}`);
-    const currentValue = parseInt(input.value) || 0;
-    if (currentValue > 0) {
-        input.value = currentValue - 1;
-        updateTotals();
-    }
-}
-
-// Update totals
-function updateTotals() {
-    const roots = ['jawhar', 'zihn', 'waslat', 'roaya'];
-    let grandTotal = 0;
-    
-    roots.forEach(root => {
-        let total = 0;
-        for (let level = 1; level <= 3; level++) {
-            const input = document.getElementById(`${root}-${level}`);
-            total += parseInt(input.value) || 0;
-        }
-        grandTotal += total;
-        
-        const totalElement = document.querySelector(`.total-questions[data-root="${root}"]`);
-        if (totalElement) {
-            totalElement.textContent = total;
-        }
-    });
-    
-    document.getElementById('grand-total').textContent = grandTotal;
-}
-
-// Presets
-function applyPreset(preset) {
-    const presets = {
-        balanced: {
-            jawhar: [2, 2, 1],
-            zihn: [2, 2, 1],
-            waslat: [1, 1, 1],
-            roaya: [1, 1, 0]
-        },
-        comprehension: {
-            jawhar: [3, 2, 1],
-            zihn: [2, 1, 0],
-            waslat: [1, 1, 0],
-            roaya: [0, 0, 0]
-        },
-        analytical: {
-            jawhar: [1, 1, 0],
-            zihn: [2, 3, 2],
-            waslat: [2, 2, 1],
-            roaya: [0, 1, 0]
-        },
-        creative: {
-            jawhar: [1, 0, 0],
-            zihn: [1, 1, 0],
-            waslat: [1, 2, 1],
-            roaya: [2, 2, 2]
-        }
-    };
-    
-    const config = presets[preset];
-    if (config) {
-        Object.keys(config).forEach(root => {
-            config[root].forEach((value, index) => {
-                const level = index + 1;
-                document.getElementById(`${root}-${level}`).value = value;
-            });
-        });
-        updateTotals();
-        showNotification(`تم تطبيق القالب`, 'success');
-    }
-}
-
-// Create quiz
-async function createQuiz() {
-    if (!validateStep(3)) return;
-    
-    const grandTotal = parseInt(document.getElementById('grand-total').textContent);
-    if (grandTotal === 0) {
-        showNotification('يجب إضافة سؤال واحد على الأقل', 'error');
-        return;
-    }
-    
-    showLoadingModal('جاري إنشاء الاختبار', 'يتم معالجة البيانات وإنشاء الاختبار...');
-    
-    const formData = new FormData(document.getElementById('quiz-form'));
-    
-    try {
-        const response = await fetch('{{ route("quizzes.store") }}', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            hideLoadingModal();
-            showSuccessModal(data.quiz_pin);
-            
-            // Redirect after 3 seconds
-            setTimeout(() => {
-                window.location.href = data.redirect;
-            }, 3000);
-        } else {
-            hideLoadingModal();
-            showNotification(data.message || 'فشل إنشاء الاختبار', 'error');
-        }
-    } catch (error) {
-        hideLoadingModal();
-        showNotification('حدث خطأ في الاتصال', 'error');
-    }
-}
-
-// Loading modal
-function showLoadingModal(title, message) {
-    document.getElementById('loading-title').textContent = title;
-    document.getElementById('loading-message').textContent = message;
-    document.getElementById('loading-modal').classList.remove('hidden');
-}
-
-function hideLoadingModal() {
-    document.getElementById('loading-modal').classList.add('hidden');
-}
-
-// Success modal
-function showSuccessModal(pin) {
-    document.getElementById('quiz-pin').textContent = pin;
-    document.getElementById('success-modal').classList.remove('hidden');
-}
-
-// Copy PIN
-function copyPIN() {
-    const pin = document.getElementById('quiz-pin').textContent;
-    navigator.clipboard.writeText(pin);
-    showNotification('تم نسخ رمز الدخول', 'success');
-}
-
-// Notifications
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-3 animate-fade-in ${
-        type === 'error' ? 'bg-red-100 text-red-800' :
-        type === 'success' ? 'bg-green-100 text-green-800' :
-        'bg-blue-100 text-blue-800'
-    }`;
-    
-    const icon = type === 'error' ? '❌' :
-                 type === 'success' ? '✅' :
-                 'ℹ️';
-    
-    notification.innerHTML = `
-        <span class="text-2xl">${icon}</span>
-        <span class="font-medium text-lg">${message}</span>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-// Initialize
 document.addEventListener('DOMContentLoaded', function() {
-    updateTotals();
+    let currentStep = 1;
+    let quizId = null;
+    let generatedText = null;
+    let generatedQuestions = null;
+    
+    // Wizard navigation
+    function showStep(step) {
+        // Hide all steps
+        document.querySelectorAll('.step-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        // Show current step
+        document.getElementById(`step-${step}-content`).classList.remove('hidden');
+        
+        // Update progress indicators
+        updateProgressIndicators(step);
+        
+        currentStep = step;
+        
+        // Update debug info
+        updateDebugInfo();
+    }
+    
+    function updateDebugInfo() {
+        const debugStep = document.getElementById('debug-step');
+        const debugQuizId = document.getElementById('debug-quiz-id');
+        const debugUrl = document.getElementById('debug-url');
+        
+        if (debugStep) debugStep.textContent = currentStep;
+        if (debugQuizId) debugQuizId.textContent = quizId || 'null';
+        if (debugUrl) debugUrl.textContent = window.location.href;
+    }
+    
+    function updateProgressIndicators(step) {
+        for (let i = 1; i <= 4; i++) {
+            const indicator = document.getElementById(`step-indicator-${i}`);
+            const progressBar = document.getElementById(`progress-bar-${i}`);
+            const circle = indicator.querySelector('.w-10.h-10');
+            const title = indicator.querySelector('.text-sm');
+            
+            if (i <= step) {
+                circle.classList.remove('bg-gray-300', 'text-gray-500');
+                circle.classList.add('bg-purple-600', 'text-white');
+                title.classList.remove('text-gray-400');
+                title.classList.add('text-purple-600', 'font-bold');
+                if (progressBar) progressBar.style.width = '100%';
+            } else {
+                circle.classList.remove('bg-purple-600', 'text-white');
+                circle.classList.add('bg-gray-300', 'text-gray-500');
+                title.classList.remove('text-purple-600', 'font-bold');
+                title.classList.add('text-gray-400');
+                if (progressBar) progressBar.style.width = '0%';
+            }
+        }
+    }
+    
+    // Step 1: Basic Information
+    document.getElementById('step-1-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('step-1-btn-text');
+        const originalText = btn.textContent;
+        btn.textContent = 'جاري الحفظ...';
+        
+        // Clear previous errors
+        document.querySelectorAll('[id$="-error"]').forEach(el => {
+            el.classList.add('hidden');
+            el.textContent = '';
+        });
+        
+        try {
+            const formData = new FormData(this);
+            
+            console.log('Submitting step 1 to:', '{{ route("quizzes.create-step-1") }}');
+            console.log('Form data:', Object.fromEntries(formData));
+            
+            const response = await fetch('{{ route("quizzes.create-step-1") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            });
+            
+            console.log('Step 1 response status:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 422) {
+                    // Validation errors
+                    const errorData = await response.json();
+                    showErrors(errorData.errors || {});
+                    return;
+                } else if (response.status === 419) {
+                    throw new Error('انتهت صلاحية الجلسة. الرجاء إعادة تحديث الصفحة.');
+                } else {
+                    throw new Error(`خطأ HTTP: ${response.status}`);
+                }
+            }
+            
+            const data = await response.json();
+            console.log('Step 1 response data:', data);
+            
+            if (data.success) {
+                quizId = data.quiz_id;
+                document.getElementById('quiz_id').value = quizId;
+                console.log('Quiz created with ID:', quizId);
+                showStep(2);
+            } else {
+                showErrors(data.errors || {'general': ['حدث خطأ أثناء حفظ البيانات']});
+            }
+        } catch (error) {
+            console.error('Step 1 error:', error);
+            if (error.message.includes('Failed to fetch')) {
+                alert('فشل الاتصال بالخادم. تحقق من الاتصال بالإنترنت.');
+            } else {
+                alert('حدث خطأ: ' + error.message);
+            }
+        } finally {
+            btn.textContent = originalText;
+        }
+    });
+    
+    // Step 2: Creation Method
+    document.getElementById('step-2-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('step-2-btn-text');
+        const originalText = btn.textContent;
+        btn.textContent = 'جاري الحفظ...';
+        
+        // Check if we have quizId
+        if (!quizId) {
+            alert('خطأ: لم يتم العثور على معرف الاختبار. الرجاء البدء من جديد.');
+            window.location.href = '{{ route("quizzes.create") }}';
+            return;
+        }
+        
+        try {
+            const formData = new FormData(this);
+            
+            // Add debug info
+            console.log('Submitting to:', `/quizzes/${quizId}/update-method`);
+            console.log('Quiz ID:', quizId);
+            console.log('Form data:', Object.fromEntries(formData));
+            
+            const response = await fetch(`/quizzes/${quizId}/update-method`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            // Check if response is ok
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('الطريق غير موجود (404). تحقق من إعدادات الراوت.');
+                } else if (response.status === 419) {
+                    throw new Error('انتهت صلاحية الجلسة. الرجاء إعادة تحديث الصفحة.');
+                } else if (response.status === 403) {
+                    throw new Error('غير مسموح بالوصول لهذا الإجراء.');
+                } else if (response.status >= 500) {
+                    throw new Error(`خطأ في الخادم (${response.status}). الرجاء المحاولة لاحقاً.`);
+                } else {
+                    throw new Error(`خطأ HTTP: ${response.status}`);
+                }
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Non-JSON response:', text);
+                throw new Error('استجابة غير صالحة من الخادم');
+            }
+            
+            const data = await response.json();
+            console.log('Response data:', data);
+            
+            if (data.success) {
+                showStep(3);
+            } else {
+                alert(data.message || 'حدث خطأ أثناء حفظ الطريقة');
+                if (data.errors) {
+                    console.error('Validation errors:', data.errors);
+                }
+            }
+        } catch (error) {
+            console.error('Detailed error:', error);
+            console.error('Error stack:', error.stack);
+            
+            // More specific error messages
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                alert('فشل الاتصال بالخادم. تحقق من الاتصال بالإنترنت.');
+            } else if (error.message.includes('NetworkError')) {
+                alert('خطأ في الشبكة. الرجاء المحاولة مرة أخرى.');
+            } else {
+                alert('حدث خطأ: ' + error.message);
+            }
+        } finally {
+            btn.textContent = originalText;
+        }
+    });
+    
+    // Text Generation
+    document.getElementById('generate-text-btn').addEventListener('click', async function() {
+        const btn = this;
+        const btnText = document.getElementById('generate-text-btn-text');
+        const originalText = btnText.textContent;
+        
+        // Validate required fields
+        const topic = document.getElementById('topic').value.trim();
+        const passageTopic = document.getElementById('passage_topic').value.trim();
+        
+        if (!topic) {
+            alert('الرجاء إدخال موضوع الاختبار أولاً');
+            document.getElementById('topic').focus();
+            return;
+        }
+        
+        if (!passageTopic) {
+            alert('الرجاء إدخال موضوع النص أولاً');
+            document.getElementById('passage_topic').focus();
+            return;
+        }
+        
+        if (!quizId) {
+            alert('خطأ: لم يتم العثور على معرف الاختبار');
+            return;
+        }
+        
+        btnText.textContent = 'جاري إنشاء النص...';
+        btn.disabled = true;
+        
+        try {
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('input[name="_token"]').value);
+            formData.append('topic', topic);
+            formData.append('passage_topic', passageTopic);
+            formData.append('text_type', document.getElementById('text_type').value);
+            
+            console.log('Generating text for quiz:', quizId);
+            console.log('Text generation data:', Object.fromEntries(formData));
+            
+            const response = await fetch(`/quizzes/${quizId}/generate-text`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            });
+            
+            console.log('Text generation response status:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('الطريق غير موجود. تحقق من إعدادات النظام.');
+                } else if (response.status === 422) {
+                    const errorData = await response.json();
+                    throw new Error('بيانات غير صحيحة: ' + (errorData.message || 'تحقق من البيانات المدخلة'));
+                } else if (response.status >= 500) {
+                    throw new Error('خطأ في الخادم. الرجاء المحاولة لاحقاً.');
+                } else {
+                    throw new Error(`خطأ HTTP: ${response.status}`);
+                }
+            }
+            
+            const data = await response.json();
+            console.log('Text generation response:', data);
+            
+            if (data.success) {
+                generatedText = data.text;
+                document.getElementById('text-content').innerHTML = data.text.replace(/\n/g, '<br>');
+                document.getElementById('text-preview').classList.remove('hidden');
+                document.getElementById('question-distribution').style.display = 'block';
+                setupQuestionDistribution();
+            } else {
+                throw new Error(data.message || 'فشل في إنشاء النص');
+            }
+        } catch (error) {
+            console.error('Text generation error:', error);
+            if (error.message.includes('Failed to fetch')) {
+                alert('فشل الاتصال بالخادم أثناء إنشاء النص');
+            } else {
+                alert('حدث خطأ أثناء إنشاء النص: ' + error.message);
+            }
+        } finally {
+            btnText.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+    
+    // Question Distribution Setup
+    function setupQuestionDistribution() {
+        const questionCount = parseInt(document.getElementById('question_count').value) || 12;
+        const rootsContainer = document.getElementById('roots-preview');
+        
+        const roots = [
+            {key: 'jawhar', name: 'جَوهر', icon: '🎯', color: 'red'},
+            {key: 'zihn', name: 'ذِهن', icon: '🧠', color: 'cyan'},
+            {key: 'waslat', name: 'وَصلات', icon: '🔗', color: 'yellow'},
+            {key: 'roaya', name: 'رُؤية', icon: '👁️', color: 'purple'}
+        ];
+        
+        rootsContainer.innerHTML = '';
+        
+        roots.forEach(root => {
+            const rootDiv = document.createElement('div');
+            rootDiv.className = 'text-center p-3 border-2 border-gray-200 rounded-lg';
+            rootDiv.innerHTML = `
+                <div class="text-2xl mb-2">${root.icon}</div>
+                <div class="text-sm font-bold text-gray-900">${root.name}</div>
+                <input type="number" 
+                       id="root-${root.key}" 
+                       class="w-16 mt-2 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-purple-500"
+                       min="0" max="${questionCount}" value="0">
+                <div class="text-xs text-gray-500 mt-1">أسئلة</div>
+            `;
+            rootsContainer.appendChild(rootDiv);
+        });
+    }
+    
+    // Balanced Distribution
+    document.getElementById('balanced-distribution').addEventListener('click', function() {
+        const questionCount = parseInt(document.getElementById('question_count').value) || 12;
+        const perRoot = Math.floor(questionCount / 4);
+        const remainder = questionCount % 4;
+        
+        const roots = ['jawhar', 'zihn', 'waslat', 'roaya'];
+        roots.forEach((root, index) => {
+            const input = document.getElementById(`root-${root}`);
+            if (input) {
+                input.value = perRoot + (index < remainder ? 1 : 0);
+            }
+        });
+    });
+    
+    // Generate Questions
+    document.getElementById('generate-questions-btn').addEventListener('click', async function() {
+        const btn = this;
+        const btnText = document.getElementById('generate-questions-btn-text');
+        const originalText = btnText.textContent;
+        
+        btnText.textContent = 'جاري إنشاء الأسئلة...';
+        btn.disabled = true;
+        
+        try {
+            const formData = new FormData();
+            formData.append('_token', document.querySelector('input[name="_token"]').value);
+            formData.append('topic', document.getElementById('topic').value);
+            formData.append('question_count', document.getElementById('question_count').value);
+            
+            // Add roots distribution
+            const roots = ['jawhar', 'zihn', 'waslat', 'roaya'];
+            roots.forEach(root => {
+                const count = document.getElementById(`root-${root}`)?.value || 0;
+                formData.append(`roots[${root}]`, count);
+            });
+            
+            const response = await fetch(`/quizzes/${quizId}/generate-questions`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                generatedQuestions = data.questions;
+                displayQuestions(data.questions);
+                document.getElementById('questions-preview').classList.remove('hidden');
+            } else {
+                alert(data.message || 'حدث خطأ أثناء إنشاء الأسئلة');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('حدث خطأ أثناء إنشاء الأسئلة');
+        } finally {
+            btnText.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+    
+    function displayQuestions(questions) {
+        const container = document.getElementById('questions-content');
+        container.innerHTML = '';
+        
+        questions.forEach((question, index) => {
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'mb-4 p-4 border border-gray-200 rounded-lg';
+            questionDiv.innerHTML = `
+                <div class="font-bold text-gray-900 mb-2">${index + 1}. ${question.question}</div>
+                <div class="space-y-1">
+                    ${question.options.map((option, i) => `
+                        <div class="text-sm text-gray-700 ${option === question.correct_answer ? 'font-bold text-green-600' : ''}">
+                            ${String.fromCharCode(65 + i)}. ${option}
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="text-xs text-gray-500 mt-2">
+                    الجذر: ${question.root_type} | المستوى: ${question.depth_level}
+                </div>
+            `;
+            container.appendChild(questionDiv);
+        });
+    }
+    
+    // Final Step
+    document.getElementById('step-4-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('step-4-btn-text');
+        const originalText = btn.textContent;
+        btn.textContent = 'جاري الإنهاء...';
+        
+        try {
+            const formData = new FormData(this);
+            const response = await fetch(`/quizzes/${quizId}/finalize`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                window.location.href = data.redirect_url || '/quizzes';
+            } else {
+                alert(data.message || 'حدث خطأ أثناء إنهاء الاختبار');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('حدث خطأ في الاتصال');
+        } finally {
+            btn.textContent = originalText;
+        }
+    });
+    
+    // Navigation buttons
+    document.getElementById('back-to-step-1').addEventListener('click', () => showStep(1));
+    document.getElementById('back-to-step-3').addEventListener('click', () => showStep(3));
+    document.getElementById('proceed-to-final').addEventListener('click', () => showStep(4));
+    
+    // Method selection visual updates
+    document.querySelectorAll('input[name="creation_method"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('input[name="creation_method"]').forEach(r => {
+                const container = r.closest('label').querySelector('div');
+                container.classList.remove('border-purple-500', 'bg-purple-50', 'border-blue-500', 'bg-blue-50', 'border-green-500', 'bg-green-50');
+                container.classList.add('border-gray-200');
+            });
+            
+            const container = this.closest('label').querySelector('div');
+            container.classList.remove('border-gray-200');
+            
+            if (this.value === 'ai') {
+                container.classList.add('border-purple-500', 'bg-purple-50');
+            } else if (this.value === 'manual') {
+                container.classList.add('border-blue-500', 'bg-blue-50');
+            } else if (this.value === 'hybrid') {
+                container.classList.add('border-green-500', 'bg-green-50');
+            }
+        });
+    });
+    
+    // Error handling
+    function showErrors(errors) {
+        Object.keys(errors).forEach(field => {
+            const errorElement = document.getElementById(`${field}-error`);
+            if (errorElement) {
+                errorElement.textContent = errors[field][0];
+                errorElement.classList.remove('hidden');
+            }
+        });
+    }
+    
+    // Initialize
+    showStep(1);
+    updateDebugInfo();
+    
+    // Add route debugging
+    console.log('Available routes for debugging:');
+    console.log('Step 1:', '{{ route("quizzes.create-step-1") }}');
+    console.log('Current URL:', window.location.href);
+    console.log('CSRF Token:', document.querySelector('input[name="_token"]')?.value);
 });
 </script>
-@endpush
+@endsection

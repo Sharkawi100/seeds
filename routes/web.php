@@ -209,16 +209,19 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/profile/password', [PasswordController::class, 'update'])->name('password.update');
 
     /*
-    |--------------------------------------------------------------------------
-    | Quiz Management (Teachers and Admins)
-    |--------------------------------------------------------------------------
-    */
+ |--------------------------------------------------------------------------
+ | Quiz Management (Teachers and Admins)
+ |--------------------------------------------------------------------------
+ */
     Route::resource('quizzes', QuizController::class);
+
+    // Wizard routes (with proper names)
+    Route::post('/quizzes/create-step-1', [QuizController::class, 'createStep1'])->name('quizzes.create-step-1');
+    Route::post('/quizzes/{quiz}/update-method', [QuizController::class, 'updateMethod'])->name('quizzes.update-method');
+    Route::post('/quizzes/{quiz}/generate-text', [QuizController::class, 'generateText'])->name('quizzes.generate-text');
+    Route::post('/quizzes/{quiz}/generate-questions', [QuizController::class, 'generateQuestions'])->name('quizzes.generate-questions');
+    Route::post('/quizzes/{quiz}/finalize', [QuizController::class, 'finalizeQuiz'])->name('quizzes.finalize');
     Route::post('/quizzes/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('quizzes.duplicate');
-
-    // AI Text Generation (outside of question management)
-    Route::post('/quizzes/generate-text', [QuizController::class, 'generateText'])->name('quizzes.generate-text');
-
     /*
     |--------------------------------------------------------------------------
     | Question Management Routes

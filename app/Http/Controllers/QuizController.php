@@ -6,12 +6,14 @@ use App\Models\Quiz;
 use App\Models\Question;
 use App\Models\Result;
 use App\Models\Answer;
+use App\Models\Subject;
 use App\Services\ClaudeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class QuizController extends Controller
 {
@@ -32,11 +34,15 @@ class QuizController extends Controller
         }
     }
 
+    /**
+     * Display a listing of quizzes
+     */
     public function index()
     {
         $this->authorizeQuizManagement();
+
         $quizzes = Quiz::where('user_id', Auth::id())
-            ->with('questions')
+            ->with(['questions', 'subject'])
             ->latest()
             ->get();
 
@@ -51,278 +57,417 @@ class QuizController extends Controller
         return view('quizzes.index', compact('quizzes', 'roots'));
     }
 
+    /**
+     * Show the form for creating a new quiz (wizard step 1)
+     */
     public function create()
     {
-        $subjects = \App\Models\Subject::active()->ordered()->get();
+        $this->authorizeQuizManagement();
+
+        $subjects = Subject::active()->ordered()->get();
         return view('quizzes.create', compact('subjects'));
     }
 
-    public function store(Request $request)
+    /**
+     * WIZARD STEP 1: Create quiz with basic information
+     */
+    public function createStep1(Request $request)
     {
         $this->authorizeQuizManagement();
-        $validated = $request->validate([
+
+        $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'subject_id' => 'required|exists:subjects,id',
             'grade_level' => 'required|integer|min:1|max:9',
-            'creation_method' => 'required|in:ai,manual,hybrid',
-            'roots' => 'required_if:creation_method,ai,hybrid|array',
-            'topic' => 'required_if:creation_method,ai,hybrid|string|max:255',
-            'include_passage' => 'boolean',
-            'passage_topic' => 'nullable|string|max:255',
-            'educational_text' => 'nullable|string',
-            'shuffle_questions' => 'nullable',
-            'shuffle_answers' => 'nullable',
-            'show_results' => 'nullable',
-            'time_limit' => 'nullable|integer|min:0|max:180',
-            'passing_score' => 'nullable|integer|min:0|max:100',
-            'text_source' => 'nullable|string',
-            'text_type' => 'nullable|string',
-            'text_length' => 'nullable|string'
+            'description' => 'nullable|string|max:1000',
         ]);
 
-        Log::info('Quiz store request', [
-            'method' => $request->method(),
-            'creation_method' => $validated['creation_method'] ?? 'not set',
-            'all_data' => $request->all(),
-            'is_ajax' => $request->ajax(),
-            'expects_json' => $request->expectsJson()
-        ]);
-
-        DB::beginTransaction();
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
         try {
-            // Transform roots structure for database storage AND for ClaudeService
-            $settingsForDb = [];
-            $settingsForClaude = [];
-
-            if (isset($validated['roots'])) {
-                foreach ($validated['roots'] as $rootKey => $root) {
-                    $settingsForClaude[$rootKey] = [];
-                    $levelsForDb = [];
-
-                    foreach ($root['levels'] ?? [] as $level => $levelData) {
-                        if (isset($levelData['count']) && $levelData['count'] > 0) {
-                            // For database storage
-                            $levelsForDb[] = [
-                                'depth' => $levelData['depth'] ?? $level,
-                                'count' => (int) $levelData['count']
-                            ];
-
-                            // For Claude service (simple key => value)
-                            $depthKey = $levelData['depth'] ?? $level;
-                            $settingsForClaude[$rootKey][$depthKey] = (int) $levelData['count'];
-                        }
-                    }
-
-                    if (!empty($levelsForDb)) {
-                        $settingsForDb[$rootKey] = $levelsForDb;
-                    }
-                }
-            }
+            DB::beginTransaction();
 
             $quiz = Quiz::create([
                 'user_id' => Auth::id(),
-                'title' => $validated['title'],
-                'subject' => $validated['subject'],
-                'grade_level' => $validated['grade_level'],
+                'title' => $request->title,
+                'subject_id' => $request->subject_id, // FIXED: Use subject_id not subject
+                'grade_level' => $request->grade_level,
+                'description' => $request->description,
                 'pin' => strtoupper(Str::random(6)),
-                'shuffle_questions' => isset($validated['shuffle_questions']) && $validated['shuffle_questions'] == '1',
-                'shuffle_answers' => isset($validated['shuffle_answers']) && $validated['shuffle_answers'] == '1',
-                'show_results' => !isset($validated['show_results']) || $validated['show_results'] == '1',
-                'time_limit' => $validated['time_limit'] ?? null,
-                'passing_score' => $validated['passing_score'] ?? 60,
+                'is_active' => false, // Keep inactive until finalized
                 'settings' => [
-                    'creation_method' => $validated['creation_method'],
-                    'question_count' => $validated['question_count'] ?? 0,
-                    'time_limit' => $validated['time_limit'] ?? null,
-                    'allow_review' => $validated['allow_review'] ?? true,
+                    'step' => 1,
+                    'creation_method' => null,
                 ],
             ]);
-            // // Generate PIN immediately
-            // $quiz->generatePin();
 
-            // Handle different creation methods
-            switch ($validated['creation_method']) {
-                case 'manual':
-                    DB::commit();
+            DB::commit();
 
-                    if ($request->expectsJson() || $request->ajax()) {
-                        return response()->json([
-                            'success' => true,
-                            'redirect' => route('quizzes.questions.create', $quiz)
-                        ]);
-                    }
-
-                    return redirect()->route('quizzes.questions.create', $quiz)
-                        ->with('success', 'تم إنشاء الاختبار. الآن أضف الأسئلة.');
-
-                case 'ai':
-                case 'hybrid':
-                    try {
-                        // Check if we have educational text
-                        $hasEducationalText = isset($validated['educational_text']) &&
-                            !empty(trim($validated['educational_text']));
-
-                        Log::info('Educational text check', [
-                            'has_educational_text' => $hasEducationalText,
-                            'text_length' => strlen($validated['educational_text'] ?? ''),
-                            'text_preview' => substr($validated['educational_text'] ?? '', 0, 200)
-                        ]);
-
-                        if ($hasEducationalText) {
-                            Log::info('Using provided educational text for questions generation');
-
-                            // Generate questions from the provided text
-                            $questions = $this->claudeService->generateQuestionsFromText(
-                                $validated['educational_text'],
-                                $quiz->subject,
-                                $quiz->grade_level,
-                                $settingsForClaude  // Use the Claude-formatted settings
-                            );
-
-                            // Structure the response with the educational text as passage
-                            $aiResponse = [
-                                'questions' => $questions,
-                                'passage' => $validated['educational_text'],
-                                'passage_title' => $validated['topic'] ?? 'نص القراءة'
-                            ];
-
-                            Log::info('Questions generated from educational text', [
-                                'questions_count' => count($questions),
-                                'will_save_passage' => true
-                            ]);
-                        } else {
-                            Log::info('No educational text provided, generating complete quiz with passage');
-
-                            // Generate complete quiz with passage
-                            $aiResponse = $this->claudeService->generateJuzoorQuiz(
-                                $quiz->subject,
-                                $quiz->grade_level,
-                                $validated['topic'] ?? '',
-                                $settingsForDb,  // Use the DB-formatted settings (generateJuzoorQuiz transforms it)
-                                true, // Always include passage
-                                $validated['passage_topic'] ?? null
-                            );
-                        }
-
-                        // Save questions with passage
-                        $this->parseAndSaveQuestions($quiz, $aiResponse);
-
-                        // Verify the passage was saved
-                        $savedPassage = $quiz->questions()->whereNotNull('passage')->first();
-                        Log::info('Passage save verification', [
-                            'passage_saved' => !is_null($savedPassage),
-                            'passage_length' => $savedPassage ? strlen($savedPassage->passage) : 0
-                        ]);
-
-                        DB::commit();
-
-                        $redirectUrl = $validated['creation_method'] === 'hybrid'
-                            ? route('quizzes.questions.index', $quiz)
-                            : route('quizzes.show', $quiz);
-
-                        if ($request->expectsJson() || $request->ajax()) {
-                            return response()->json([
-                                'success' => true,
-                                'redirect' => $redirectUrl
-                            ]);
-                        }
-
-                        return redirect()->to($redirectUrl)
-                            ->with('success', $validated['creation_method'] === 'hybrid'
-                                ? 'تم توليد الأسئلة بنجاح. يمكنك الآن تعديلها.'
-                                : 'تم إنشاء الاختبار وتوليد الأسئلة بنجاح.')
-                            ->with('quiz_created', true)
-                            ->with('quiz_pin', $quiz->pin)
-                            ->with('quiz_id', $quiz->id);
-
-                    } catch (\Exception $e) {
-                        DB::rollBack();
-                        Log::error('Quiz AI generation failed', [
-                            'error' => $e->getMessage(),
-                            'trace' => $e->getTraceAsString(),
-                            'quiz_id' => $quiz->id
-                        ]);
-
-                        // Delete the quiz if AI generation fails
-                        $quiz->delete();
-
-                        if ($request->expectsJson() || $request->ajax()) {
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'فشل توليد الأسئلة بالذكاء الاصطناعي. الرجاء المحاولة مرة أخرى.'
-                            ], 422);
-                        }
-
-                        return redirect()->route('quizzes.create')
-                            ->with('error', 'فشل توليد الأسئلة بالذكاء الاصطناعي. الرجاء المحاولة مرة أخرى.')
-                            ->withInput();
-                    }
-            }
+            return response()->json([
+                'success' => true,
+                'quiz_id' => $quiz->id,
+                'message' => 'تم حفظ المعلومات الأساسية بنجاح'
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Quiz creation failed', [
+            Log::error('Quiz Step 1 creation failed', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'user_id' => Auth::id(),
+                'request_data' => $request->all()
             ]);
 
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'حدث خطأ أثناء إنشاء الاختبار.'
-                ], 422);
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حفظ البيانات'
+            ], 500);
+        }
+    }
+
+    /**
+     * WIZARD STEP 2: Update quiz creation method
+     */
+    public function updateMethod(Request $request, Quiz $quiz)
+    {
+        $this->authorizeQuizManagement();
+        $this->authorizeQuizOwnership($quiz);
+
+        $validator = Validator::make($request->all(), [
+            'creation_method' => 'required|in:ai,manual,hybrid',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $settings = $quiz->settings ?? [];
+            $settings['step'] = 2;
+            $settings['creation_method'] = $request->creation_method;
+
+            $quiz->update(['settings' => $settings]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حفظ طريقة الإنشاء بنجاح'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Quiz method update failed', [
+                'error' => $e->getMessage(),
+                'quiz_id' => $quiz->id,
+                'user_id' => Auth::id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء حفظ طريقة الإنشاء'
+            ], 500);
+        }
+    }
+
+    /**
+     * WIZARD STEP 3A: Generate educational text using AI
+     */
+    public function generateText(Request $request, Quiz $quiz)
+    {
+        $this->authorizeQuizManagement();
+        $this->authorizeQuizOwnership($quiz);
+
+        $validator = Validator::make($request->all(), [
+            'topic' => 'required|string|max:255',
+            'passage_topic' => 'required|string|max:255',
+            'text_type' => 'required|in:story,article,dialogue,informational,description',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Get subject name for AI context
+            $subject = Subject::find($quiz->subject_id);
+            $subjectName = $subject ? $subject->name : 'عام';
+
+            // Prepare AI request
+            $aiParams = [
+                'subject' => $subjectName,
+                'grade_level' => $quiz->grade_level,
+                'topic' => $request->passage_topic,
+                'text_type' => $request->text_type,
+                'length' => 'medium', // Default to medium length
+                'complexity' => 'auto' // Auto-adjust based on grade
+            ];
+
+            Log::info('Generating educational text', $aiParams);
+
+            // Call Claude AI service
+            $generatedText = $this->claudeService->generateEducationalText(
+                $subjectName,
+                $quiz->grade_level,
+                $request->passage_topic,
+                $request->text_type,
+                'medium'
+            );
+
+            if (!$generatedText) {
+                throw new \Exception('AI service returned empty text');
             }
 
-            return redirect()->route('quizzes.create')
-                ->with('error', 'حدث خطأ أثناء إنشاء الاختبار.')
-                ->withInput();
+            // Save text to quiz settings
+            $settings = $quiz->settings ?? [];
+            $settings['step'] = '3a';
+            $settings['main_topic'] = $request->topic;
+            $settings['passage_topic'] = $request->passage_topic;
+            $settings['text_type'] = $request->text_type;
+            $settings['generated_text'] = $generatedText;
+
+            $quiz->update(['settings' => $settings]);
+
+            return response()->json([
+                'success' => true,
+                'text' => $generatedText,
+                'message' => 'تم إنشاء النص بنجاح'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Text generation failed', [
+                'error' => $e->getMessage(),
+                'quiz_id' => $quiz->id,
+                'user_id' => Auth::id(),
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إنشاء النص: ' . $e->getMessage()
+            ], 500);
         }
     }
-    public function generateMissingPins()
+
+    /**
+     * WIZARD STEP 3B: Generate questions using AI
+     */
+    public function generateQuestions(Request $request, Quiz $quiz)
     {
+        $this->authorizeQuizManagement();
+        $this->authorizeQuizOwnership($quiz);
 
-        $quizzes = Quiz::whereNull('pin')->orWhere('pin', '')->get();
+        $validator = Validator::make($request->all(), [
+            'topic' => 'required|string|max:255',
+            'question_count' => 'required|integer|min:4|max:30',
+            'roots' => 'required|array',
+            'roots.*' => 'integer|min:0|max:20',
+        ]);
 
-        foreach ($quizzes as $quiz) {
-            $quiz->generatePin();
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
         }
 
-        return "Generated PINs for {$quizzes->count()} quizzes";
+        try {
+            // Validate that root distribution matches question count
+            $totalRootQuestions = array_sum($request->roots);
+            if ($totalRootQuestions != $request->question_count) {
+                throw new \Exception('مجموع توزيع الأسئلة على الجذور لا يتطابق مع العدد الإجمالي');
+            }
+
+            // Get subject and generated text
+            $subject = Subject::find($quiz->subject_id);
+            $subjectName = $subject ? $subject->name : 'عام';
+            $settings = $quiz->settings ?? [];
+            $generatedText = $settings['generated_text'] ?? null;
+
+            if (!$generatedText) {
+                throw new \Exception('لم يتم إنشاء النص التعليمي بعد');
+            }
+
+            // Prepare roots structure for AI
+            $rootsForAI = [];
+            foreach ($request->roots as $rootKey => $count) {
+                if ($count > 0) {
+                    $rootsForAI[$rootKey] = [
+                        '1' => ceil($count * 0.4), // 40% easy
+                        '2' => ceil($count * 0.4), // 40% medium  
+                        '3' => $count - ceil($count * 0.4) - ceil($count * 0.4) // remainder hard
+                    ];
+                }
+            }
+
+            Log::info('Generating questions', [
+                'quiz_id' => $quiz->id,
+                'subject' => $subjectName,
+                'roots_distribution' => $rootsForAI
+            ]);
+
+            // Call Claude AI service for question generation
+            $aiResponse = $this->claudeService->generateJuzoorQuiz(
+                $subjectName,
+                $quiz->grade_level,
+                $request->topic,
+                $rootsForAI,
+                $generatedText
+            );
+
+            if (!$aiResponse || !isset($aiResponse['questions'])) {
+                throw new \Exception('AI service returned invalid response');
+            }
+
+            // Clear existing questions (if any)
+            $quiz->questions()->delete();
+
+            // Save questions to database
+            $this->parseAndSaveQuestions($quiz, $aiResponse);
+
+            // Update quiz settings
+            $settings['step'] = '3b';
+            $settings['question_count'] = $request->question_count;
+            $settings['roots_distribution'] = $request->roots;
+            $settings['questions_generated'] = true;
+
+            $quiz->update(['settings' => $settings]);
+
+            return response()->json([
+                'success' => true,
+                'questions' => $aiResponse['questions'],
+                'message' => 'تم إنشاء الأسئلة بنجاح'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Question generation failed', [
+                'error' => $e->getMessage(),
+                'quiz_id' => $quiz->id,
+                'user_id' => Auth::id(),
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إنشاء الأسئلة: ' . $e->getMessage()
+            ], 500);
+        }
     }
+
+    /**
+     * WIZARD STEP 4: Finalize quiz with settings
+     */
+    public function finalizeQuiz(Request $request, Quiz $quiz)
+    {
+        $this->authorizeQuizManagement();
+        $this->authorizeQuizOwnership($quiz);
+
+        $validator = Validator::make($request->all(), [
+            'time_limit' => 'nullable|integer|min:5|max:180',
+            'passing_score' => 'nullable|integer|min:0|max:100',
+            'shuffle_questions' => 'boolean',
+            'shuffle_answers' => 'boolean',
+            'show_results' => 'boolean',
+            'allow_retake' => 'boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Validate quiz has questions
+            if ($quiz->questions()->count() === 0) {
+                throw new \Exception('لا يمكن إنهاء الاختبار بدون أسئلة');
+            }
+
+            // Update quiz with final settings
+            $quiz->update([
+                'time_limit' => $request->time_limit,
+                'passing_score' => $request->passing_score ?? 60,
+                'shuffle_questions' => $request->boolean('shuffle_questions'),
+                'shuffle_answers' => $request->boolean('shuffle_answers'),
+                'show_results' => $request->boolean('show_results', true),
+                'is_active' => true, // Activate quiz
+                'settings' => array_merge($quiz->settings ?? [], [
+                    'step' => 'completed',
+                    'allow_retake' => $request->boolean('allow_retake'),
+                    'finalized_at' => now()->toDateTimeString()
+                ])
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إنشاء الاختبار بنجاح',
+                'redirect_url' => route('quizzes.show', $quiz)
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Quiz finalization failed', [
+                'error' => $e->getMessage(),
+                'quiz_id' => $quiz->id,
+                'user_id' => Auth::id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إنهاء الاختبار: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Display the specified quiz
+     */
     public function show(Quiz $quiz)
     {
-        if ((int) $quiz->user_id !== Auth::id()) {
-            abort(403, 'غير مصرح لك بهذا الإجراء.');
-        }
+        $this->authorizeQuizManagement();
+        $this->authorizeQuizOwnership($quiz);
 
-        $quiz->load('questions');
+        $quiz->load(['questions', 'subject']);
         return view('quizzes.show', compact('quiz'));
     }
 
+    /**
+     * Show the form for editing the specified quiz
+     */
     public function edit(Quiz $quiz)
     {
         $this->authorizeQuizManagement();
-        // Allow admin to edit any quiz
-        if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
-            abort(403, 'غير مصرح لك بهذا الإجراء.');
-        }
-        $subjects = \App\Models\Subject::active()->ordered()->get();
+        $this->authorizeQuizOwnership($quiz);
+
+        $subjects = Subject::active()->ordered()->get();
 
         if ($quiz->has_submissions) {
             return redirect()->route('quizzes.show', $quiz)
                 ->with('error', 'لا يمكن تعديل الاختبار بعد أن بدأ الطلاب في حله.');
         }
+
         return view('quizzes.edit', compact('quiz', 'subjects'));
     }
 
+    /**
+     * Update the specified quiz
+     */
     public function update(Request $request, Quiz $quiz)
     {
         $this->authorizeQuizManagement();
-        // Allow admin to update any quiz
-        if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
-            abort(403, 'غير مصرح لك بهذا الإجراء.');
-        }
+        $this->authorizeQuizOwnership($quiz);
 
         if ($quiz->has_submissions) {
             return redirect()->route('quizzes.show', $quiz)
@@ -331,7 +476,7 @@ class QuizController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'subject_id' => 'required|exists:subjects,id',
+            'subject_id' => 'required|exists:subjects,id', // FIXED: Use subject_id
             'grade_level' => 'required|integer|min:1|max:9',
             'description' => 'nullable|string',
             'time_limit' => 'nullable|integer|min:1',
@@ -340,6 +485,7 @@ class QuizController extends Controller
         ]);
 
         $quiz->update($validated);
+
         // Update passage if provided
         if ($request->has('passage')) {
             $firstQuestion = $quiz->questions()->first();
@@ -355,12 +501,13 @@ class QuizController extends Controller
             ->with('success', 'تم تحديث الاختبار بنجاح.');
     }
 
+    /**
+     * Remove the specified quiz from storage
+     */
     public function destroy(Quiz $quiz)
     {
         $this->authorizeQuizManagement();
-        if ((int) $quiz->user_id !== Auth::id()) {
-            abort(403, 'غير مصرح لك بهذا الإجراء.');
-        }
+        $this->authorizeQuizOwnership($quiz);
 
         $quiz->delete();
 
@@ -368,39 +515,9 @@ class QuizController extends Controller
             ->with('success', 'تم حذف الاختبار بنجاح.');
     }
 
-    public function duplicate(Quiz $quiz)
-    {
-        if ((int) $quiz->user_id !== Auth::id()) {
-            abort(403, 'غير مصرح لك بهذا الإجراء.');
-        }
-
-        DB::beginTransaction();
-        try {
-            // Clone quiz
-            $newQuiz = $quiz->replicate();
-            $newQuiz->title = $quiz->title . ' - نسخة';
-            $newQuiz->has_submissions = false;
-            $newQuiz->pin = strtoupper(Str::random(6));
-            $newQuiz->save();
-
-            // Clone questions
-            foreach ($quiz->questions as $question) {
-                $newQuestion = $question->replicate();
-                $newQuestion->quiz_id = $newQuiz->id;
-                $newQuestion->save();
-            }
-
-            DB::commit();
-            return redirect()->route('quizzes.show', $newQuiz)
-                ->with('success', 'تم نسخ الاختبار بنجاح. يمكنك الآن تعديله.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->route('quizzes.show', $quiz)
-                ->with('error', 'فشل نسخ الاختبار.');
-        }
-    }
-
+    /**
+     * Take quiz (public access with PIN or authenticated)
+     */
     public function take(Quiz $quiz)
     {
         if (!Auth::check() && !session('guest_name')) {
@@ -438,6 +555,9 @@ class QuizController extends Controller
         return view('quizzes.take', compact('quiz', 'questions'));
     }
 
+    /**
+     * Handle guest name submission
+     */
     public function guestStart(Request $request, Quiz $quiz)
     {
         $validated = $request->validate([
@@ -453,6 +573,9 @@ class QuizController extends Controller
         return redirect()->route('quiz.take', $quiz);
     }
 
+    /**
+     * Submit quiz answers
+     */
     public function submit(Request $request, Quiz $quiz)
     {
         $validated = $request->validate([
@@ -473,10 +596,12 @@ class QuizController extends Controller
                 'total_score' => 0,
                 'expires_at' => !Auth::check() ? now()->addDays(7) : null
             ]);
+
             // Mark quiz as having submissions
             if (!$quiz->has_submissions) {
                 $quiz->update(['has_submissions' => true]);
             }
+
             if (!Auth::check()) {
                 session(['guest_token' => $result->guest_token]);
             }
@@ -526,68 +651,72 @@ class QuizController extends Controller
             ]);
 
             DB::commit();
-            // Clear guest session data after submission
-            if (!Auth::check()) {
-                session()->forget(['guest_name', 'school_class']);
-            }
 
-            return redirect()->route('results.show', $result);
+            return redirect()->route('results.show', $result)
+                ->with('success', 'تم إرسال إجاباتك بنجاح.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Quiz submission failed', [
                 'error' => $e->getMessage(),
-                'quiz_id' => $quiz->id
+                'quiz_id' => $quiz->id,
+                'user_id' => Auth::id()
             ]);
 
-            return redirect()->route('quiz.take', $quiz)
-                ->with('error', 'حدث خطأ أثناء حفظ النتائج. الرجاء المحاولة مرة أخرى.');
+            return redirect()->back()
+                ->with('error', 'حدث خطأ أثناء إرسال الإجابات.');
         }
     }
 
     /**
-     * Generate educational text using AI
-     * This handles the AJAX request from step 2 of quiz creation
+     * Duplicate a quiz
      */
-    public function generateText(Request $request)
+    public function duplicate(Quiz $quiz)
     {
-        $validated = $request->validate([
-            'subject' => 'required|in:arabic,english,hebrew',
-            'grade_level' => 'required|integer|min:1|max:9',
-            'topic' => 'required|string|max:255',
-            'text_type' => 'required|in:story,article,dialogue,description',
-            'length' => 'required|in:short,medium,long'
-        ]);
+        $this->authorizeQuizManagement();
+        $this->authorizeQuizOwnership($quiz);
 
+        DB::beginTransaction();
         try {
-            $text = $this->claudeService->generateEducationalText(
-                $validated['subject'],
-                $validated['grade_level'],
-                $validated['topic'],
-                $validated['text_type'],
-                $validated['length']
-            );
+            // Clone quiz
+            $newQuiz = $quiz->replicate();
+            $newQuiz->title = $quiz->title . ' (نسخة)';
+            $newQuiz->pin = strtoupper(Str::random(6));
+            $newQuiz->has_submissions = false;
+            $newQuiz->is_active = false;
+            $newQuiz->save();
 
-            return response()->json([
-                'success' => true,
-                'text' => $text
-            ]);
+            // Clone questions
+            foreach ($quiz->questions as $question) {
+                $newQuestion = $question->replicate();
+                $newQuestion->quiz_id = $newQuiz->id;
+                $newQuestion->save();
+            }
+
+            DB::commit();
+
+            return redirect()->route('quizzes.show', $newQuiz)
+                ->with('success', 'تم نسخ الاختبار بنجاح. يمكنك الآن تعديله.');
 
         } catch (\Exception $e) {
-            Log::error('Text generation failed', [
-                'error' => $e->getMessage(),
-                'params' => $validated
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'فشل توليد النص: ' . $e->getMessage()
-            ], 422);
+            DB::rollBack();
+            return redirect()->route('quizzes.show', $quiz)
+                ->with('error', 'فشل نسخ الاختبار.');
         }
     }
 
     /**
-     * Parse and save questions from AI response
+     * Check if current user owns the quiz
+     */
+    private function authorizeQuizOwnership(Quiz $quiz)
+    {
+        if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+    }
+
+    /**
+     * Parse AI response and save questions to database
      */
     private function parseAndSaveQuestions(Quiz $quiz, array $aiResponse)
     {
@@ -595,39 +724,23 @@ class QuizController extends Controller
             throw new \Exception('Invalid AI response format');
         }
 
-        $passageTitle = $aiResponse['passage_title'] ?? null;
         $passage = $aiResponse['passage'] ?? null;
+        $passageTitle = $aiResponse['passage_title'] ?? null;
 
         foreach ($aiResponse['questions'] as $index => $questionData) {
-            // Validate question data
-            if (
-                !isset(
-                $questionData['question'],
-                $questionData['root_type'],
-                $questionData['depth_level'],
-                $questionData['options'],
-                $questionData['correct_answer']
-            )
-            ) {
-                Log::warning('Skipping invalid question data', ['index' => $index]);
+            if (!isset($questionData['question']) || !isset($questionData['options'])) {
                 continue;
             }
 
-            // Ensure options is an array
-            $options = is_array($questionData['options'])
-                ? array_values($questionData['options'])
-                : [];
-
-            if (count($options) < 2) {
-                Log::warning('Skipping question with insufficient options', ['index' => $index]);
-                continue;
-            }
+            $options = is_array($questionData['options']) ?
+                $questionData['options'] :
+                json_decode($questionData['options'], true);
 
             Question::create([
                 'quiz_id' => $quiz->id,
                 'question' => $questionData['question'],
-                'root_type' => $questionData['root_type'],
-                'depth_level' => (int) $questionData['depth_level'],
+                'root_type' => $questionData['root_type'] ?? 'jawhar',
+                'depth_level' => (int) ($questionData['depth_level'] ?? 1),
                 'options' => $options,
                 'correct_answer' => $questionData['correct_answer'],
                 'passage' => $index === 0 ? $passage : null,
