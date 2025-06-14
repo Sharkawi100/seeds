@@ -297,7 +297,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
     });
 
     // Log Analyzer (NEW)
-    Route::prefix('logs')->name('logs.')->controller(\App\Http\Controllers\Admin\LogAnalyzerController::class)->group(function () {
+    Route::prefix('logs')->name('logs.')->controller(LogAnalyzerController::class)->group(function () {
         Route::get('/analyzer', 'index')->name('analyzer');
         Route::post('/clear', 'clearLogs')->name('clear');
         Route::get('/download', 'downloadLogs')->name('download');

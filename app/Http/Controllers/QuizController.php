@@ -710,6 +710,12 @@ class QuizController extends Controller
      */
     private function authorizeQuizOwnership(Quiz $quiz)
     {
+        // First check if user is authenticated
+        if (!Auth::check()) {
+            abort(401, 'يجب تسجيل الدخول أولاً.');
+        }
+
+        // Then check ownership (admins can access all quizzes)
         if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
