@@ -75,7 +75,7 @@ Route::prefix('quiz')->name('quiz.')->group(function () {
     })->name('demo');
 
     // Guest results
-    Route::get('/result/{result:token}', [ResultController::class, 'guestShow'])->name('guest-result');
+    Route::get('/result/{result:guest_token}', [ResultController::class, 'guestShow'])->name('guest-result');
 });
 
 // Unified Quiz Taking (works for both PIN and direct access)

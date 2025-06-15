@@ -1,205 +1,293 @@
-# Features & Business Logic - Juzoor
+# Features & Logic - جُذور (Juzoor) - Updated December 2024
 
-Last Updated: June 2025
+## 🎯 Core Educational Model
 
-## Core Features
+### The Four Roots (الجُذور الأربعة)
 
-### 1. Educational Model (جُذور)
+1. **جَوهر (Jawhar)** - Essence: "What is it?" - Definitions and core understanding
+2. **ذِهن (Zihn)** - Mind: "How does it work?" - Analysis and critical thinking
+3. **وَصلات (Waslat)** - Connections: "How does it connect?" - Relationships and integration
+4. **رُؤية (Roaya)** - Vision: "How can we use it?" - Application and innovation
 
--   4 Roots: جَوهر (Essence), ذِهن (Mind), وَصلات (Connections), رُؤية (Vision)
--   3 Depth Levels per root (Surface, Medium, Deep)
--   Holistic assessment approach
--   Balanced question distribution across all roots
+Each root supports 3 depth levels:
 
-### 2. Quiz Creation Modes
+-   **Level 1**: Surface understanding (40% of questions)
+-   **Level 2**: Medium depth (40% of questions)
+-   **Level 3**: Deep comprehension (20% of questions)
 
--   **Manual**: Teacher creates questions manually
--   **AI-Powered**: Claude generates questions automatically
--   **Hybrid**: AI generates, teacher edits and refines
+## 🚀 Quiz Creation System (ENHANCED)
 
-### 3. Access Methods
+### Creation Wizard (3-Step Process)
 
--   **Authenticated Teachers**: Full quiz management capabilities
--   **Authenticated Students**: Track progress, save results
--   **Guest Access**: Via 6-character PIN, results stored for 7 days
--   **Public Sharing**: Direct quiz links for easy distribution
+#### **Step 1: Basic Information**
 
-### 4. AI Integration (Claude 3.5 Sonnet)
+-   Quiz title and description
+-   Subject selection (from database)
+-   Grade level (1-9)
+-   Main topic definition
 
--   Educational text generation (stories, articles, dialogues)
--   Question generation from text with root balancing
--   Automatic difficulty level adjustment
--   Support for Arabic, English, Hebrew content
--   Smart question distribution across roots and depths
+#### **Step 2: Educational Content**
 
-### 5. Enhanced Authentication System (Updated June 2025)
+**Three Text Sources:**
 
--   **Multi-method Login**:
-    -   Email/Password
-    -   Google OAuth
-    -   Facebook OAuth (ready when configured)
-    -   Student PIN login (school code + ID)
--   **Role-Specific Flows**:
-    -   Separate login/registration for teachers and students
-    -   Teacher approval workflow (admin must approve)
-    -   Student auto-approval for immediate access
--   **Security Features**:
-    -   Login attempt tracking (5 attempts = 15 min lockout)
-    -   Account lockout mechanism
-    -   Strong password requirements
-    -   Session management
-    -   Impersonation for admins
+-   **AI Generation**: Smart content creation with type/length options
+-   **Manual Input**: Teacher-written or pasted content
+-   **No Text**: Direct questions without reading passage
 
-### 6. Landing Pages (NEW June 2025)
+**AI Text Options:**
 
--   **For Teachers Page** (`/for-teachers`):
-    -   Professional design with gradient backgrounds
-    -   Feature showcase (AI, analytics, multi-language)
-    -   Step-by-step process explanation
-    -   Testimonials section
-    -   Clear CTAs for registration
--   **For Students Page** (`/for-students`):
-    -   Fun, gamified design with animations
-    -   Kid-friendly language and visuals
-    -   Achievement system preview
-    -   Simple explanation of 4 roots
-    -   Emphasis on learning being fun
+-   Types: Story, Article, Dialogue, Description
+-   Lengths: Short (50-100 words), Medium (150-250), Long (300-500)
+-   Auto-generates based on subject and grade level
 
-### 7. Dashboard Experience
+#### **Step 3: Questions & Configuration (NEW)**
 
--   **Teacher Dashboard**:
-    -   Quiz management overview
-    -   Student performance analytics
-    -   Quick creation actions
-    -   Recent activity tracking
-    -   Teaching tips and insights
--   **Student Dashboard**:
-    -   Progress visualization
-    -   Achievement badges
-    -   Recent quiz results
-    -   Performance trends
-    -   Motivational elements
+**4-Roots Question Distribution:**
 
-### 8. Results & Analytics
+-   Visual grid for each root (Jawhar, Zihn, Waslat, Roaya)
+-   Depth level controls (1-3) per root
+-   Quick presets: Balanced, Comprehension, Analytical, Creative
+-   Real-time total calculation
 
--   **For Teachers**:
-    -   Class-wide performance analysis
-    -   Individual student tracking
-    -   Root-wise strength/weakness identification
-    -   Exportable reports
-    -   Time-based progress tracking
--   **For Students**:
-    -   Interactive radar charts
-    -   Achievement unlocking
-    -   Personal best tracking
-    -   Improvement suggestions
-    -   Shareable results
+**⚙️ QUIZ CONFIGURATION SETTINGS (NEW):**
 
-## Business Rules
+**Time & Scoring:**
 
-### Quiz Management
+-   ⏰ **Time Limits**: Optional 5-120 minute restrictions
+-   📊 **Passing Score**: Configurable 50%-90% thresholds
+-   ⚡ **Smart Toggle**: Enable/disable time controls
 
--   Quizzes must have at least 1 question
--   Each question must have 2-6 answer options
--   PIN codes are 6 characters (alphanumeric), auto-generated
--   Questions can be edited until first submission
--   Quizzes can be duplicated for reuse
+**Behavior Controls:**
 
-### User Management
+-   🔀 **Question Shuffling**: Randomize order per student
+-   🔀 **Answer Shuffling**: Randomize choice positions
+-   👁️ **Results Display**: Control student access to scores
+-   ✅ **Auto-Activation**: Enable quiz immediately upon creation
 
--   **Teachers**:
-    -   Must be approved by admin before creating quizzes
-    -   Can view all results for their quizzes
-    -   Can manage (edit/delete) only their own quizzes
--   **Students**:
-    -   Auto-approved upon registration
-    -   Can only view their own results
-    -   Can use PIN or account login
--   **Admins**:
-    -   Full access to all features
-    -   Can impersonate users for support
-    -   Manage user approvals
+**Security Features:**
 
-### AI Usage
+-   Prevents cheating through randomization
+-   Teacher control over result visibility
+-   Flexible activation workflow
 
--   Tracked per user for fair usage
--   Limits can be configured in admin panel
--   Educational content generation only
--   Automatic content filtering for appropriateness
+### Creation Methods
+
+1. **Manual**: Teacher creates all questions manually
+2. **AI-Powered**: Claude generates complete quiz with passage
+3. **Hybrid**: AI generates base, teacher refines
+
+## 🎮 Quiz Taking Experience
+
+### Access Methods
+
+1. **PIN Entry**: 6-character codes for guest access
+2. **Direct URL**: `/quiz/{id}/take` for registered users
+3. **Authenticated**: Dashboard-based access for students
+
+### Student Experience
+
+-   **Guest Flow**: Name entry → Quiz taking → 7-day result access
+-   **Registered Flow**: Login → Quiz access → Permanent result storage
+-   **Adaptive Interface**: Responsive design for all devices
+
+### Enhanced Security Features (NEW)
+
+-   **Question Randomization**: Different order per student
+-   **Answer Shuffling**: Prevents adjacent copying
+-   **Time Controls**: Optional exam-style time pressure
+-   **Result Management**: Teacher-controlled score visibility
+
+## 🏗️ Technical Architecture
+
+### Modern UI/UX (UPDATED)
+
+-   **Glassmorphism Design**: Backdrop blur effects with transparency
+-   **Smooth Animations**: 300-700ms transitions throughout
+-   **Progressive Disclosure**: Show relevant sections contextually
+-   **Smart Validation**: Real-time feedback and error handling
+-   **Mobile-First**: Responsive design for all screen sizes
+
+### Wizard State Management
+
+-   **Step Progression**: Validated transitions between steps
+-   **Data Persistence**: Quiz saved incrementally
+-   **Error Recovery**: Graceful handling of failures
+-   **Route Optimization**: Clean URLs with proper subdirectory support
+
+### Backend Enhancements (UPDATED)
+
+-   **Enhanced Validation**: Comprehensive form validation
+-   **Configuration Storage**: Flexible settings in JSON fields
+-   **Auto-Activation**: Conditional quiz activation
+-   **Improved Logging**: Detailed error tracking and debugging
+
+## 📊 Results & Analytics
+
+### Root-Wise Scoring
+
+-   Individual performance per root type
+-   Percentage calculations for each learning dimension
+-   Visual charts showing learning patterns
+-   Comparative analysis across students
+
+### Teacher Dashboard
+
+-   Real-time result monitoring
+-   Class performance analytics
+-   Individual student progress tracking
+-   Export capabilities for further analysis
+
+## 🔐 Security & Access Control
+
+### User Roles
+
+-   **Students**: Quiz taking, result viewing
+-   **Teachers**: Full quiz management, analytics access
+-   **Admins**: System administration, user management
 
 ### Guest Access
 
--   Results stored for 7 days
--   No personal data required (optional name)
--   Can upgrade to full account later
--   Token-based result retrieval
+-   PIN-based entry system
+-   Temporary result tokens
+-   7-day result expiration
+-   No persistent account required
 
-### Security Rules
+### Anti-Cheating Measures (ENHANCED)
 
--   Passwords: Min 8 chars, mixed case, numbers, symbols
--   Failed login lockout: 15 minutes after 5 attempts
--   Session timeout: 120 minutes
--   CSRF protection on all forms
--   XSS prevention in all outputs
+-   **Randomization**: Questions and answers shuffled per student
+-   **Time Controls**: Optional exam timing
+-   **Access Logging**: Track quiz attempts and timing
+-   **Result Controls**: Teacher manages score visibility
 
-## User Flows
+## 🌍 Multilingual Support
 
-### Teacher Journey
+### Supported Languages
 
-1. Land on `/for-teachers` → Learn about features
-2. Register → Wait for admin approval
-3. Create quiz (manual/AI/hybrid)
-4. Share PIN with students
-5. Monitor results in real-time
-6. Generate reports and insights
+-   **Arabic (ar)**: Just Arabic Interface with full RTL support
+
+### Localization Features
+
+-   Dynamic language switching
+-   RTL/LTR layout adaptation
+-   Culturally appropriate content generation
+-   Regional date/time formats
+
+## 🤖 AI Integration
+
+### Claude AI Services
+
+-   **Educational Text Generation**: Context-aware content creation
+-   **Question Generation**: Root-based question creation
+-   **Content Adaptation**: Grade-level appropriate language
+-   **Multi-language Support**: Content in Arabic, English, Hebrew
+
+### AI Features
+
+-   Smart content suggestions
+-   Automatic difficulty adjustment
+-   Context-aware question types
+-   Educational best practices integration
+
+## 📱 User Experience Flows
+
+### Teacher Journey (UPDATED)
+
+1. **Registration**: Professional account creation with approval
+2. **Quiz Creation**: Enhanced 3-step wizard with configuration
+3. **Content Generation**: AI-assisted or manual content creation
+4. **Configuration**: Comprehensive quiz behavior settings
+5. **Deployment**: Auto-activation or manual release
+6. **Monitoring**: Real-time student progress tracking
+7. **Analysis**: Detailed performance analytics
 
 ### Student Journey
 
-1. Land on `/for-students` → Get excited about learning
-2. Enter PIN from teacher OR register account
-3. Take engaging quiz
-4. See immediate results with visuals
-5. Track progress over time
-6. Unlock achievements
+1. **Access**: PIN entry or account login
+2. **Information**: Optional name/class entry for guests
+3. **Quiz Taking**: Adaptive, timed experience
+4. **Results**: Immediate or delayed feedback (teacher-controlled)
+5. **Progress**: Long-term learning tracking (registered users)
 
-### Guest Journey
+### Guest Journey (ENHANCED)
 
-1. Receive PIN from teacher
-2. Enter PIN on homepage
-3. Optionally provide name
-4. Take quiz
-5. View results (valid for 7 days)
-6. Option to create account
+1. **PIN Entry**: Simple 6-character code access
+2. **Identity**: Basic information collection
+3. **Quiz Experience**: Full-featured quiz taking
+4. **Results Access**: 7-day token-based viewing
+5. **Registration Prompt**: Optional account creation
 
-## Technical Implementation Details
+## 🔧 Administrative Features
 
-### Database Optimization
+### Quiz Management (ENHANCED)
 
--   Indexed columns for PIN lookup
--   JSON fields for flexible data storage
--   Soft deletes for data retention
--   Efficient eager loading for relationships
+-   **Bulk Operations**: Activate/deactivate multiple quizzes
+-   **Configuration Templates**: Saved setting presets
+-   **Duplication**: Copy quizzes with settings
+-   **Analytics Export**: Detailed performance data
 
-### Performance Considerations
+### User Management
 
--   Cached quiz data during taking
--   Optimized for shared hosting
--   Minimal JavaScript dependencies
--   CDN for static assets
+-   **Teacher Approval**: Admin-controlled teacher verification
+-   **Student Monitoring**: Performance tracking across classes
+-   **Access Control**: Fine-grained permission management
+-   **Usage Analytics**: Platform utilization metrics
 
-### Accessibility
+## 📈 Performance & Scalability
 
--   WCAG AA compliant color contrasts
--   Keyboard navigation support
--   Screen reader friendly
--   RTL language support
--   Mobile-first responsive design
+### Optimization Features
 
-## Recent Updates (June 2025)
+-   **Caching Strategy**: Redis-compatible caching layer
+-   **Database Optimization**: Indexed queries and efficient relationships
+-   **Asset Management**: CDN-ready static file serving
+-   **Shared Hosting**: Optimized for budget hosting environments
 
-1. **Landing Pages**: Created engaging, role-specific landing pages
-2. **Color Contrast**: Fixed accessibility issues with button text
-3. **Top Spacing**: Added proper spacing in hero sections
-4. **Navigation**: Improved route organization
-5. **Documentation**: Comprehensive update of all project docs
-6. **Admin Features**: Enhanced user management and reports
+### Modern Development Practices
+
+-   **Component Architecture**: Reusable UI components
+-   **Progressive Enhancement**: Works without JavaScript
+-   **Accessibility**: WCAG AA compliance
+-   **SEO Optimization**: Search engine friendly structure
+
+## 🆕 Recent Enhancements (December 2024)
+
+### Quiz Configuration System
+
+-   ⚙️ **Comprehensive Settings Panel**: Professional configuration interface
+-   ⏰ **Time Management**: Flexible time limit controls
+-   🔀 **Anti-Cheating**: Question and answer randomization
+-   ✅ **Auto-Activation**: Streamlined quiz deployment
+-   📊 **Scoring Control**: Customizable passing thresholds
+
+### UI/UX Improvements
+
+-   🎨 **Modern Design**: Glassmorphism and smooth animations
+-   📱 **Enhanced Mobile**: Better responsive design
+-   🧭 **Improved Navigation**: Clearer step progression
+-   ⚡ **Smart Validation**: Real-time form feedback
+-   🔄 **Better Error Handling**: Graceful failure recovery
+
+### Technical Enhancements
+
+-   🛣️ **Route Optimization**: Fixed subdirectory URL handling
+-   📝 **Enhanced Validation**: Comprehensive form validation
+-   💾 **Improved Storage**: Better settings management
+-   🔍 **Debug Features**: Enhanced logging and error tracking
+-   🚀 **Performance**: Optimized for production deployment
+
+## 🎯 Future Roadmap
+
+### Planned Features
+
+-   **Advanced Analytics**: Learning pattern analysis
+-   **Gamification**: Achievement systems and badges
+-   **Collaboration**: Team-based quiz features
+-   **API Expansion**: Third-party integration capabilities
+-   **Mobile App**: Native mobile applications
+
+### Educational Enhancements
+
+-   **Adaptive Learning**: Personalized question difficulty
+-   **Learning Paths**: Guided educational journeys
+-   **Peer Assessment**: Student-to-student evaluation
+-   **Content Library**: Shared educational resources
+-   **Professional Development**: Teacher training modules

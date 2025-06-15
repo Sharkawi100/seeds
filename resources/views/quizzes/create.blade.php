@@ -482,10 +482,124 @@
                         </div>
                     </div>
 
+                    <!-- Quiz Configuration Settings -->
+                    <div class="bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-6 border border-slate-200">
+                        <div class="flex items-center mb-6">
+                            <div class="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl flex items-center justify-center mr-3">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-bold text-gray-900">إعدادات الاختبار</h4>
+                                <p class="text-sm text-gray-600">تخصيص سلوك الاختبار والأمان</p>
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Time Settings -->
+                            <div class="space-y-4">
+                                <h5 class="font-semibold text-gray-900 flex items-center">
+                                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    إعدادات الوقت
+                                </h5>
+                                
+                                <div>
+                                    <label class="flex items-center space-x-3 rtl:space-x-reverse">
+                                        <input type="checkbox" id="enable_time_limit" onchange="toggleTimeLimit()" 
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                        <span class="text-sm font-medium text-gray-900">تحديد وقت للاختبار</span>
+                                    </label>
+                                </div>
+
+                                <div id="time_limit_container" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">مدة الاختبار (بالدقائق)</label>
+                                    <select id="time_limit" name="time_limit" 
+                                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300">
+                                        <option value="">بدون تحديد وقت</option>
+                                        <option value="5">5 دقائق</option>
+                                        <option value="10">10 دقائق</option>
+                                        <option value="15">15 دقيقة</option>
+                                        <option value="20">20 دقيقة</option>
+                                        <option value="30">30 دقيقة</option>
+                                        <option value="45">45 دقيقة</option>
+                                        <option value="60">60 دقيقة</option>
+                                        <option value="90">90 دقيقة</option>
+                                        <option value="120">120 دقيقة</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">درجة النجاح (%)</label>
+                                    <select id="passing_score" name="passing_score" 
+                                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300">
+                                        <option value="50">50%</option>
+                                        <option value="60" selected>60%</option>
+                                        <option value="70">70%</option>
+                                        <option value="80">80%</option>
+                                        <option value="90">90%</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Behavior Settings -->
+                            <div class="space-y-4">
+                                <h5 class="font-semibold text-gray-900 flex items-center">
+                                    <svg class="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    سلوك الاختبار
+                                </h5>
+
+                                <div class="space-y-3">
+                                    <label class="flex items-center space-x-3 rtl:space-x-reverse p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer">
+                                        <input type="checkbox" id="shuffle_questions" name="shuffle_questions" value="1"
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-gray-900">ترتيب عشوائي للأسئلة</span>
+                                            <p class="text-xs text-gray-500">عرض الأسئلة بترتيب مختلف لكل طالب</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-center space-x-3 rtl:space-x-reverse p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer">
+                                        <input type="checkbox" id="shuffle_answers" name="shuffle_answers" value="1"
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-gray-900">ترتيب عشوائي للخيارات</span>
+                                            <p class="text-xs text-gray-500">عرض خيارات الإجابة بترتيب مختلف</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-center space-x-3 rtl:space-x-reverse p-3 bg-white rounded-xl border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer">
+                                        <input type="checkbox" id="show_results" name="show_results" value="1" checked
+                                               class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-gray-900">عرض النتائج للطلاب</span>
+                                            <p class="text-xs text-gray-500">السماح للطلاب برؤية نتائجهم فور الانتهاء</p>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-center space-x-3 rtl:space-x-reverse p-3 bg-white rounded-xl border border-gray-200 hover:border-green-300 transition-colors cursor-pointer">
+                                        <input type="checkbox" id="activate_quiz" name="activate_quiz" value="1" checked
+                                               class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2">
+                                        <div class="flex-1">
+                                            <span class="text-sm font-medium text-gray-900">تفعيل الاختبار فوراً</span>
+                                            <p class="text-xs text-gray-500">جعل الاختبار متاحاً للطلاب بعد الإنشاء مباشرة</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Total Questions -->
                     <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 text-white text-center">
                         <h4 class="text-lg font-semibold mb-2">إجمالي الأسئلة</h4>
                         <div class="text-4xl font-bold" id="grand-total">0</div>
+                        <p class="text-sm opacity-90 mt-2">تأكد من إضافة أسئلة قبل المتابعة</p>
                     </div>
 
                     <div class="flex justify-between pt-6">
@@ -871,7 +985,7 @@
             return;
         }
         
-        if (!validateStep(3)) return;
+        if (!validateStep3Extended()) return;
         
         const educationalText = document.getElementById('educational_text').value;
         if (textSource !== 'none' && (!educationalText || educationalText.length < 50)) {
@@ -879,7 +993,7 @@
             return;
         }
         
-        showLoadingModal('جاري إنشاء الأسئلة', 'يتم معالجة البيانات وإنشاء الأسئلة حسب نموذج الجُذور...');
+        showLoadingModal('جاري إنشاء الاختبار', 'يتم معالجة البيانات وإنشاء الأسئلة وحفظ الإعدادات...');
         
         // Prepare roots data
         const roots = {};
@@ -901,7 +1015,16 @@
             question_count: parseInt(document.getElementById('grand-total').textContent),
             educational_text: educationalText,
             text_source: textSource,
-            roots: roots
+            roots: roots,
+            
+            // Quiz Configuration Settings
+            time_limit: document.getElementById('enable_time_limit').checked ? 
+                       document.getElementById('time_limit').value : null,
+            passing_score: document.getElementById('passing_score').value,
+            shuffle_questions: document.getElementById('shuffle_questions').checked,
+            shuffle_answers: document.getElementById('shuffle_answers').checked,
+            show_results: document.getElementById('show_results').checked,
+            activate_quiz: document.getElementById('activate_quiz').checked
         };
         
         try {
@@ -1012,6 +1135,40 @@
         const text = document.getElementById('educational_text').value;
         const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
         document.getElementById('word-count').textContent = wordCount;
+    }
+
+    // Time limit toggle
+    function toggleTimeLimit() {
+        const checkbox = document.getElementById('enable_time_limit');
+        const container = document.getElementById('time_limit_container');
+        
+        if (checkbox.checked) {
+            container.classList.remove('hidden');
+            document.getElementById('time_limit').value = '30'; // Default to 30 minutes
+        } else {
+            container.classList.add('hidden');
+            document.getElementById('time_limit').value = '';
+        }
+    }
+
+    // Enhanced validation for step 3
+    function validateStep3Extended() {
+        const total = parseInt(document.getElementById('grand-total').textContent);
+        if (total === 0) {
+            showNotification('يجب إضافة سؤال واحد على الأقل', 'error');
+            return false;
+        }
+
+        // Check if time limit is enabled but no value selected
+        const enableTime = document.getElementById('enable_time_limit').checked;
+        const timeLimit = document.getElementById('time_limit').value;
+        
+        if (enableTime && !timeLimit) {
+            showNotification('يرجى تحديد مدة الاختبار أو إلغاء تفعيل التوقيت', 'error');
+            return false;
+        }
+
+        return true;
     }
 
     // Loading modal

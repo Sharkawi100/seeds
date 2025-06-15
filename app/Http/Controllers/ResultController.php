@@ -21,7 +21,25 @@ class ResultController extends Controller
 
         abort(403, 'غير مصرح لك بعرض هذه النتيجة');
     }
+    /**
+     * Show result for guests using token
+     */
+    public function guestShow(Result $result)
+    {
+        // Ensure this is a guest result and hasn't expired
+        if ($result->guest_token === null) {
+            abort(404, 'هذه النتيجة غير متاحة');
+        }
 
+        if ($result->expires_at && $result->expires_at->isPast()) {
+            abort(410, 'انتهت صلاحية عرض هذه النتيجة');
+        }
+
+        // Load relationships
+        $result->load(['quiz.questions', 'answers.question']);
+
+        return view('results.show', compact('result'));
+    }
     /**
      * Check if current user/guest can view the result
      */

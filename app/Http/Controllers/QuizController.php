@@ -219,6 +219,14 @@ class QuizController extends Controller
             'text_source' => 'required|in:ai,manual,none',
             'roots' => 'required|array',
             'roots.*' => 'integer|min:0|max:20',
+
+            // Quiz Configuration Settings
+            'time_limit' => 'nullable|integer|min:1|max:180',
+            'passing_score' => 'required|integer|min:0|max:100',
+            'shuffle_questions' => 'boolean',
+            'shuffle_answers' => 'boolean',
+            'show_results' => 'boolean',
+            'activate_quiz' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -281,7 +289,7 @@ class QuizController extends Controller
             // Save questions to database
             $questionsCount = $this->parseAndSaveQuestions($quiz, $aiResponse);
 
-            // Update quiz settings
+            // Update quiz with configuration settings
             $settings = $quiz->settings ?? [];
             $settings['step'] = '3b';
             $settings['question_count'] = $request->question_count;
@@ -289,13 +297,22 @@ class QuizController extends Controller
             $settings['questions_generated'] = true;
             $settings['final_educational_text'] = $educationalText;
 
-            $quiz->update(['settings' => $settings]);
+            $quiz->update([
+                'settings' => $settings,
+                'time_limit' => $request->time_limit,
+                'passing_score' => $request->passing_score ?? 60,
+                'shuffle_questions' => $request->shuffle_questions ?? false,
+                'shuffle_answers' => $request->shuffle_answers ?? false,
+                'show_results' => $request->show_results ?? true,
+                'is_active' => $request->activate_quiz ?? false, // Auto-activate if requested
+            ]);
 
             return response()->json([
                 'success' => true,
                 'questions' => $questions,
                 'questions_count' => $questionsCount,
-                'message' => 'تم إنشاء الأسئلة بنجاح'
+                'quiz_activated' => $request->activate_quiz ?? false,
+                'message' => 'تم إنشاء الأسئلة وحفظ الإعدادات بنجاح'
             ]);
 
         } catch (\Exception $e) {
@@ -559,12 +576,10 @@ class QuizController extends Controller
      */
     public function take(Quiz $quiz)
     {
-        // Check if quiz is active
         if (!$quiz->is_active) {
             abort(404, 'هذا الاختبار غير متاح حالياً.');
         }
 
-        // For guests, show guest info form if no session
         if (!Auth::check() && !session('guest_name')) {
             return view('quiz.guest-info', compact('quiz'));
         }
@@ -572,13 +587,8 @@ class QuizController extends Controller
         $quiz->load('questions');
 
         if ($quiz->questions->isEmpty()) {
-            if (Auth::check()) {
-                return redirect()->route('quizzes.show', $quiz)
-                    ->with('error', 'لا يحتوي هذا الاختبار على أسئلة بعد.');
-            } else {
-                return redirect()->route('home')
-                    ->with('error', 'هذا الاختبار غير متاح حالياً.');
-            }
+            return redirect()->route('quiz.enter-pin')
+                ->with('error', 'لا يحتوي هذا الاختبار على أسئلة بعد.');
         }
 
         // Apply question shuffling if enabled
@@ -640,6 +650,14 @@ class QuizController extends Controller
             $rootScores = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
             $rootCounts = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
             $totalScore = 0;
+
+            // Debug guest session data
+            Log::info('Guest session debug', [
+                'guest_name_session' => session('guest_name'),
+                'school_class_session' => session('school_class'),
+                'all_session_data' => session()->all(),
+                'is_guest' => !Auth::check()
+            ]);
 
             // Create result
             $result = Result::create([
@@ -708,8 +726,15 @@ class QuizController extends Controller
                 'guest_name' => $result->guest_name
             ]);
 
-            return redirect()->route('results.show', $result)
-                ->with('success', 'تم إرسال إجاباتك بنجاح!');
+            // Redirect based on user authentication status
+            if (Auth::check()) {
+                // Authenticated users go to regular results page
+                return redirect()->route('results.show', $result)
+                    ->with('success', 'تم إرسال إجاباتك بنجاح!');
+            } else {
+                // Guests go to token-based results page
+                return redirect()->route('quiz.guest-result', ['result' => $result->guest_token])->with('success', 'تم إرسال إجاباتك بنجاح!');
+            }
 
         } catch (\Exception $e) {
             DB::rollBack();
