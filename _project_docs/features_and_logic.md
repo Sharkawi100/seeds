@@ -208,13 +208,21 @@ Each root supports 3 depth levels:
 4. **Results**: Immediate or delayed feedback (teacher-controlled)
 5. **Progress**: Long-term learning tracking (registered users)
 
-### Guest Journey (ENHANCED)
+### Guest Journey (FIXED - June 2025)
 
-1. **PIN Entry**: Simple 6-character code access
-2. **Identity**: Basic information collection
-3. **Quiz Experience**: Full-featured quiz taking
-4. **Results Access**: 7-day token-based viewing
-5. **Registration Prompt**: Optional account creation
+1. **PIN Entry**: Simple 6-character code access via homepage form
+2. **Identity Collection**: Required name, optional school/class entry
+3. **Quiz Experience**: Full-featured quiz taking with session management
+4. **Results Access**: 7-day token-based viewing via `/quiz/result/{guest_token}`
+5. **Session Management**: Guest data properly stored and cleared after submission
+6. **Registration Prompt**: Optional account creation for permanent access
+
+**Technical Notes:**
+
+-   Guest sessions properly maintained throughout quiz flow
+-   Route model binding uses `guest_token` column correctly
+-   Results accessible via unique token URLs for 7 days
+-   Session data cleared after successful submission
 
 ## 🔧 Administrative Features
 

@@ -33,7 +33,8 @@ Last Updated: June 2025
 
 ### Results Viewing
 
--   GET /results/{result} # View results (with token for guests)
+-   GET /results/{result} # View results (authenticated users)
+-   GET /quiz/result/{result:guest_token} # View results (guests with token)
 
 ## Authentication Routes
 

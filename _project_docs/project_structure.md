@@ -1,7 +1,9 @@
 # Project Structure Summary - جُذور (Juzoor)
+
 Last Updated: December 2024
 
 ## 🏛️ Architecture Overview
+
 ```
 app/
 ├── Http/
@@ -54,6 +56,7 @@ app/
 ```
 
 ## 🔄 Request Flow for Quiz System
+
 1. **Guest Access**: PIN entry → Quiz taking → Results (with guest token)
 2. **User Flow**: Login → Dashboard → Create/Manage Quizzes → View Analytics
 3. **Admin Flow**: All user capabilities + User management + AI settings
@@ -61,6 +64,7 @@ app/
 ## 🎯 Key Models & Relationships
 
 ### Core Models
+
 ```
 User
 ├── hasMany → Quiz (teacher creates quizzes)
@@ -75,7 +79,7 @@ Quiz
 ├── features: PIN access, AI generation
 └── subjects: arabic, english, hebrew
 
-Question  
+Question
 ├── belongsTo → Quiz
 ├── hasMany → Answer
 ├── attributes: question, options[], correct_answer
@@ -98,37 +102,51 @@ Answer
 ## 🎮 Controllers & Their Responsibilities
 
 ### QuizController
-- **index()**: List user's quizzes
-- **create()**: Show creation form (manual/AI/hybrid)
-- **store()**: Handle quiz creation with AI integration
-- **take()**: Public quiz taking interface
-- **submit()**: Process quiz submission
-- **generateText()**: AJAX endpoint for AI text generation
+
+-   **index()**: List user's quizzes
+-   **create()**: Show creation form (manual/AI/hybrid)
+-   **store()**: Handle quiz creation with AI integration
+-   **take()**: Public quiz taking interface
+-   **submit()**: Process quiz submission
+-   **generateText()**: AJAX endpoint for AI text generation
 
 ### QuestionController
-- CRUD operations for quiz questions
-- **updateText()**: Inline editing via AJAX
+
+-   CRUD operations for quiz questions
+-   **updateText()**: Inline editing via AJAX
 
 ### ResultController
-- **show()**: Display results with Juzoor visualization
-- Handles both authenticated and guest access
+
+-   **show()**: Display results for authenticated users
+-   **guestShow()**: Display results for guests using token (FIXED: June 2025)
+-   Handles both authenticated and guest access with proper route binding
+
+**Recent Fix (June 2025):**
+
+-   Added missing `guestShow()` method for guest result access
+-   Fixed route parameter binding from `{result:token}` to `{result:guest_token}`
+-   Corrected guest redirect logic in QuizController@submit
+-   Proper session management for guest data throughout quiz flow
 
 ### Admin/AiManagementController
-- **generate()**: AI quiz generation
-- **generateReport()**: AI-powered result analysis
-- Integration with ClaudeService
+
+-   **generate()**: AI quiz generation
+-   **generateReport()**: AI-powered result analysis
+-   Integration with ClaudeService
 
 ## 📊 Database Schema Highlights
 
 ### Key Tables
-- users (with soft deletes)
-- quizzes (PIN support, AI settings)
-- questions (passage support, root classification)
-- results (guest support, root-wise scoring)
-- answers (tracks each response)
-- ai_usage_logs (tracks AI generation)
+
+-   users (with soft deletes)
+-   quizzes (PIN support, AI settings)
+-   questions (passage support, root classification)
+-   results (guest support, root-wise scoring)
+-   answers (tracks each response)
+-   ai_usage_logs (tracks AI generation)
 
 ### Important Migrations
+
 ```
 2014_10_12_000000_create_users_table.php
 2025_05_27_165155_create_quizzes_table.php
@@ -141,30 +159,34 @@ Answer
 ## 🔧 Services & Integration
 
 ### ClaudeService
-- Integrates with Anthropic Claude API
-- Methods:
-  - generateJuzoorQuiz()
-  - generateEducationalText()
-  - generateQuestionsFromText()
-  - generateCompletion()
-- Supports Arabic, English, Hebrew content
+
+-   Integrates with Anthropic Claude API
+-   Methods:
+    -   generateJuzoorQuiz()
+    -   generateEducationalText()
+    -   generateQuestionsFromText()
+    -   generateCompletion()
+-   Supports Arabic, English, Hebrew content
 
 ## 🛡️ Security & Middleware
-- **auth**: Standard Laravel authentication
-- **admin**: Custom IsAdmin middleware
-- **guest**: For public pages
-- **SetLocale**: Multi-language support
-- CSRF protection on all forms
-- Guest access via secure tokens
+
+-   **auth**: Standard Laravel authentication
+-   **admin**: Custom IsAdmin middleware
+-   **guest**: For public pages
+-   **SetLocale**: Multi-language support
+-   CSRF protection on all forms
+-   Guest access via secure tokens
 
 ## 🌍 Localization
-- Supports: Arabic (ar), English (en), Hebrew (he)
-- RTL layout support
-- Translation files in resources/lang/
+
+-   Supports: Arabic (ar), English (en), Hebrew (he)
+-   RTL layout support
+-   Translation files in resources/lang/
 
 ## 📦 Key Packages
-- laravel/breeze (authentication)
-- laravel/sanctum (API tokens)
-- anthropic/claude-sdk (AI integration)
-- Tailwind CSS (styling)
-- Alpine.js (frontend interactivity)
+
+-   laravel/breeze (authentication)
+-   laravel/sanctum (API tokens)
+-   anthropic/claude-sdk (AI integration)
+-   Tailwind CSS (styling)
+-   Alpine.js (frontend interactivity)

@@ -651,14 +651,6 @@ class QuizController extends Controller
             $rootCounts = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
             $totalScore = 0;
 
-            // Debug guest session data
-            Log::info('Guest session debug', [
-                'guest_name_session' => session('guest_name'),
-                'school_class_session' => session('school_class'),
-                'all_session_data' => session()->all(),
-                'is_guest' => !Auth::check()
-            ]);
-
             // Create result
             $result = Result::create([
                 'quiz_id' => $quiz->id,
