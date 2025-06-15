@@ -267,6 +267,8 @@ class QuizController extends Controller
         $validator = Validator::make($request->all(), [
             'topic' => 'required|string|max:255',
             'question_count' => 'required|integer|min:4|max:30',
+            'educational_text' => 'required|string|min:50',
+            'text_source' => 'required|in:ai,manual,none',
             'roots' => 'required|array',
             'roots.*' => 'integer|min:0|max:20',
         ]);
@@ -285,73 +287,72 @@ class QuizController extends Controller
                 throw new \Exception('مجموع توزيع الأسئلة على الجذور لا يتطابق مع العدد الإجمالي');
             }
 
-            // Get subject and generated text
+            // Get subject name
             $subject = Subject::find($quiz->subject_id);
             $subjectName = $subject ? $subject->name : 'عام';
-            $settings = $quiz->settings ?? [];
-            $generatedText = $settings['generated_text'] ?? null;
 
-            if (!$generatedText) {
-                throw new \Exception('لم يتم إنشاء النص التعليمي بعد');
-            }
+            // CRITICAL: Use the exact text from Step 2
+            $educationalText = $request->educational_text;
 
             // Prepare roots structure for AI
             $rootsForAI = [];
             foreach ($request->roots as $rootKey => $count) {
                 if ($count > 0) {
                     $rootsForAI[$rootKey] = [
-                        '1' => ceil($count * 0.4), // 40% easy
-                        '2' => ceil($count * 0.4), // 40% medium  
-                        '3' => $count - ceil($count * 0.4) - ceil($count * 0.4) // remainder hard
+                        '1' => ceil($count * 0.4),
+                        '2' => ceil($count * 0.4),
+                        '3' => $count - ceil($count * 0.4) - ceil($count * 0.4)
                     ];
                 }
             }
 
-            Log::info('Generating questions', [
+            Log::info('Generating questions from existing text', [
                 'quiz_id' => $quiz->id,
-                'subject' => $subjectName,
-                'roots_distribution' => $rootsForAI
+                'text_length' => strlen($educationalText),
+                'text_preview' => substr($educationalText, 0, 100)
             ]);
 
-            // Call Claude AI service for question generation
-            $aiResponse = $this->claudeService->generateJuzoorQuiz(
+            // Generate questions from existing text - DO NOT regenerate
+            $questions = $this->claudeService->generateQuestionsFromText(
+                $educationalText,
                 $subjectName,
                 $quiz->grade_level,
-                $request->topic,
-                $rootsForAI,
-                $generatedText
+                $rootsForAI
             );
 
-            if (!$aiResponse || !isset($aiResponse['questions'])) {
-                throw new \Exception('AI service returned invalid response');
-            }
-
-            // Clear existing questions (if any)
+            // Clear existing questions
             $quiz->questions()->delete();
+
+            // Structure response
+            $aiResponse = [
+                'questions' => $questions,
+                'passage' => $educationalText,
+                'passage_title' => $request->topic
+            ];
 
             // Save questions to database
             $this->parseAndSaveQuestions($quiz, $aiResponse);
 
             // Update quiz settings
+            $settings = $quiz->settings ?? [];
             $settings['step'] = '3b';
             $settings['question_count'] = $request->question_count;
             $settings['roots_distribution'] = $request->roots;
             $settings['questions_generated'] = true;
+            $settings['final_educational_text'] = $educationalText;
 
             $quiz->update(['settings' => $settings]);
 
             return response()->json([
                 'success' => true,
-                'questions' => $aiResponse['questions'],
+                'questions' => $questions,
                 'message' => 'تم إنشاء الأسئلة بنجاح'
             ]);
 
         } catch (\Exception $e) {
             Log::error('Question generation failed', [
                 'error' => $e->getMessage(),
-                'quiz_id' => $quiz->id,
-                'user_id' => Auth::id(),
-                'request_data' => $request->all()
+                'quiz_id' => $quiz->id
             ]);
 
             return response()->json([

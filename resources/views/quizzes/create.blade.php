@@ -180,92 +180,6 @@
                         </div>
                     </div>
 
-                    <!-- Quiz Settings -->
-                    <div class="mt-8 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl">
-                        <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                            <span class="text-2xl">⚙️</span>
-                            إعدادات الاختبار
-                        </h3>
-                        
-                        <div class="grid lg:grid-cols-2 gap-6">
-                            <!-- Time Duration -->
-                            <div>
-                                <label class="block text-lg font-bold text-gray-700 mb-3">
-                                    المدة الزمنية
-                                    <span class="text-sm font-normal text-gray-500 mr-2">(بالدقائق)</span>
-                                </label>
-                                <div class="relative">
-                                    <input type="number" 
-                                           name="time_limit" 
-                                           class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
-                                           placeholder="0 = غير محدد"
-                                           min="0"
-                                           max="180">
-                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                        <span class="text-2xl">⏰</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Passing Score -->
-                            <div>
-                                <label class="block text-lg font-bold text-gray-700 mb-3">
-                                    درجة النجاح
-                                    <span class="text-sm font-normal text-gray-500 mr-2">(%)</span>
-                                </label>
-                                <div class="relative">
-                                    <input type="number" 
-                                           name="passing_score" 
-                                           class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
-                                           placeholder="60"
-                                           value="60"
-                                           min="0"
-                                           max="100">
-                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                        <span class="text-2xl">🎯</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Checkbox Options -->
-                            <div class="lg:col-span-2 space-y-4">
-                                <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
-                                    <input type="checkbox" 
-                                           name="shuffle_questions" 
-                                           value="1"
-                                           class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
-                                    <div>
-                                        <span class="text-lg font-medium text-gray-800">خلط ترتيب الأسئلة</span>
-                                        <p class="text-sm text-gray-600">عرض الأسئلة بترتيب عشوائي مختلف لكل طالب</p>
-                                    </div>
-                                </label>
-
-                                <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
-                                    <input type="checkbox" 
-                                           name="shuffle_answers" 
-                                           value="1"
-                                           class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
-                                    <div>
-                                        <span class="text-lg font-medium text-gray-800">خلط خيارات الإجابة</span>
-                                        <p class="text-sm text-gray-600">عرض خيارات الإجابة بترتيب عشوائي</p>
-                                    </div>
-                                </label>
-
-                                <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
-                                    <input type="checkbox" 
-                                           name="show_results" 
-                                           value="1"
-                                           checked
-                                           class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
-                                    <div>
-                                        <span class="text-lg font-medium text-gray-800">عرض النتائج للطلاب</span>
-                                        <p class="text-sm text-gray-600">السماح للطلاب بمشاهدة نتائجهم بعد إنهاء الاختبار</p>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="flex justify-end mt-8">
                         <button type="submit"
                                 class="group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transform hover:scale-105 transition-all">
@@ -531,15 +445,108 @@
                         </div>
                     </div>
 
-                    <!-- Creation Method -->
-                    <div class="mb-8">
-                        <label class="block text-lg font-bold text-gray-700 mb-3">طريقة الإنشاء</label>
-                        <select name="creation_method" id="creation_method"
-                                class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100">
-                            <option value="ai">🤖 توليد تلقائي بالذكاء الاصطناعي</option>
-                            <option value="hybrid">✨ توليد بالذكاء الاصطناعي مع إمكانية التعديل</option>
-                            <option value="manual">✍️ إضافة يدوية للأسئلة</option>
-                        </select>
+                    <!-- Quiz Settings Gear Icon -->
+                    <div class="flex justify-end mb-6">
+                        <button type="button" 
+                                onclick="toggleQuizSettings()"
+                                class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            إعدادات الاختبار
+                        </button>
+                    </div>
+
+                    <!-- Quiz Settings Panel (Hidden by default) -->
+                    <div id="quiz-settings-panel" class="hidden mb-8 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                            <span class="text-2xl">⚙️</span>
+                            إعدادات الاختبار
+                        </h3>
+                        
+                        <div class="grid lg:grid-cols-2 gap-6">
+                            <!-- Time Duration -->
+                            <div>
+                                <label class="block text-lg font-bold text-gray-700 mb-3">
+                                    المدة الزمنية
+                                    <span class="text-sm font-normal text-gray-500 mr-2">(بالدقائق)</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="number" 
+                                           name="time_limit" 
+                                           id="time_limit"
+                                           class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
+                                           placeholder="0 = غير محدد"
+                                           min="0"
+                                           max="180">
+                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                        <span class="text-2xl">⏰</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Passing Score -->
+                            <div>
+                                <label class="block text-lg font-bold text-gray-700 mb-3">
+                                    درجة النجاح
+                                    <span class="text-sm font-normal text-gray-500 mr-2">(%)</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="number" 
+                                           name="passing_score" 
+                                           id="passing_score"
+                                           class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all"
+                                           placeholder="60"
+                                           value="60"
+                                           min="0"
+                                           max="100">
+                                    <div class="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                        <span class="text-2xl">🎯</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Checkbox Options -->
+                            <div class="lg:col-span-2 space-y-4">
+                                <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
+                                    <input type="checkbox" 
+                                           name="shuffle_questions" 
+                                           id="shuffle_questions"
+                                           value="1"
+                                           class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
+                                    <div>
+                                        <span class="text-lg font-medium text-gray-800">خلط ترتيب الأسئلة</span>
+                                        <p class="text-sm text-gray-600">عرض الأسئلة بترتيب عشوائي مختلف لكل طالب</p>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
+                                    <input type="checkbox" 
+                                           name="shuffle_answers" 
+                                           id="shuffle_answers"
+                                           value="1"
+                                           class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
+                                    <div>
+                                        <span class="text-lg font-medium text-gray-800">خلط خيارات الإجابة</span>
+                                        <p class="text-sm text-gray-600">عرض خيارات الإجابة بترتيب عشوائي</p>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center gap-4 cursor-pointer p-4 bg-white rounded-xl hover:bg-gray-50 transition-all">
+                                    <input type="checkbox" 
+                                           name="show_results" 
+                                           id="show_results"
+                                           value="1"
+                                           checked
+                                           class="w-6 h-6 text-purple-600 rounded-lg focus:ring-purple-500">
+                                    <div>
+                                        <span class="text-lg font-medium text-gray-800">عرض النتائج للطلاب</span>
+                                        <p class="text-sm text-gray-600">السماح للطلاب بمشاهدة نتائجهم بعد إنهاء الاختبار</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Submit Actions -->
@@ -582,33 +589,6 @@
                     <span class="loading-text">معالجة البيانات</span>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Success Modal -->
-<div id="success-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-3xl shadow-2xl p-10 max-w-md w-full mx-4 text-center animate-bounce-in">
-        <div class="mb-6">
-            <span class="text-8xl">🎉</span>
-        </div>
-        <h2 class="text-3xl font-black text-gray-900 mb-4">تم إنشاء الاختبار بنجاح!</h2>
-        <div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-6 mb-6">
-            <p class="text-lg text-gray-700 mb-2">رمز الدخول للطلاب</p>
-            <p class="text-5xl font-black text-purple-600 tracking-wider" id="quiz-pin">XXXXX</p>
-        </div>
-        <div class="space-y-3">
-            <button onclick="copyPIN()" class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg hover:shadow-xl transition-all">
-                <span class="flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                    </svg>
-                    نسخ رمز الدخول
-                </span>
-            </button>
-            <a href="#" id="view-quiz-btn" class="block w-full py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-2xl font-bold text-lg transition-all">
-                عرض الاختبار
-            </a>
         </div>
     </div>
 </div>
@@ -1000,26 +980,6 @@ function setTextSource(source) {
     }
 }
 
-// Save generated text to quiz record
-async function saveGeneratedText(text) {
-    try {
-        await fetch(`/roots/quizzes/${quizId}/save-text`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                educational_text: text,
-                text_source: textSource
-            })
-        });
-    } catch (error) {
-        console.warn('Failed to save text to quiz record:', error);
-    }
-}
-
 // Generate text
 async function generateText() {
     if (!quizId) {
@@ -1033,7 +993,20 @@ async function generateText() {
     btn.innerHTML = '<span class="text-2xl animate-spin">⚡</span> جاري التوليد...';
     
     try {
-        const response = await fetch(`/roots/quizzes/${quizId}/generate-text`, {
+        const url = `/quizzes/${quizId}/generate-text`;
+        
+        // Match exactly what QuizController expects
+        const requestBody = {
+            topic: document.getElementById('topic').value,
+            passage_topic: document.getElementById('topic').value,
+            text_type: document.getElementById('text_type').value,
+            text_length: document.getElementById('text_length').value
+        };
+        
+        console.log('Request to:', url);
+        console.log('Request body:', requestBody);
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1041,36 +1014,66 @@ async function generateText() {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({
-                subject: document.getElementById('subject_id').value,
-                grade_level: parseInt(document.getElementById('grade_level').value),
-                topic: document.getElementById('topic').value,
-                title: document.getElementById('title').value,
-                description: document.getElementById('description').value,
-                passage_topic: document.getElementById('topic').value,
-                text_type: document.getElementById('text_type').value,
-                length: document.getElementById('text_length').value
-            })
+            body: JSON.stringify(requestBody)
         });
         
-        const data = await response.json();
+        console.log('Response status:', response.status);
+        
+        const responseText = await response.text();
+        console.log('Response text:', responseText.substring(0, 300));
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Full response:', responseText);
+            throw new Error('Invalid JSON response from server');
+        }
         
         if (data.success) {
             document.getElementById('educational_text').value = data.text;
             updateWordCount();
-            
-            // Save the generated text to the quiz record immediately
-            await saveGeneratedText(data.text);
-            
             showNotification('تم توليد النص بنجاح', 'success');
         } else {
-            showNotification(data.message || 'فشل توليد النص', 'error');
+            const errors = data.errors ? Object.values(data.errors).flat().join(', ') : '';
+            showNotification(data.message || errors || 'فشل توليد النص', 'error');
         }
     } catch (error) {
-        showNotification('حدث خطأ في الاتصال', 'error');
+        console.error('Error:', error);
+        showNotification('خطأ: ' + error.message, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalContent;
+    }
+}
+
+// Toggle quiz settings panel
+function toggleQuizSettings() {
+    const panel = document.getElementById('quiz-settings-panel');
+    const isHidden = panel.classList.contains('hidden');
+    
+    if (isHidden) {
+        panel.classList.remove('hidden');
+        panel.style.maxHeight = '0px';
+        panel.style.overflow = 'hidden';
+        setTimeout(() => {
+            panel.style.maxHeight = '1000px';
+            panel.style.transition = 'max-height 0.3s ease-out';
+        }, 10);
+    } else {
+        panel.style.maxHeight = '0px';
+        panel.style.transition = 'max-height 0.3s ease-in';
+        setTimeout(() => {
+            panel.classList.add('hidden');
+            panel.style.maxHeight = '';
+            panel.style.transition = '';
+            panel.style.overflow = '';
+        }, 300);
     }
 }
 
@@ -1190,24 +1193,6 @@ function hideLoadingModal() {
     document.getElementById('loading-modal').classList.add('hidden');
 }
 
-// Success modal
-function showSuccessModal(pin, redirectUrl) {
-    document.getElementById('quiz-pin').textContent = pin;
-    document.getElementById('view-quiz-btn').href = redirectUrl;
-    document.getElementById('success-modal').classList.remove('hidden');
-    
-    setTimeout(() => {
-        window.location.href = redirectUrl;
-    }, 5000);
-}
-
-// Copy PIN
-function copyPIN() {
-    const pin = document.getElementById('quiz-pin').textContent;
-    navigator.clipboard.writeText(pin);
-    showNotification('تم نسخ رمز الدخول', 'success');
-}
-
 // Notifications
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
@@ -1265,6 +1250,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showNotification(data.message || 'حدث خطأ في حفظ البيانات', 'error');
             }
         } catch (error) {
+            console.error('Error:', error);
             showNotification('حدث خطأ في الاتصال بالخادم', 'error');
         }
     });
@@ -1278,16 +1264,30 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('يجب إضافة سؤال واحد على الأقل', 'error');
             return;
         }
-        
+
+        // Validate educational text exists
+        const educationalText = document.getElementById('educational_text').value;
+        if (!educationalText || educationalText.length < 50) {
+            showNotification('النص التعليمي مطلوب ويجب أن يكون 50 حرف على الأقل', 'error');
+            return;
+        }
+
         showLoadingModal('جاري إنشاء الأسئلة', 'يتم معالجة البيانات وإنشاء الأسئلة...');
         
         // Prepare question generation data
         const requestData = {
             topic: document.getElementById('topic').value,
             question_count: grandTotal,
-            educational_text: document.getElementById('educational_text').value,
+            educational_text: educationalText,
             text_source: textSource,
-            roots: {}
+            roots: {},
+            // Quiz settings
+            time_limit: document.getElementById('time_limit').value || null,
+            passing_score: document.getElementById('passing_score').value || 60,
+            shuffle_questions: document.getElementById('shuffle_questions').checked,
+            shuffle_answers: document.getElementById('shuffle_answers').checked,
+            show_results: document.getElementById('show_results').checked,
+            _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         };
 
         // Collect simplified roots data
@@ -1305,11 +1305,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         try {
-            const response = await fetch(`/roots/quizzes/${quizId}/generate-questions`, {
+            console.log('Sending request data:', {
+                ...requestData,
+                educational_text: requestData.educational_text.substring(0, 100) + '...'
+            });
+            
+            const response = await fetch(`/quizzes/${quizId}/generate-questions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify(requestData)
@@ -1320,12 +1325,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 hideLoadingModal();
                 showNotification('تم إنشاء الأسئلة بنجاح', 'success');
-                window.location.href = '/roots/quizzes/' + quizId;
+                window.location.href = '/quizzes/' + quizId;
             } else {
                 hideLoadingModal();
                 showNotification(data.message || 'فشل إنشاء الأسئلة', 'error');
             }
         } catch (error) {
+            console.error('Error:', error);
             hideLoadingModal();
             showNotification('حدث خطأ في الاتصال', 'error');
         }

@@ -124,7 +124,6 @@ require __DIR__ . '/auth.php';
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::post('/quizzes/create-step-1', [QuizController::class, 'createStep1'])->name('quizzes.create-step-1');
 
     // Dashboard
     Route::get('/dashboard', [ProfileController::class, 'dashboard'])->name('dashboard');
