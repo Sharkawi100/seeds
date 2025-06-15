@@ -14,10 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Add middleware aliases
-        $middleware->alias([
-            'active' => CheckUserActive::class,
-            'admin' => IsAdmin::class,
+        $middleware->web(append: [
+            \App\Http\Middleware\SetLocale::class,
+        ]);
+
+        // Add CSRF exception for social callbacks
+        $middleware->validateCsrfTokens(except: [
+            'auth/*/callback',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -559,10 +559,12 @@ class QuizController extends Controller
      */
     public function take(Quiz $quiz)
     {
+        // Check if quiz is active
         if (!$quiz->is_active) {
             abort(404, 'هذا الاختبار غير متاح حالياً.');
         }
 
+        // For guests, show guest info form if no session
         if (!Auth::check() && !session('guest_name')) {
             return view('quiz.guest-info', compact('quiz'));
         }
@@ -570,8 +572,13 @@ class QuizController extends Controller
         $quiz->load('questions');
 
         if ($quiz->questions->isEmpty()) {
-            return redirect()->route('quiz.enter-pin')
-                ->with('error', 'لا يحتوي هذا الاختبار على أسئلة بعد.');
+            if (Auth::check()) {
+                return redirect()->route('quizzes.show', $quiz)
+                    ->with('error', 'لا يحتوي هذا الاختبار على أسئلة بعد.');
+            } else {
+                return redirect()->route('home')
+                    ->with('error', 'هذا الاختبار غير متاح حالياً.');
+            }
         }
 
         // Apply question shuffling if enabled

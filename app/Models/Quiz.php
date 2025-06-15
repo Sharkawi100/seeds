@@ -268,4 +268,25 @@ class Quiz extends Model
     {
         return $query->where('is_public', true);
     }
+    /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName()
+    {
+        return 'id'; // Default behavior
+    }
+
+    /**
+     * Retrieve the model for a bound value.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        // If the field is specified as 'pin', look up by pin
+        if ($field === 'pin') {
+            return $this->where('pin', $value)->where('is_active', true)->firstOrFail();
+        }
+
+        // Otherwise, use default ID lookup
+        return $this->where($this->getRouteKeyName(), $value)->firstOrFail();
+    }
 }

@@ -57,11 +57,9 @@ Route::prefix('contact')->name('contact.')->group(function () {
     })->name('submit');
 });
 
-// Public Quiz Access (PIN-based)
+// Public Quiz Access (unified approach)
 Route::prefix('quiz')->name('quiz.')->group(function () {
     Route::post('/enter-pin', [WelcomeController::class, 'enterPin'])->name('enter-pin');
-    Route::get('/pin/{quiz:pin}/take', [QuizController::class, 'take'])->name('take-by-pin');
-    Route::post('/pin/{quiz:pin}/submit', [QuizController::class, 'submit'])->name('submit-by-pin');
 
     // Demo quiz
     Route::get('/demo', function () {
@@ -80,9 +78,10 @@ Route::prefix('quiz')->name('quiz.')->group(function () {
     Route::get('/result/{result:token}', [ResultController::class, 'guestShow'])->name('guest-result');
 });
 
-// Quiz Taking by ID (separate from prefix)
+// Unified Quiz Taking (works for both PIN and direct access)
 Route::get('/quiz/{quiz}/take', [QuizController::class, 'take'])->name('quiz.take');
 Route::post('/quiz/{quiz}/submit', [QuizController::class, 'submit'])->name('quiz.submit');
+Route::post('/quiz/{quiz}/guest-start', [QuizController::class, 'guestStart'])->name('quiz.guest-start');
 
 /*
 |--------------------------------------------------------------------------

@@ -55,13 +55,11 @@ class WelcomeController extends Controller
                 ->withInput();
         }
 
-        // Redirect to quiz taking page
-        // Check if user is guest
+        // Redirect to direct quiz taking page (using ID, not PIN)
         if (!Auth::check()) {
-            return redirect()->route('quiz.take', $quiz)
-                ->with('show_guest_form', true);
+            return redirect()->route('quiz.take', $quiz->id);
         }
-        return redirect()->route('quiz.take', $quiz);
+        return redirect()->route('quiz.take', $quiz->id);
     }
 
     /**
