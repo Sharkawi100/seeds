@@ -14,7 +14,6 @@ use App\Http\Controllers\Admin\QuizController as AdminQuizController;
 use App\Http\Controllers\Admin\LogAnalyzerController;
 use App\Http\Middleware\IsAdmin;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,35 +21,14 @@ use Illuminate\Support\Facades\Auth;
 |--------------------------------------------------------------------------
 */
 
-// Landing Page
+// Landing Pages
 Route::get('/', [WelcomeController::class, 'index'])->name('home');
-
-// Static Pages
 Route::get('/about', fn() => view('about'))->name('about');
 Route::get('/juzoor-model', fn() => view('juzoor-model'))->name('juzoor.model');
 Route::get('/juzoor-model/growth', fn() => view('juzoor-growth'))->name('juzoor.growth');
 Route::get('/question-guide', fn() => view('question-guide'))->name('question.guide');
 Route::get('/for-teachers', fn() => view('for-teachers'))->name('for.teachers');
 Route::get('/for-students', fn() => view('for-students'))->name('for.students');
-
-// Contact Routes (if ContactController exists, otherwise comment out)
-Route::prefix('contact')->name('contact.')->group(function () {
-    Route::get('/', function () {
-        return view('contact.show');
-    })->name('show');
-
-    Route::post('/', function () {
-        // Basic contact form handling
-        request()->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'message' => 'required|string'
-        ]);
-
-        session()->flash('success', 'تم إرسال رسالتك بنجاح');
-        return redirect()->route('contact.show');
-    })->name('submit');
-});
 
 // Language Switcher
 Route::get('/lang/{locale}', function ($locale) {
@@ -60,14 +38,32 @@ Route::get('/lang/{locale}', function ($locale) {
     return redirect()->back();
 })->name('lang.switch');
 
-// Quiz Taking (Public Access)
+// Contact Form
+Route::prefix('contact')->name('contact.')->group(function () {
+    Route::get('/', function () {
+        if (view()->exists('contact.show')) {
+            return view('contact.show');
+        }
+        return view('welcome');
+    })->name('show');
+    Route::post('/', function () {
+        request()->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'message' => 'required|string'
+        ]);
+        session()->flash('success', 'تم إرسال رسالتك بنجاح');
+        return redirect()->route('contact.show');
+    })->name('submit');
+});
+
+// Public Quiz Access (PIN-based)
 Route::prefix('quiz')->name('quiz.')->group(function () {
-    // PIN-based access (for guest users)
     Route::post('/enter-pin', [WelcomeController::class, 'enterPin'])->name('enter-pin');
     Route::get('/pin/{quiz:pin}/take', [QuizController::class, 'take'])->name('take-by-pin');
     Route::post('/pin/{quiz:pin}/submit', [QuizController::class, 'submit'])->name('submit-by-pin');
 
-    // Demo quiz (find actual demo quiz from database)
+    // Demo quiz
     Route::get('/demo', function () {
         $demoQuiz = \App\Models\Quiz::where('is_demo', 1)
             ->where('is_active', 1)
@@ -84,114 +80,56 @@ Route::prefix('quiz')->name('quiz.')->group(function () {
     Route::get('/result/{result:token}', [ResultController::class, 'guestShow'])->name('guest-result');
 });
 
-// Quiz Taking by ID (separate from prefix to avoid conflicts)
+// Quiz Taking by ID (separate from prefix)
 Route::get('/quiz/{quiz}/take', [QuizController::class, 'take'])->name('quiz.take');
 Route::post('/quiz/{quiz}/submit', [QuizController::class, 'submit'])->name('quiz.submit');
 
 /*
 |--------------------------------------------------------------------------
-| Authentication Routes - Role Selection
+| Authentication Routes (Guest Only)
 |--------------------------------------------------------------------------
 */
-Route::middleware('guest')->group(function () {
-    // Role selection pages (fixes the missing register/login routes)
-    Route::get('/register', function () {
-        return view('auth.role-selection', ['action' => 'register']);
-    })->name('register');
 
-    Route::get('/login', function () {
-        return view('auth.role-selection', ['action' => 'login']);
-    })->name('login');
+Route::middleware('guest')->group(function () {
+    // Role selection pages
+    Route::get('/register', fn() => view('auth.role-selection', ['action' => 'register']))->name('register');
+    Route::get('/login', fn() => view('auth.role-selection', ['action' => 'login']))->name('login');
 
     // Teacher Authentication
     Route::prefix('teacher')->name('teacher.')->group(function () {
-        Route::get('/login', function () {
-            return view('auth.teacher.login');
-        })->name('login');
-
-        Route::get('/register', function () {
-            return view('auth.teacher.register');
-        })->name('register');
-
-        // Add actual authentication logic here if controllers exist
-        Route::post('/login', function () {
-            // Handle teacher login
-            return redirect()->route('dashboard');
-        })->name('login.submit');
-
-        Route::post('/register', function () {
-            // Handle teacher registration
-            return redirect()->route('teacher.pending-approval');
-        })->name('register.submit');
+        Route::get('/login', fn() => view('auth.teacher.login'))->name('login');
+        Route::get('/register', fn() => view('auth.teacher.register'))->name('register');
+        Route::get('/pending-approval', fn() => view('auth.teacher.pending-approval'))->name('pending-approval');
     });
 
     // Student Authentication
     Route::prefix('student')->name('student.')->group(function () {
-        Route::get('/login', function () {
-            return view('auth.student.login');
-        })->name('login');
-
-        Route::get('/register', function () {
-            return view('auth.student.register');
-        })->name('register');
-
-        Route::post('/login', function () {
-            // Handle student login
-            return redirect()->route('dashboard');
-        })->name('login.submit');
-
-        Route::post('/register', function () {
-            // Handle student registration
-            return redirect()->route('dashboard');
-        })->name('register.submit');
+        Route::get('/login', fn() => view('auth.student.login'))->name('login');
+        Route::get('/register', fn() => view('auth.student.register'))->name('register');
     });
 });
 
 /*
 |--------------------------------------------------------------------------
-| Include Laravel Breeze Auth Routes
+| Authentication Routes (Include Laravel Breeze)
 |--------------------------------------------------------------------------
 */
+
 require __DIR__ . '/auth.php';
 
 /*
 |--------------------------------------------------------------------------
-| Simple Logout Route (No Middleware)
+| Authenticated Routes (All Logged-in Users)
 |--------------------------------------------------------------------------
 */
-Route::get('/logout-now', function () {
-    Auth::guard('web')->logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-    return redirect('/');
-})->name('logout.simple');
 
-/*
-|--------------------------------------------------------------------------
-| Authenticated Routes (All Logged In Users)
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/quizzes/create-step-1', [QuizController::class, 'createStep1'])->name('quizzes.create-step-1');
+
     // Dashboard
-    Route::get('/dashboard', fn() => view('dashboard'))->name('dashboard');
+    Route::get('/dashboard', [ProfileController::class, 'dashboard'])->name('dashboard');
 
-    // Teacher Pending Approval Page
-    Route::get('/teacher/pending-approval', function () {
-        if (Auth::user()->user_type !== 'teacher' || Auth::user()->is_approved) {
-            return redirect()->route('dashboard');
-        }
-        return view('auth.teacher.pending-approval');
-    })->name('teacher.pending-approval');
-
-    // Stop Impersonation (MUST be outside admin middleware)
-    Route::get('/admin/stop-impersonation', [AdminUserController::class, 'stopImpersonation'])
-        ->name('admin.stop-impersonation');
-
-    /*
-    |--------------------------------------------------------------------------
-    | Profile Management
-    |--------------------------------------------------------------------------
-    */
+    // Profile Management
     Route::prefix('profile')->name('profile.')->controller(ProfileController::class)->group(function () {
         Route::get('/', 'dashboard')->name('dashboard');
         Route::get('/edit', 'edit')->name('edit');
@@ -209,24 +147,33 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/profile/password', [PasswordController::class, 'update'])->name('password.update');
 
     /*
- |--------------------------------------------------------------------------
- | Quiz Management (Teachers and Admins)
- |--------------------------------------------------------------------------
- */
+    |--------------------------------------------------------------------------
+    | Quiz Management (Teachers and Admins Only)
+    |--------------------------------------------------------------------------
+    */
+
+    // Basic Quiz CRUD
     Route::resource('quizzes', QuizController::class);
 
-    // Wizard routes (with proper names)
-    Route::post('/quizzes/create-step-1', [QuizController::class, 'createStep1'])->name('quizzes.create-step-1');
-    Route::post('/quizzes/{quiz}/update-method', [QuizController::class, 'updateMethod'])->name('quizzes.update-method');
-    Route::post('/quizzes/{quiz}/generate-text', [QuizController::class, 'generateText'])->name('quizzes.generate-text');
-    Route::post('/quizzes/{quiz}/generate-questions', [QuizController::class, 'generateQuestions'])->name('quizzes.generate-questions');
-    Route::post('/quizzes/{quiz}/finalize', [QuizController::class, 'finalizeQuiz'])->name('quizzes.finalize');
-    Route::post('/quizzes/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('quizzes.duplicate');
+    // Quiz Creation Wizard Routes
+    Route::prefix('quizzes')->name('quizzes.')->group(function () {
+        Route::post('/create-step-1', [QuizController::class, 'createStep1'])->name('create-step-1');
+        Route::post('/{quiz}/update-method', [QuizController::class, 'updateMethod'])->name('update-method');
+        Route::post('/{quiz}/generate-text', [QuizController::class, 'generateText'])->name('generate-text');
+        Route::post('/{quiz}/generate-questions', [QuizController::class, 'generateQuestions'])->name('generate-questions');
+        Route::post('/{quiz}/finalize', [QuizController::class, 'finalizeQuiz'])->name('finalize');
+        Route::post('/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('duplicate');
+    });
+
+    // AI Text Generation (Global)
+    Route::post('/generate-text', [QuizController::class, 'generateText'])->name('quizzes.generate-text');
+
     /*
     |--------------------------------------------------------------------------
     | Question Management Routes
     |--------------------------------------------------------------------------
     */
+
     Route::prefix('quizzes/{quiz}/questions')->name('quizzes.questions.')->group(function () {
         // Basic CRUD operations
         Route::get('/', [QuestionController::class, 'index'])->name('index');
@@ -252,6 +199,7 @@ Route::middleware(['auth'])->group(function () {
     | Results Management
     |--------------------------------------------------------------------------
     */
+
     Route::prefix('results')->name('results.')->controller(ResultController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/quiz/{quiz}', 'quizResults')->name('quiz');
@@ -264,7 +212,9 @@ Route::middleware(['auth'])->group(function () {
 | Admin Routes (Admin Only)
 |--------------------------------------------------------------------------
 */
+
 Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
+
     // Admin Dashboard & Reports
     Route::controller(DashboardController::class)->group(function () {
         Route::get('/dashboard', 'index')->name('dashboard');
@@ -296,10 +246,50 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
         Route::post('/quiz/{quiz}/report', 'generateReport')->name('generateReport');
     });
 
-    // Log Analyzer (NEW)
+    // Log Analyzer
     Route::prefix('logs')->name('logs.')->controller(LogAnalyzerController::class)->group(function () {
         Route::get('/analyzer', 'index')->name('analyzer');
         Route::post('/clear', 'clearLogs')->name('clear');
         Route::get('/download', 'downloadLogs')->name('download');
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Special Routes
+|--------------------------------------------------------------------------
+*/
+
+// Impersonation Stop (Outside admin middleware)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/stop-impersonation', function () {
+        if (session()->has('impersonate_original_user')) {
+            $originalUserId = session('impersonate_original_user');
+            session()->forget('impersonate_original_user');
+            \Illuminate\Support\Facades\Auth::loginUsingId($originalUserId);
+            return redirect()->route('admin.users.index')->with('success', 'تم إيقاف الانتحال بنجاح');
+        }
+        return redirect()->route('dashboard');
+    })->name('stop-impersonation');
+});
+
+/*
+|--------------------------------------------------------------------------
+| API Routes (If needed for AJAX)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth:sanctum'])->prefix('api')->name('api.')->group(function () {
+    // Add API routes here if needed
+    Route::get('/user', fn() => request()->user());
+});
+
+/*
+|--------------------------------------------------------------------------
+| Fallback Route
+|--------------------------------------------------------------------------
+*/
+
+Route::fallback(function () {
+    abort(404);
 });
