@@ -947,7 +947,6 @@ function validateStep(step) {
         }
     } else if (step === 2) {
         if (textSource === 'none') {
-            // No text validation needed for direct questions
             return true;
         }
         
@@ -1001,51 +1000,25 @@ function setTextSource(source) {
     }
 }
 
-// Step 1 form submission
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('step-1-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        if (!validateStep(1)) return;
-        
-        const formData = new FormData(this);
-        
-        console.log('Submitting Step 1 data:', Object.fromEntries(formData));
-        
-        try {
-            const response = await fetch('{{ route("quizzes.create-step-1") }}', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            });
-            
-            console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
-            
-            const data = await response.json();
-            console.log('Response data:', data);
-            
-            if (data.success) {
-                quizId = data.quiz_id;
-                document.getElementById('quiz-id').value = quizId;
-                console.log('Quiz ID set to:', quizId);
-                showNotification('تم حفظ المعلومات الأساسية بنجاح', 'success');
-                nextStep();
-            } else {
-                console.error('Step 1 failed:', data);
-                showNotification(data.message || 'حدث خطأ في حفظ البيانات', 'error');
-            }
-        } catch (error) {
-            console.error('Step 1 error:', error);
-            showNotification('حدث خطأ في الاتصال بالخادم', 'error');
-        }
-    });
-    
-    updateTotals();
-});
+// Save generated text to quiz record
+async function saveGeneratedText(text) {
+    try {
+        await fetch(`/roots/quizzes/${quizId}/save-text`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                educational_text: text,
+                text_source: textSource
+            })
+        });
+    } catch (error) {
+        console.warn('Failed to save text to quiz record:', error);
+    }
+}
 
 // Generate text
 async function generateText() {
@@ -1059,13 +1032,8 @@ async function generateText() {
     btn.disabled = true;
     btn.innerHTML = '<span class="text-2xl animate-spin">⚡</span> جاري التوليد...';
     
-    // Get subject name from selected option text
-    const subjectSelect = document.getElementById('subject_id');
-    const subjectText = subjectSelect.options[subjectSelect.selectedIndex].text;
-    const subjectName = subjectText.replace(/🌍|🌎|🌏/, '').trim();
-    
     try {
-        const response = await fetch(`/quizzes/${quizId}/generate-text`, {
+        const response = await fetch(`/roots/quizzes/${quizId}/generate-text`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1074,9 +1042,14 @@ async function generateText() {
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
+                subject: document.getElementById('subject_id').value,
+                grade_level: parseInt(document.getElementById('grade_level').value),
                 topic: document.getElementById('topic').value,
-                passage_topic: document.getElementById('topic').value, // Same as topic for now
-                text_type: document.getElementById('text_type').value
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                passage_topic: document.getElementById('topic').value,
+                text_type: document.getElementById('text_type').value,
+                length: document.getElementById('text_length').value
             })
         });
         
@@ -1085,6 +1058,10 @@ async function generateText() {
         if (data.success) {
             document.getElementById('educational_text').value = data.text;
             updateWordCount();
+            
+            // Save the generated text to the quiz record immediately
+            await saveGeneratedText(data.text);
+            
             showNotification('تم توليد النص بنجاح', 'success');
         } else {
             showNotification(data.message || 'فشل توليد النص', 'error');
@@ -1202,66 +1179,6 @@ function applyPreset(preset) {
     }
 }
 
-// Step 3 form submission (final quiz creation)
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('step-3-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const grandTotal = parseInt(document.getElementById('grand-total').textContent);
-        if (grandTotal === 0) {
-            showNotification('يجب إضافة سؤال واحد على الأقل', 'error');
-            return;
-        }
-        
-        showLoadingModal('جاري إنشاء الاختبار', 'يتم معالجة البيانات وإنشاء الاختبار...');
-        
-        // Collect all form data
-        const step1Data = new FormData(document.getElementById('step-1-form'));
-        const step3Data = new FormData(this);
-        
-        // Combine all data
-        const finalData = new FormData();
-        
-        // Add step 1 data
-        for (let [key, value] of step1Data.entries()) {
-            finalData.append(key, value);
-        }
-        
-        // Add step 2 data
-        finalData.append('educational_text', document.getElementById('educational_text').value);
-        finalData.append('text_source', textSource);
-        
-        // Add step 3 data
-        for (let [key, value] of step3Data.entries()) {
-            finalData.append(key, value);
-        }
-        
-        try {
-            const response = await fetch('{{ route("quizzes.store") }}', {
-                method: 'POST',
-                body: finalData,
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                hideLoadingModal();
-                showSuccessModal(data.quiz_pin, data.redirect);
-            } else {
-                hideLoadingModal();
-                showNotification(data.message || 'فشل إنشاء الاختبار', 'error');
-            }
-        } catch (error) {
-            hideLoadingModal();
-            showNotification('حدث خطأ في الاتصال', 'error');
-        }
-    });
-});
-
 // Loading modal
 function showLoadingModal(title, message) {
     document.getElementById('loading-title').textContent = title;
@@ -1279,7 +1196,6 @@ function showSuccessModal(pin, redirectUrl) {
     document.getElementById('view-quiz-btn').href = redirectUrl;
     document.getElementById('success-modal').classList.remove('hidden');
     
-    // Auto redirect after 5 seconds
     setTimeout(() => {
         window.location.href = redirectUrl;
     }, 5000);
@@ -1317,5 +1233,105 @@ function showNotification(message, type = 'info') {
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
+
+// DOM ready initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Step 1 form submission
+    document.getElementById('step-1-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (!validateStep(1)) return;
+        
+        const formData = new FormData(this);
+        
+        try {
+            const response = await fetch('{{ route("quizzes.create-step-1") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                quizId = data.quiz_id;
+                document.getElementById('quiz-id').value = quizId;
+                showNotification('تم حفظ المعلومات الأساسية بنجاح', 'success');
+                nextStep();
+            } else {
+                showNotification(data.message || 'حدث خطأ في حفظ البيانات', 'error');
+            }
+        } catch (error) {
+            showNotification('حدث خطأ في الاتصال بالخادم', 'error');
+        }
+    });
+
+    // Step 3 form submission
+    document.getElementById('step-3-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const grandTotal = parseInt(document.getElementById('grand-total').textContent);
+        if (grandTotal === 0) {
+            showNotification('يجب إضافة سؤال واحد على الأقل', 'error');
+            return;
+        }
+        
+        showLoadingModal('جاري إنشاء الأسئلة', 'يتم معالجة البيانات وإنشاء الأسئلة...');
+        
+        // Prepare question generation data
+        const requestData = {
+            topic: document.getElementById('topic').value,
+            question_count: grandTotal,
+            educational_text: document.getElementById('educational_text').value,
+            text_source: textSource,
+            roots: {}
+        };
+
+        // Collect simplified roots data
+        ['jawhar', 'zihn', 'waslat', 'roaya'].forEach(root => {
+            let total = 0;
+            for (let level = 1; level <= 3; level++) {
+                const input = document.getElementById(`${root}-${level}`);
+                if (input) {
+                    total += parseInt(input.value) || 0;
+                }
+            }
+            if (total > 0) {
+                requestData.roots[root] = total;
+            }
+        });
+
+        try {
+            const response = await fetch(`/roots/quizzes/${quizId}/generate-questions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                hideLoadingModal();
+                showNotification('تم إنشاء الأسئلة بنجاح', 'success');
+                window.location.href = '/roots/quizzes/' + quizId;
+            } else {
+                hideLoadingModal();
+                showNotification(data.message || 'فشل إنشاء الأسئلة', 'error');
+            }
+        } catch (error) {
+            hideLoadingModal();
+            showNotification('حدث خطأ في الاتصال', 'error');
+        }
+    });
+    
+    updateTotals();
+});
 </script>
 @endpush
