@@ -543,6 +543,34 @@
                                         <option value="90">90%</option>
                                     </select>
                                 </div>
+                              <!-- Max Attempts -->
+<div class="space-y-2">
+    <label for="max_attempts" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        عدد المحاولات المسموحة
+    </label>
+    <select name="max_attempts" id="max_attempts" 
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600">
+        <option value="">غير محدود</option>
+        <option value="1" selected>محاولة واحدة</option>
+        <option value="2">محاولتان</option>
+        <option value="3">3 محاولات</option>
+        <option value="5">5 محاولات</option>
+    </select>
+</div>
+
+<!-- Scoring Method -->
+<div class="space-y-2">
+    <label for="scoring_method" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        طريقة احتساب الدرجة
+    </label>
+    <select name="scoring_method" id="scoring_method" 
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600">
+        <option value="latest">آخر درجة</option>
+        <option value="average" selected>متوسط الدرجات</option>
+        <option value="highest">أعلى درجة</option>
+        <option value="first_only">المحاولة الأولى فقط</option>
+    </select>
+</div>
                             </div>
 
                             <!-- Behavior Settings -->

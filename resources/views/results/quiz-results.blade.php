@@ -53,8 +53,21 @@
                         <i class="fas fa-percentage text-white text-2xl"></i>
                     </div>
                     <div class="mr-4">
-                        <div class="text-2xl font-bold text-gray-900">{{ round($results->avg('total_score')) }}%</div>
-                        <div class="text-sm text-gray-600">متوسط الدرجات</div>
+                        @php
+$uniqueStudents = $results->groupBy(function($result) {
+    return $result->user_id ?: $result->guest_name;
+});
+$finalScores = $uniqueStudents->map(function($studentResults, $key) use ($quiz) {
+    if ($studentResults->first()->user_id) {
+        return \App\Models\Result::getFinalScore($quiz->id, $studentResults->first()->user_id);
+    }
+    return $studentResults->avg('total_score');
+});
+$avgFinalScore = round($finalScores->avg());
+@endphp
+
+<div class="text-2xl font-bold text-gray-900">{{ $avgFinalScore }}%</div>
+<div class="text-sm text-gray-600">متوسط الدرجات النهائية</div>
                     </div>
                 </div>
             </div>
@@ -77,8 +90,14 @@
                         <i class="fas fa-chart-line text-white text-2xl"></i>
                     </div>
                     <div class="mr-4">
-                        <div class="text-2xl font-bold text-gray-900">{{ $results->where('total_score', '>=', 70)->count() }}</div>
-                        <div class="text-sm text-gray-600">نجح</div>
+                        @php
+$passedStudents = $finalScores->filter(function($score) {
+    return $score >= 70;
+})->count();
+@endphp
+
+<div class="text-2xl font-bold text-gray-900">{{ $passedStudents }}</div>
+<div class="text-sm text-gray-600">طلاب نجحوا</div>
                     </div>
                 </div>
             </div>
@@ -89,8 +108,8 @@
                         <i class="fas fa-users text-white text-2xl"></i>
                     </div>
                     <div class="mr-4">
-                        <div class="text-2xl font-bold text-gray-900">{{ $results->count() }}</div>
-                        <div class="text-sm text-gray-600">عدد المحاولات</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ $uniqueStudents->count() }}</div>
+<div class="text-sm text-gray-600">عدد الطلاب</div>
                     </div>
                 </div>
             </div>
@@ -180,6 +199,7 @@
                         <tr>
                             <th class="px-6 py-4 text-right text-sm font-bold text-gray-700">الطالب</th>
                             <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">النتيجة الإجمالية</th>
+                            <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">المحاولات</th>
                             <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">جَوهر</th>
                             <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">ذِهن</th>
                             <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">وَصلات</th>
@@ -203,11 +223,30 @@
                             </td>
                             
                             <td class="px-6 py-4 text-center">
+                                @php
+                                $finalScore = $result->user_id ? \App\Models\Result::getFinalScore($result->quiz_id, $result->user_id) : $result->total_score;
+                                $attemptCount = $result->user_id 
+    ? \App\Models\Result::where('quiz_id', $result->quiz_id)->where('user_id', $result->user_id)->count()
+    : \App\Models\Result::where('quiz_id', $result->quiz_id)->where('guest_name', $result->guest_name)->count();                                @endphp
+                                
                                 <div class="flex items-center justify-center">
-                                    <div class="text-lg font-bold {{ $result->total_score >= 70 ? 'text-green-600' : ($result->total_score >= 50 ? 'text-orange-600' : 'text-red-600') }}">
-                                        {{ $result->total_score }}%
+                                    <div class="text-lg font-bold {{ $finalScore >= 70 ? 'text-green-600' : ($finalScore >= 50 ? 'text-orange-600' : 'text-red-600') }}">
+                                        {{ $finalScore }}%
                                     </div>
                                 </div>
+                                @if($result->user_id && $attemptCount > 1)
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        {{ $attemptCount }} محاولات
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ $attemptCount }}
+                                </div>
+                                @if($attemptCount > 1)
+                                    <div class="text-xs text-indigo-600">متعددة</div>
+                                @endif
                             </td>
                             
                             @php

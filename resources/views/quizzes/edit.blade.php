@@ -324,6 +324,34 @@
                 حذف الاختبار
             </button>
         </form>
+        <!-- Max Attempts -->
+<div class="space-y-2">
+    <label for="max_attempts" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        عدد المحاولات المسموحة
+    </label>
+    <select name="max_attempts" id="max_attempts" 
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600">
+        <option value="" {{ is_null($quiz->max_attempts) ? 'selected' : '' }}>غير محدود</option>
+        <option value="1" {{ $quiz->max_attempts == 1 ? 'selected' : '' }}>محاولة واحدة</option>
+        <option value="2" {{ $quiz->max_attempts == 2 ? 'selected' : '' }}>محاولتان</option>
+        <option value="3" {{ $quiz->max_attempts == 3 ? 'selected' : '' }}>3 محاولات</option>
+        <option value="5" {{ $quiz->max_attempts == 5 ? 'selected' : '' }}>5 محاولات</option>
+    </select>
+</div>
+
+<!-- Scoring Method -->
+<div class="space-y-2">
+    <label for="scoring_method" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        طريقة احتساب الدرجة
+    </label>
+    <select name="scoring_method" id="scoring_method" 
+            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600">
+        <option value="latest" {{ $quiz->scoring_method == 'latest' ? 'selected' : '' }}>آخر درجة</option>
+        <option value="average" {{ $quiz->scoring_method == 'average' ? 'selected' : '' }}>متوسط الدرجات</option>
+        <option value="highest" {{ $quiz->scoring_method == 'highest' ? 'selected' : '' }}>أعلى درجة</option>
+        <option value="first_only" {{ $quiz->scoring_method == 'first_only' ? 'selected' : '' }}>المحاولة الأولى فقط</option>
+    </select>
+</div>
         @endif
     </div>
 </div>

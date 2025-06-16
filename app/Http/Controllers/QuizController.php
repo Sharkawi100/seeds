@@ -389,6 +389,8 @@ class QuizController extends Controller
             'shuffle_answers' => 'boolean',
             'time_limit' => 'nullable|integer|min:0|max:180',
             'passing_score' => 'nullable|integer|min:0|max:100',
+            'max_attempts' => 'nullable|integer|min:1|max:10',
+            'scoring_method' => 'required|in:latest,average,highest,first_only',
             'show_results' => 'boolean',
         ]);
 
@@ -413,6 +415,8 @@ class QuizController extends Controller
                 'shuffle_answers' => $validated['shuffle_answers'] ?? false,
                 'time_limit' => $validated['time_limit'] ?? null,
                 'passing_score' => $validated['passing_score'] ?? 60,
+                'max_attempts' => $validated['max_attempts'],
+                'scoring_method' => $validated['scoring_method'],
                 'show_results' => $validated['show_results'] ?? true,
                 'is_active' => false, // Will be activated after questions are added
                 'settings' => [
@@ -495,6 +499,8 @@ class QuizController extends Controller
             'show_results' => 'boolean',
             'shuffle_questions' => 'boolean',
             'shuffle_answers' => 'boolean',
+            'max_attempts' => 'nullable|integer|min:1|max:10',
+            'scoring_method' => 'required|in:latest,average,highest,first_only',
         ]);
 
         $quiz->update($validated);
@@ -505,7 +511,7 @@ class QuizController extends Controller
             if ($firstQuestion) {
                 $firstQuestion->update([
                     'passage' => $request->input('passage'),
-                    'passage_title' => $request->input('passage_title')
+                    'passage_title' => $request->input('passage_title'),
                 ]);
             }
         }
@@ -527,6 +533,30 @@ class QuizController extends Controller
 
         return redirect()->route('quizzes.index')
             ->with('success', "تم حذف الاختبار '{$quizTitle}' بنجاح.");
+    }
+
+    public function attemptAnalytics(Quiz $quiz)
+    {
+        $this->authorizeQuizOwnership($quiz);
+
+        $analytics = DB::table('results')
+            ->leftJoin('users', 'results.user_id', '=', 'users.id')
+            ->where('results.quiz_id', $quiz->id)
+            ->whereNotNull('results.user_id')
+            ->selectRaw('
+                results.user_id,
+                users.name,
+                COUNT(*) as total_attempts,
+                MIN(results.total_score) as lowest_score,
+                MAX(results.total_score) as highest_score,
+                AVG(results.total_score) as average_score,
+                MAX(results.created_at) as latest_attempt
+            ')
+            ->groupBy('results.user_id', 'users.name')
+            ->orderBy('total_attempts', 'desc')
+            ->get();
+
+        return view('quizzes.attempt-analytics', compact('quiz', 'analytics'));
     }
 
     /**
@@ -651,12 +681,33 @@ class QuizController extends Controller
             $rootCounts = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
             $totalScore = 0;
 
+            // Calculate attempt number for registered users
+            $attemptNumber = 1;
+            if (Auth::check()) {
+                $lastAttempt = Result::where('quiz_id', $quiz->id)
+                    ->where('user_id', Auth::id())
+                    ->max('attempt_number');
+                $attemptNumber = $lastAttempt ? $lastAttempt + 1 : 1;
+
+                // Check attempt limit
+                if ($quiz->max_attempts && $attemptNumber > $quiz->max_attempts) {
+                    return back()->with('error', 'لقد تجاوزت العدد المسموح من المحاولات لهذا الاختبار.');
+                }
+
+                // Mark previous attempts as not latest
+                Result::where('quiz_id', $quiz->id)
+                    ->where('user_id', Auth::id())
+                    ->update(['is_latest_attempt' => false]);
+            }
+
             // Create result
             $result = Result::create([
                 'quiz_id' => $quiz->id,
                 'user_id' => Auth::id(),
                 'guest_token' => !Auth::check() ? Str::random(32) : null,
                 'guest_name' => !Auth::check() ? session('guest_name') : null,
+                'attempt_number' => $attemptNumber,
+                'is_latest_attempt' => true,
                 'scores' => $rootScores,
                 'total_score' => 0,
                 'expires_at' => !Auth::check() ? now()->addDays(7) : null,

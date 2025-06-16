@@ -15,6 +15,36 @@ class Result extends Model
         'expires_at' => 'datetime'
     ];
 
+    /**
+     * Get final score for a student based on quiz scoring method
+     */
+    public static function getFinalScore($quizId, $userId)
+    {
+        $quiz = \App\Models\Quiz::find($quizId);
+        if (!$quiz || !$userId)
+            return null;
+
+        $results = static::where('quiz_id', $quizId)
+            ->where('user_id', $userId)
+            ->orderBy('attempt_number')
+            ->get();
+
+        if ($results->isEmpty())
+            return null;
+
+        switch ($quiz->scoring_method) {
+            case 'latest':
+                return $results->last()->total_score;
+            case 'average':
+                return round($results->avg('total_score'));
+            case 'highest':
+                return $results->max('total_score');
+            case 'first_only':
+                return $results->first()->total_score;
+            default:
+                return $results->last()->total_score;
+        }
+    }
     public function quiz(): BelongsTo
     {
         return $this->belongsTo(Quiz::class);
