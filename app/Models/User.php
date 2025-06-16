@@ -151,7 +151,10 @@ class User extends Authenticatable
      */
     public function canBeImpersonated()
     {
-        return $this->is_active && Auth::check() && $this->id !== Auth::id();
+        return $this->is_active
+            && Auth::check()
+            && $this->id !== Auth::id()
+            && !$this->is_admin; // Prevent impersonating other admins
     }
 
     /**
@@ -189,4 +192,8 @@ class User extends Authenticatable
     {
         return $query->where('user_type', 'student');
     }
+    /**
+     * Check if this user can be impersonated
+     */
+
 }

@@ -129,7 +129,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Profile Management
     Route::prefix('profile')->name('profile.')->controller(ProfileController::class)->group(function () {
-        Route::get('/', 'dashboard')->name('dashboard');
+        Route::get('/', 'profileDashboard')->name('dashboard');
         Route::get('/edit', 'edit')->name('edit');
         Route::patch('/', 'update')->name('update');
         Route::delete('/', 'destroy')->name('destroy');
@@ -258,17 +258,10 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
 |--------------------------------------------------------------------------
 */
 
-// Impersonation Stop (Outside admin middleware)
+// Impersonation Stop (Outside admin middleware)  
 Route::middleware(['auth'])->group(function () {
-    Route::get('/stop-impersonation', function () {
-        if (session()->has('impersonate_original_user')) {
-            $originalUserId = session('impersonate_original_user');
-            session()->forget('impersonate_original_user');
-            \Illuminate\Support\Facades\Auth::loginUsingId($originalUserId);
-            return redirect()->route('admin.users.index')->with('success', 'تم إيقاف الانتحال بنجاح');
-        }
-        return redirect()->route('dashboard');
-    })->name('stop-impersonation');
+    Route::get('/admin/stop-impersonation', [App\Http\Controllers\Admin\UserController::class, 'stopImpersonation'])
+        ->name('admin.stop-impersonation');
 });
 
 /*
