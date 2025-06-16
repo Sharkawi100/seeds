@@ -1,4 +1,4 @@
-# Features & Logic - جُذور (Juzoor) - Updated December 2024
+# Features & Logic - جُذور (Juzoor) - Updated June 2025
 
 ## 🎯 Core Educational Model
 
@@ -15,7 +15,50 @@ Each root supports 3 depth levels:
 -   **Level 2**: Medium depth (40% of questions)
 -   **Level 3**: Deep comprehension (20% of questions)
 
-## 🚀 Quiz Creation System (ENHANCED)
+## 🔄 **NEW: Comprehensive Attempt Tracking System**
+
+### **Multi-Attempt Management**
+
+**For Registered Users:**
+
+-   **Sequential Tracking**: Attempts numbered 1, 2, 3, etc.
+-   **Limit Enforcement**: Teachers set 1-10 attempts or unlimited
+-   **Progress Analysis**: Complete attempt history with score progression
+-   **Latest Flagging**: Most recent attempt clearly marked
+
+**For Guest Users:**
+
+-   **Name-Based Tracking**: Multiple attempts tracked by guest name
+-   **Session Continuity**: Guest data maintained across attempts
+-   **Unlimited Access**: No attempt restrictions for guests
+-   **7-Day Results**: Token-based access to all guest attempts
+
+### **Smart Scoring Methods**
+
+Teachers can choose how final scores are calculated:
+
+1. **Latest Score** (default): Most recent attempt counts
+2. **Average Score**: Mean of all attempts (discourages gaming)
+3. **Highest Score**: Best performance achieved (encourages practice)
+4. **First Only**: Initial attempt only (pure assessment)
+
+### **Attempt Analytics & Insights**
+
+**Student Benefits:**
+
+-   **Progress Tracking**: Visual improvement across attempts
+-   **Performance Patterns**: Identify strengths and weaknesses over time
+-   **Targeted Feedback**: Specific suggestions based on attempt history
+-   **Motivation**: Clear improvement indicators and encouragement
+
+**Teacher Benefits:**
+
+-   **Learning vs Gaming**: Distinguish genuine improvement from memorization
+-   **Intervention Triggers**: Identify students needing extra help
+-   **Pattern Analysis**: Understand how students approach learning
+-   **Flexible Assessment**: Choose scoring method per educational goal
+
+## 🚀 Enhanced Quiz Creation System
 
 ### Creation Wizard (3-Step Process)
 
@@ -34,268 +77,182 @@ Each root supports 3 depth levels:
 -   **Manual Input**: Teacher-written or pasted content
 -   **No Text**: Direct questions without reading passage
 
-**AI Text Options:**
-
--   Types: Story, Article, Dialogue, Description
--   Lengths: Short (50-100 words), Medium (150-250), Long (300-500)
--   Auto-generates based on subject and grade level
-
-#### **Step 3: Questions & Configuration (NEW)**
+#### **Step 3: Questions & Advanced Configuration**
 
 **4-Roots Question Distribution:**
 
 -   Visual grid for each root (Jawhar, Zihn, Waslat, Roaya)
 -   Depth level controls (1-3) per root
 -   Quick presets: Balanced, Comprehension, Analytical, Creative
--   Real-time total calculation
 
-**⚙️ QUIZ CONFIGURATION SETTINGS (NEW):**
+**🆕 ATTEMPT MANAGEMENT SETTINGS:**
 
-**Time & Scoring:**
+**Attempt Controls:**
 
--   ⏰ **Time Limits**: Optional 5-120 minute restrictions
--   📊 **Passing Score**: Configurable 50%-90% thresholds
--   ⚡ **Smart Toggle**: Enable/disable time controls
+-   **Max Attempts**: 1-10 attempts or unlimited (default: 1)
+-   **Scoring Method**: How final score is calculated (default: average)
+-   **Guest Policy**: Unlimited attempts for non-registered users
 
 **Behavior Controls:**
 
--   🔀 **Question Shuffling**: Randomize order per student
--   🔀 **Answer Shuffling**: Randomize choice positions
--   👁️ **Results Display**: Control student access to scores
--   ✅ **Auto-Activation**: Enable quiz immediately upon creation
+-   **Question Shuffling**: Randomize order per student
+-   **Answer Shuffling**: Randomize choice positions
+-   **Results Display**: Control student access to scores
+-   **Auto-Activation**: Enable quiz immediately upon creation
 
-**Security Features:**
+**Time & Assessment:**
 
--   Prevents cheating through randomization
--   Teacher control over result visibility
--   Flexible activation workflow
+-   **Time Limits**: Optional 5-120 minute restrictions
+-   **Passing Score**: Configurable 50%-90% thresholds
 
-### Creation Methods
+## 🎮 Enhanced Quiz Taking Experience
 
-1. **Manual**: Teacher creates all questions manually
-2. **AI-Powered**: Claude generates complete quiz with passage
-3. **Hybrid**: AI generates base, teacher refines
+### **Attempt-Aware Taking Flow**
 
-## 🎮 Quiz Taking Experience
+**First-Time Users:**
 
-### Access Methods
+-   **Guest Info Collection**: Name and optional school/class
+-   **Attempt Awareness**: Clear indication this is attempt #1
+-   **Progress Tracking**: Immediate feedback on performance
 
-1. **PIN Entry**: 6-character codes for guest access
-2. **Direct URL**: `/quiz/{id}/take` for registered users
-3. **Authenticated**: Dashboard-based access for students
+**Returning Users:**
 
-### Student Experience
+-   **Attempt Counter**: "This is attempt 2 of 3" messaging
+-   **Previous Performance**: Optional display of past scores
+-   **Limit Warnings**: Clear notification when approaching attempt limit
+-   **Progress Celebration**: Recognition of improvement patterns
 
--   **Guest Flow**: Name entry → Quiz taking → 7-day result access
--   **Registered Flow**: Login → Quiz access → Permanent result storage
--   **Adaptive Interface**: Responsive design for all devices
+### **Smart Result Handling**
 
-### Enhanced Security Features (NEW)
+**Immediate Feedback:**
 
--   **Question Randomization**: Different order per student
--   **Answer Shuffling**: Prevents adjacent copying
--   **Time Controls**: Optional exam-style time pressure
--   **Result Management**: Teacher-controlled score visibility
+-   **Current Attempt Score**: What they just achieved
+-   **Final Score**: How this contributes to their official grade
+-   **Attempt Status**: Whether they can try again
+-   **Improvement Tracking**: Progress since previous attempts
 
-## 🏗️ Technical Architecture
+**Long-term Access:**
 
-### Modern UI/UX (UPDATED)
+-   **Result Tokens**: 7-day access for guests
+-   **Permanent Storage**: Full history for registered users
+-   **Attempt Timeline**: Complete chronological view
 
--   **Glassmorphism Design**: Backdrop blur effects with transparency
--   **Smooth Animations**: 300-700ms transitions throughout
--   **Progressive Disclosure**: Show relevant sections contextually
--   **Smart Validation**: Real-time feedback and error handling
--   **Mobile-First**: Responsive design for all screen sizes
+## 📊 **NEW: Advanced Results & Analytics**
 
-### Wizard State Management
+### **Accurate Statistics Dashboard**
 
--   **Step Progression**: Validated transitions between steps
--   **Data Persistence**: Quiz saved incrementally
--   **Error Recovery**: Graceful handling of failures
--   **Route Optimization**: Clean URLs with proper subdirectory support
+**Teacher Analytics:**
 
-### Backend Enhancements (UPDATED)
+-   **Unique Student Metrics**: No double-counting of multiple attempts
+-   **Final Score Averages**: Based on scoring method, not raw attempts
+-   **True Success Rates**: Percentage who achieve passing score as final result
+-   **Attempt Pattern Analysis**: How many students needed multiple tries
 
--   **Enhanced Validation**: Comprehensive form validation
--   **Configuration Storage**: Flexible settings in JSON fields
--   **Auto-Activation**: Conditional quiz activation
--   **Improved Logging**: Detailed error tracking and debugging
+**Class Performance:**
 
-## 📊 Results & Analytics
+-   **4-Roots Comparison**: Average final performance per learning dimension
+-   **Improvement Tracking**: Class-wide progress across attempts
+-   **Intervention Insights**: Students showing concerning patterns
+-   **Assessment Effectiveness**: Which scoring methods work best
 
-### Root-Wise Scoring
+### **Enhanced Student Results Experience**
 
--   Individual performance per root type
--   Percentage calculations for each learning dimension
--   Visual charts showing learning patterns
--   Comparative analysis across students
+**Individual Student Dashboard:**
 
-### Teacher Dashboard
+-   **Final Score Prominence**: Clear display of official grade
+-   **Attempt History**: Complete timeline with score progression
+-   **Root Performance Tracking**: Improvement per learning dimension
+-   **Smart Recommendations**: Personalized study suggestions
 
--   Real-time result monitoring
--   Class performance analytics
+**🆕 Rule-Based Smart Report:**
+
+-   **Performance Assessment**: Automatic analysis of strengths/weaknesses
+-   **Learning Pattern Recognition**: Identifies improvement trends
+-   **Targeted Suggestions**: Specific advice per 4-roots performance
+-   **Encouragement System**: Positive reinforcement for effort and growth
+
+## 🔐 **Updated Security & Access Control**
+
+### **Enhanced User Roles**
+
+**Students:**
+
+-   Quiz taking with attempt tracking
+-   Complete result history access
+-   Progress monitoring tools
+-   Smart feedback reception
+
+**Teachers:**
+
+-   Full quiz management with attempt configuration
+-   Advanced analytics with attempt insights
 -   Individual student progress tracking
--   Export capabilities for further analysis
+-   Flexible scoring method selection
 
-## 🔐 Security & Access Control
+**Admins:**
 
-### User Roles
+-   System administration with attempt oversight
+-   Platform-wide analytics
+-   User management with attempt data
+-   Performance optimization tools
 
--   **Students**: Quiz taking, result viewing
--   **Teachers**: Full quiz management, analytics access
--   **Admins**: System administration, user management
+### **Improved Guest Access**
 
-### Guest Access
+**Enhanced Guest Experience:**
 
--   PIN-based entry system
--   Temporary result tokens
--   7-day result expiration
--   No persistent account required
+-   **Multi-attempt Support**: Track multiple tries by name
+-   **Session Continuity**: Maintain data across attempts
+-   **Result Persistence**: 7-day token access to all attempts
+-   **Progress Visualization**: See improvement even as guest
 
-### Anti-Cheating Measures (ENHANCED)
+**Security Measures:**
 
--   **Randomization**: Questions and answers shuffled per student
--   **Time Controls**: Optional exam timing
--   **Access Logging**: Track quiz attempts and timing
--   **Result Controls**: Teacher manages score visibility
+-   **Token Security**: Unique 32-character tokens per result
+-   **Expiration Control**: 7-day limit on guest result access
+-   **Session Management**: Proper cleanup after submission
+-   **Attempt Validation**: Prevent gaming through name changes
 
-## 🌍 Multilingual Support
+## 🌟 **Key Improvements & Benefits**
 
-### Supported Languages
+### **For Educators:**
 
--   **Arabic (ar)**: Just Arabic Interface with full RTL support
+-   **Pedagogical Flexibility**: Choose scoring methods that align with teaching goals
+-   **Genuine Assessment**: Distinguish learning from memorization
+-   **Early Intervention**: Identify struggling students quickly
+-   **Data-Driven Decisions**: Rich analytics for curriculum improvement
 
-### Localization Features
+### **For Students:**
 
--   Dynamic language switching
--   RTL/LTR layout adaptation
--   Culturally appropriate content generation
--   Regional date/time formats
+-   **Growth Mindset**: Focus on improvement over single performance
+-   **Reduced Anxiety**: Multiple chances reduce test stress
+-   **Self-Paced Learning**: Practice until mastery achieved
+-   **Clear Progress**: Visual feedback on learning journey
 
-## 🤖 AI Integration
+### **For Administrators:**
 
-### Claude AI Services
+-   **Accurate Metrics**: True student performance without attempt inflation
+-   **Usage Insights**: Understanding of how platform is used
+-   **Quality Assurance**: Evidence-based assessment of learning outcomes
+-   **Resource Planning**: Data for educational resource allocation
 
--   **Educational Text Generation**: Context-aware content creation
--   **Question Generation**: Root-based question creation
--   **Content Adaptation**: Grade-level appropriate language
--   **Multi-language Support**: Content in Arabic, English, Hebrew
+## 🔮 **Future Roadmap**
 
-### AI Features
+### **Phase 1: Enhanced Analytics (Current Priority)**
 
--   Smart content suggestions
--   Automatic difficulty adjustment
--   Context-aware question types
--   Educational best practices integration
+-   **Learning Pattern AI**: Advanced analysis of attempt progressions
+-   **Predictive Insights**: Early warning systems for student struggles
+-   **Comparative Analytics**: Benchmarking across schools and regions
 
-## 📱 User Experience Flows
+### **Phase 2: Gamification & Engagement**
 
-### Teacher Journey (UPDATED)
+-   **Achievement System**: Badges for improvement across attempts
+-   **Progress Quests**: Guided learning paths with milestones
+-   **Peer Comparison**: Safe competition with attempt fairness
 
-1. **Registration**: Professional account creation with approval
-2. **Quiz Creation**: Enhanced 3-step wizard with configuration
-3. **Content Generation**: AI-assisted or manual content creation
-4. **Configuration**: Comprehensive quiz behavior settings
-5. **Deployment**: Auto-activation or manual release
-6. **Monitoring**: Real-time student progress tracking
-7. **Analysis**: Detailed performance analytics
+### **Phase 3: Advanced Features**
 
-### Student Journey
+-   **Adaptive Testing**: Difficulty adjustment based on attempt history
+-   **Collaborative Attempts**: Team-based learning with shared attempts
+-   **Parent Integration**: Family involvement in student progress
 
-1. **Access**: PIN entry or account login
-2. **Information**: Optional name/class entry for guests
-3. **Quiz Taking**: Adaptive, timed experience
-4. **Results**: Immediate or delayed feedback (teacher-controlled)
-5. **Progress**: Long-term learning tracking (registered users)
-
-### Guest Journey (FIXED - June 2025)
-
-1. **PIN Entry**: Simple 6-character code access via homepage form
-2. **Identity Collection**: Required name, optional school/class entry
-3. **Quiz Experience**: Full-featured quiz taking with session management
-4. **Results Access**: 7-day token-based viewing via `/quiz/result/{guest_token}`
-5. **Session Management**: Guest data properly stored and cleared after submission
-6. **Registration Prompt**: Optional account creation for permanent access
-
-**Technical Notes:**
-
--   Guest sessions properly maintained throughout quiz flow
--   Route model binding uses `guest_token` column correctly
--   Results accessible via unique token URLs for 7 days
--   Session data cleared after successful submission
-
-## 🔧 Administrative Features
-
-### Quiz Management (ENHANCED)
-
--   **Bulk Operations**: Activate/deactivate multiple quizzes
--   **Configuration Templates**: Saved setting presets
--   **Duplication**: Copy quizzes with settings
--   **Analytics Export**: Detailed performance data
-
-### User Management
-
--   **Teacher Approval**: Admin-controlled teacher verification
--   **Student Monitoring**: Performance tracking across classes
--   **Access Control**: Fine-grained permission management
--   **Usage Analytics**: Platform utilization metrics
-
-## 📈 Performance & Scalability
-
-### Optimization Features
-
--   **Caching Strategy**: Redis-compatible caching layer
--   **Database Optimization**: Indexed queries and efficient relationships
--   **Asset Management**: CDN-ready static file serving
--   **Shared Hosting**: Optimized for budget hosting environments
-
-### Modern Development Practices
-
--   **Component Architecture**: Reusable UI components
--   **Progressive Enhancement**: Works without JavaScript
--   **Accessibility**: WCAG AA compliance
--   **SEO Optimization**: Search engine friendly structure
-
-## 🆕 Recent Enhancements (December 2024)
-
-### Quiz Configuration System
-
--   ⚙️ **Comprehensive Settings Panel**: Professional configuration interface
--   ⏰ **Time Management**: Flexible time limit controls
--   🔀 **Anti-Cheating**: Question and answer randomization
--   ✅ **Auto-Activation**: Streamlined quiz deployment
--   📊 **Scoring Control**: Customizable passing thresholds
-
-### UI/UX Improvements
-
--   🎨 **Modern Design**: Glassmorphism and smooth animations
--   📱 **Enhanced Mobile**: Better responsive design
--   🧭 **Improved Navigation**: Clearer step progression
--   ⚡ **Smart Validation**: Real-time form feedback
--   🔄 **Better Error Handling**: Graceful failure recovery
-
-### Technical Enhancements
-
--   🛣️ **Route Optimization**: Fixed subdirectory URL handling
--   📝 **Enhanced Validation**: Comprehensive form validation
--   💾 **Improved Storage**: Better settings management
--   🔍 **Debug Features**: Enhanced logging and error tracking
--   🚀 **Performance**: Optimized for production deployment
-
-## 🎯 Future Roadmap
-
-### Planned Features
-
--   **Advanced Analytics**: Learning pattern analysis
--   **Gamification**: Achievement systems and badges
--   **Collaboration**: Team-based quiz features
--   **API Expansion**: Third-party integration capabilities
--   **Mobile App**: Native mobile applications
-
-### Educational Enhancements
-
--   **Adaptive Learning**: Personalized question difficulty
--   **Learning Paths**: Guided educational journeys
--   **Peer Assessment**: Student-to-student evaluation
--   **Content Library**: Shared educational resources
--   **Professional Development**: Teacher training modules
+**Platform Status**: Production-ready with comprehensive attempt tracking system that transforms جُذور from a simple assessment tool into a complete learning analytics platform.
