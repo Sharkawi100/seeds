@@ -281,187 +281,241 @@
 @endsection
 
 @push('styles')
+<!-- Add TinyMCE content styles -->
+<link rel="stylesheet" href="https://cdn.tiny.cloud/1/cmtwmtmif3u7ducaiqvogvq1wvc280ugtxjzo2ffaymjmuxg/tinymce/7/skins/content/default/content.min.css">
+
 <style>
-    /* Button Styles */
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-        border: none;
-        cursor: pointer;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        color: white;
-        text-decoration: none;
-    }
-    
-    .btn-secondary {
-        background: white;
-        color: #4f46e5;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
-        border: 2px solid #4f46e5;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-    }
-    
-    .btn-secondary:hover {
-        background: #eff6ff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        color: #4f46e5;
-        text-decoration: none;
-    }
-    
-    .btn-success {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-        border: none;
-        cursor: pointer;
-    }
-    
-    .btn-success:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-        color: white;
-        text-decoration: none;
-    }
-    
-    .btn-cancel {
-        background: #f3f4f6;
-        color: #6b7280;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
-        border: none;
-        transition: all 0.3s;
-        cursor: pointer;
-    }
-    
-    .btn-cancel:hover {
-        background: #e5e7eb;
-        color: #374151;
-    }
-    
-    /* Root-specific colors */
-    .question-card.jawhar .number-badge { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-    .question-card.zihn .number-badge { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-    .question-card.waslat .number-badge { background: linear-gradient(135deg, #ea580c, #c2410c); }
-    .question-card.roaya .number-badge { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
-    
-    .root-tag.jawhar { background: #fef2f2; color: #dc2626; }
-    .root-tag.zihn { background: #eff6ff; color: #2563eb; }
-    .root-tag.waslat { background: #fff7ed; color: #ea580c; }
-    .root-tag.roaya { background: #f5f3ff; color: #7c3aed; }
-    
-    /* Action buttons */
-    .action-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-        cursor: pointer;
-    }
-    
-    .edit-btn {
-        background: #dbeafe;
-        color: #2563eb;
-    }
-    
-    .edit-btn:hover {
-        background: #bfdbfe;
-        transform: scale(1.1);
-    }
-    
-    .clone-btn {
-        background: #f3e8ff;
-        color: #7c3aed;
-    }
-    
-    .clone-btn:hover {
-        background: #e9d5ff;
-        transform: scale(1.1);
-    }
-    
-    .delete-btn {
-        background: #fee2e2;
-        color: #dc2626;
-    }
-    
-    .delete-btn:hover {
-        background: #fecaca;
-        transform: scale(1.1);
-    }
-    
-    .locked-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: #fef3c7;
-        color: #d97706;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: 500;
-        border: 1px solid #fcd34d;
+/* TinyMCE Content Styling - Enhanced */
+.mce-content-body,
+.tox-editor-content,
+div[data-mce-bogus],
+/* Target actual content areas */
+h3:has(+*) *,
+.question-container h2 *,
+.answer-option span *,
+div.prose *,
+/* Direct targeting for formatted content */
+strong, b { 
+    font-weight: bold !important; 
+}
+
+em, i { 
+    font-style: italic !important; 
+}
+
+u { 
+    text-decoration: underline !important; 
+}
+
+ul { 
+    list-style: disc !important; 
+    margin-right: 20px !important; 
+    padding-right: 20px !important;
+}
+
+ol { 
+    list-style: decimal !important; 
+    margin-right: 20px !important; 
+    padding-right: 20px !important;
+}
+
+p { 
+    margin-bottom: 1em !important; 
+}
+
+/* Specific targeting for quiz content */
+.question-container h2 strong,
+.answer-option span strong {
+    font-weight: 900 !important;
+    color: inherit !important;
+}
+
+.question-container h2 em,
+.answer-option span em {
+    font-style: italic !important;
+    color: inherit !important;
+}
+
+/* Button Styles */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: white;
+    color: #4f46e5;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 2px solid #4f46e5;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background: #eff6ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    color: #4f46e5;
+    text-decoration: none;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-cancel {
+    background: #f3f4f6;
+    color: #6b7280;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: none;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+/* Root-specific colors */
+.question-card.jawhar .number-badge { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+.question-card.zihn .number-badge { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+.question-card.waslat .number-badge { background: linear-gradient(135deg, #ea580c, #c2410c); }
+.question-card.roaya .number-badge { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+
+.root-tag.jawhar { background: #fef2f2; color: #dc2626; }
+.root-tag.zihn { background: #eff6ff; color: #2563eb; }
+.root-tag.waslat { background: #fff7ed; color: #ea580c; }
+.root-tag.roaya { background: #f5f3ff; color: #7c3aed; }
+
+/* Action buttons */
+.action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.edit-btn {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.edit-btn:hover {
+    background: #bfdbfe;
+    transform: scale(1.1);
+}
+
+.clone-btn {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.clone-btn:hover {
+    background: #e9d5ff;
+    transform: scale(1.1);
+}
+
+.delete-btn {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.delete-btn:hover {
+    background: #fecaca;
+    transform: scale(1.1);
+}
+
+.locked-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fef3c7;
+    color: #d97706;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    border: 1px solid #fcd34d;
+    font-size: 14px;
+}
+
+/* TinyMCE styling */
+.tox-tinymce {
+    border-radius: 0.75rem !important;
+    border-color: #d1d5db !important;
+    border-width: 2px !important;
+}
+
+.tox-tinymce:focus-within {
+    border-color: #a855f7 !important;
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-primary, .btn-secondary, .btn-success {
+        padding: 10px 16px;
         font-size: 14px;
     }
     
-    /* TinyMCE styling */
-    .tox-tinymce {
-        border-radius: 0.75rem !important;
-        border-color: #d1d5db !important;
-        border-width: 2px !important;
+    .number-badge {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
     }
     
-    .tox-tinymce:focus-within {
-        border-color: #a855f7 !important;
-        box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1) !important;
+    .action-btn {
+        width: 36px;
+        height: 36px;
     }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .btn-primary, .btn-secondary, .btn-success {
-            padding: 10px 16px;
-            font-size: 14px;
-        }
-        
-        .number-badge {
-            width: 10px;
-            height: 10px;
-            font-size: 14px;
-        }
-        
-        .action-btn {
-            width: 36px;
-            height: 36px;
-        }
-    }
+}
 </style>
 @endpush
 
@@ -478,8 +532,8 @@ function initializeTinyMCE() {
         directionality: 'rtl',
         height: 400,
         menubar: false,
-        plugins: 'lists link charmap preview searchreplace autolink directionality code fullscreen table emoticons image media wordcount textcolor colorpicker',
-        toolbar: 'undo redo | formatselect | bold italic underline strikethrough | forecolor backcolor | bullist numlist | link image media | alignleft aligncenter alignright alignjustify | outdent indent | removeformat | preview fullscreen | emoticons | wordcount',
+        plugins: 'lists link charmap preview searchreplace autolink directionality code fullscreen table emoticons image media wordcount',
+        toolbar: 'undo redo | formatselect | bold italic underline strikethrough | forecolor backcolor | bullist numlist | link image media | alignleft aligncenter alignright alignjustify | outdent indent | removeformat | code | preview fullscreen | emoticons | wordcount',
         content_style: 'body { font-family: "Tajawal", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 16px; line-height: 1.6; direction: rtl; }',
         branding: false,
         promotion: false,

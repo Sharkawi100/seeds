@@ -57,11 +57,11 @@ class QuizController extends Controller
         $this->authorizeQuizManagement();
 
         $quizzes = Quiz::where('user_id', Auth::id())
-            ->with(['questions', 'subject'])
+            ->with(['questions', 'subject', 'results']) // ← Just add 'results' here
             ->latest()
             ->get();
 
-        // Define roots array for view usage
+        // Keep your roots array - it's still good practice
         $roots = [
             'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => 'red'],
             'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => 'cyan'],

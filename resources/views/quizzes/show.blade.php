@@ -124,7 +124,7 @@
                     </div>
                 </div>
                 <div class="text-lg font-bold text-gray-900">
-                    {{ $quiz->results->latest()->first()?->created_at?->diffForHumans() ?? 'لا يوجد' }}
+                    {{ $quiz->results->sortByDesc('created_at')->first()?->created_at?->diffForHumans() ?? 'لا يوجد' }}
                 </div>
                 <p class="text-sm text-gray-500 mt-1">آخر محاولة</p>
             </div>

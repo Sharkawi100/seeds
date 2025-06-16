@@ -257,6 +257,47 @@
 
 @push('styles')
 <style>
+   /* TinyMCE Content Styling for Quiz Taking */
+strong, b { 
+    font-weight: bold !important; 
+}
+
+em, i { 
+    font-style: italic !important; 
+}
+
+u { 
+    text-decoration: underline !important; 
+}
+
+ul { 
+    list-style: disc !important; 
+    margin-right: 20px !important; 
+    padding-right: 20px !important;
+}
+
+ol { 
+    list-style: decimal !important; 
+    margin-right: 20px !important; 
+    padding-right: 20px !important;
+}
+
+p { 
+    margin-bottom: 1em !important; 
+}
+
+/* Specific for white text on colored backgrounds */
+.question-container h2 strong,
+.answer-option div p strong {
+    font-weight: 900 !important;
+    color: inherit !important;
+}
+
+.question-container h2 em,
+.answer-option div p em {
+    font-style: italic !important;
+    color: inherit !important;
+}
 /* Remove the overflow: hidden restriction */
 html, body {
     height: 100%;
