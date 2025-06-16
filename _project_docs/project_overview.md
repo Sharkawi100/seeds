@@ -4,7 +4,7 @@ Last Updated: [Current Date]
 
 ## 🚀 Project Information
 
--   **Name:** [Your Project Name]
+-   **Name:** [نموذج جُذور التعليمي]
 -   **Laravel Version:** 11.x
 -   **PHP Version:** 8.2+
 -   **Database:** MySQL 8.0 / PostgreSQL 14

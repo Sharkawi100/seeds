@@ -98,20 +98,19 @@ class ClaudeService
         try {
             $response = $this->sendRequest($prompt, [
                 'temperature' => 0.3,
-                'max_tokens' => 4000
+                'max_tokens' => 7000
             ]);
 
             $questions = $this->parseQuizResponse($response);
-            $validatedQuestions = $this->validateQuestionDistribution($questions, $roots);
-
-            $this->trackUsage('questions_from_text', count($validatedQuestions));
-
+            $distributionValidated = $this->validateQuestionDistribution($questions, $roots);
+            $qualityValidated = $distributionValidated; // Temporarily disable quality validation
+            $this->trackUsage('questions_from_text', count($qualityValidated));
             Log::info('Questions generated successfully', [
                 'total_generated' => count($questions),
-                'validated_count' => count($validatedQuestions)
+                'validated_count' => count($qualityValidated)
             ]);
 
-            return $validatedQuestions;
+            return $qualityValidated;
         } catch (\Exception $e) {
             Log::error('Question generation from text failed', [
                 'error' => $e->getMessage(),
@@ -237,21 +236,31 @@ class ClaudeService
         $textTypeName = $this->getTextTypeName($textType);
         $lengthDescription = $this->getLengthDescription($length);
 
-        return "أنت كاتب محتوى تعليمي. اكتب {$textTypeName} مباشرة بدون مقدمات أو عناوين أو شروحات.
+        $gradeGuidance = $this->getGradeLevelGuidance($gradeLevel);
 
-الموضوع: {$topic}
-المادة: {$subjectName}
-الصف: {$gradeLevel}
-الطول: {$lengthDescription}
+        return "You are an educational content writer. Write {$textTypeName} directly without introductions, titles, or explanations.
 
-متطلبات:
-- ابدأ النص مباشرة
-- لا تكتب \"هنا قصة\" أو \"إليكم نص\" أو أي مقدمة
-- لا تضع عنواناً
-- مناسب للصف {$gradeLevel}
-- يحتوي معلومات قابلة للتقييم
+Content Requirements:
+- Topic: {$topic}
+- Subject: {$subjectName} 
+- Grade: {$gradeLevel}
+- Length: {$lengthDescription}
+- {$gradeGuidance}
 
-اكتب النص فقط:";
+Cultural Context Guidelines:
+- Use examples from Arab/Middle Eastern environment
+- Avoid content contradicting Islamic values
+- Include traditional references when appropriate
+- Use culturally familiar names and places
+
+Technical Requirements:
+- Start text immediately without preambles
+- No titles or headers
+- Appropriate for grade {$gradeLevel}
+- Contains assessable information
+- Output in Arabic only
+
+Write the text:";
     }
 
     private function buildQuestionsFromTextPrompt(
@@ -261,42 +270,54 @@ class ClaudeService
         array $roots
     ): string {
         $subjectName = $this->getSubjectName($subject);
+        $subjectName = $this->getSubjectName($subject);
+        $gradeGuidance = $this->getGradeLevelGuidance($gradeLevel);
+        $prompt = "You are an educational assistant specialized in creating test questions using the Juzoor educational model based on given text.
 
-        $prompt = "أنت مساعد تعليمي متخصص في إنشاء أسئلة اختبار باستخدام نموذج جُذور التعليمي بناءً على نص معطى.
-
-النص المعطى:
+Given Text:
 {$text}
 
-المعلومات الأساسية:
-- المادة: {$subjectName}
-- الصف: {$gradeLevel}
+Basic Information:
+- Subject: {$subjectName}
+- Grade: {$gradeLevel}
+- {$gradeGuidance}
 
-نموذج جُذور - قواعد صارمة لكل نوع:
+Juzoor Roots Model - Strict Classification Rules:
 
-1. جَوهر (jawhar): ما هو؟ - أسئلة تعريفية محضة
-   - مثال: ما هو تعريف وسائل التواصل الاجتماعي؟
-   - تركز على: التعريفات، الحقائق المباشرة، الأسماء، الأرقام
+1. **جَوهر (jawhar): Identification & Definition**
+   - Must start with: ما هو/ما هي/اذكر/عرّف/حدد/سمّ
+   - Example: ما هو تعريف وسائل التواصل الاجتماعي؟
+   - Tests ONLY: terminology, definitions, facts, names, classifications
+   - NEVER includes: analysis, connections, applications, reasoning
 
-2. ذِهن (zihn): كيف يعمل؟ - أسئلة تحليلية فقط
-   - مثال: كيف تؤثر وسائل التواصل على الصحة النفسية؟
-   - تركز على: العمليات، الأسباب، التحليل، الآليات
+2. **ذِهن (zihn): Analysis & Processing**  
+   - Must start with: كيف/لماذا/حلل/استنتج/قارن/فسر
+   - Example: لماذا تؤثر وسائل التواصل على الصحة النفسية؟
+   - Tests ONLY: processes, causes, analysis, mechanisms, conclusions
+   - NEVER includes: simple definitions, connections, future applications
 
-3. وَصلات (waslat): كيف يرتبط؟ - أسئلة علاقات فقط
-   - مثال: ما العلاقة بين إدمان وسائل التواصل وانخفاض الإنتاجية؟
-   - تركز على: الروابط، المقارنات، التأثيرات المتبادلة
+3. **وَصلات (waslat): Relationships & Connections**
+   - Must start with: ما العلاقة/اربط/قارن بين/كيف يؤثر على
+   - Example: ما العلاقة بين إدمان وسائل التواصل وانخفاض الإنتاجية؟
+   - Tests ONLY: links, comparisons, correlations, mutual effects
+   - NEVER includes: definitions, isolated analysis, solutions
 
-4. رُؤية (roaya): كيف نستخدمه؟ - أسئلة تطبيقية فقط
-   - مثال: كيف يمكن استخدام وسائل التواصل بشكل صحي؟
-   - تركز على: الحلول، التطبيقات، الاستراتيجيات
+4. **رُؤية (roaya): Application & Innovation**
+   - Must start with: كيف يمكن/اقترح/صمم/ابتكر/طبق
+   - Example: كيف يمكن استخدام وسائل التواصل بشكل صحي؟
+   - Tests ONLY: solutions, applications, strategies, innovations
+   - NEVER includes: definitions, theoretical analysis, connections only
 
-مستويات العمق:
-- المستوى 1: معلومات مباشرة من النص
-- المستوى 2: استنتاجات بسيطة 
-- المستوى 3: تحليل عميق واستنتاجات معقدة
+CRITICAL: All output must be in Arabic. Each root type requires completely different cognitive processes.
 
-كل سؤال يجب أن يكون مختلفاً تماماً في نوع التفكير المطلوب.
+Depth Levels:
+- Level 1: Direct information from text
+- Level 2: Simple inferences
+- Level 3: Deep analysis and complex conclusions
 
-المطلوب إنشاء أسئلة بناءً على النص المعطى بالتوزيع التالي بدقة تامة:";
+Each question must require completely different thinking patterns.
+
+Create questions based on the given text with the following exact distribution:";
 
         $totalRequested = 0;
         foreach ($roots as $rootType => $levels) {
@@ -312,13 +333,21 @@ class ClaudeService
 
         $prompt .= "\n\nإجمالي الأسئلة المطلوبة: {$totalRequested} سؤال بالضبط
 
-قواعد إلزامية:
-1. أنتج بالضبط {$totalRequested} سؤال - لا أقل ولا أكثر
-2. كل سؤال مرتبط مباشرة بالنص المعطى
-3. 4 خيارات منفصلة لكل سؤال
-4. خيار واحد صحيح فقط
-5. استخدم: \"jawhar\", \"zihn\", \"waslat\", \"roaya\"
-6. مستويات: 1, 2, أو 3
+Mandatory Rules:
+1. Produce exactly {$totalRequested} questions - no more, no less
+2. Each question directly linked to given text
+3. 4 separate options per question
+4. Only one correct option
+5. Use: \"jawhar\", \"zihn\", \"waslat\", \"roaya\"
+6. Levels: 1, 2, or 3
+
+Distractor Quality Rules:
+- Wrong options must seem plausible at first glance
+- Test common expected mistakes
+- Gradually increase difficulty
+- Avoid obvious hints to correct answer
+- No grammatical inconsistencies
+- Similar length and complexity to correct answer
 
 ممنوعات قطعية:
 ❌ \"جميع ما سبق\"
@@ -335,18 +364,25 @@ class ClaudeService
 مثال خاطئ:
 خيارات: [\"الاثنين\", \"الثلاثاء\", \"جميع ما سبق\", \"أ و ب\"]
 
-JSON مطلوب:
+REQUIRED JSON SCHEMA - Respond with valid JSON only:
 {
-    \"questions\": [
-        {
-            \"question\": \"نص السؤال\",
-            \"options\": [\"خيار1\", \"خيار2\", \"خيار3\", \"خيار4\"],
-            \"correct_answer\": \"الخيار الصحيح\",
-            \"root_type\": \"jawhar\",
-            \"depth_level\": 1
-        }
-    ]
+   \"questions\": [
+    {
+      \"question\": \"نص السؤال\",
+      \"options\": [\"خيار1\", \"خيار2\", \"خيار3\", \"خيار4\"],
+      \"correct_answer\": \"الخيار الصحيح\",
+      \"root_type\": \"jawhar|zihn|waslat|roaya\",
+      \"depth_level\": 1|2|3,
+      \"explanation\": \"توضيح مختصر للإجابة\"
+    }
+  ]
 }
+
+CRITICAL: 
+- Return only valid JSON
+- No additional text before or after JSON
+- Exact 4 options per question
+- correct_answer must match one option exactly
 
 أنتج {$totalRequested} سؤال صالح بالضبط.";
 
@@ -362,15 +398,39 @@ JSON مطلوب:
         ?string $passageTopic
     ): string {
         $subjectName = $this->getSubjectName($subject);
+        $gradeGuidance = $this->getGradeLevelGuidance($gradeLevel);
 
-        $prompt = "أنت خبير تعليمي متخصص في نموذج الجُذور الأربعة التعليمي.
-
-المطلوب: إنشاء اختبار كامل وفق نموذج الجُذور الأربعة
-
-تفاصيل الاختبار:
-- المادة: {$subjectName}
-- الصف: {$gradeLevel}
-- الموضوع: {$topic}";
+        $prompt = "You are an educational expert specializing in the Juzoor (Roots) four-dimensional learning model.
+    
+    Task: Create a complete quiz following the Juzoor model.
+    
+    Quiz Details:
+    - Subject: {$subjectName}
+    - Grade: {$gradeLevel}
+    - Topic: {$topic}
+    - {$gradeGuidance}
+    
+    Juzoor Roots Model - Strict Classification Rules:
+    
+    1. **جَوهر (jawhar): Identification & Definition**
+       - Must start with: ما هو/ما هي/اذكر/عرّف/حدد/سمّ
+       - Tests ONLY: terminology, definitions, facts, names, classifications
+       - NEVER includes: analysis, connections, applications
+    
+    2. **ذِهن (zihn): Analysis & Processing**
+       - Must start with: كيف/لماذا/حلل/استنتج/قارن/فسر
+       - Tests ONLY: processes, causes, analysis, mechanisms, conclusions
+       - NEVER includes: simple definitions, connections, future applications
+    
+    3. **وَصلات (waslat): Relationships & Connections**
+       - Must start with: ما العلاقة/اربط/قارن بين/كيف يؤثر على
+       - Tests ONLY: links, comparisons, correlations, mutual effects
+       - NEVER includes: definitions, isolated analysis, solutions
+    
+    4. **رُؤية (roaya): Application & Innovation**
+       - Must start with: كيف يمكن/اقترح/صمم/ابتكر/طبق
+       - Tests ONLY: solutions, applications, strategies, innovations
+       - NEVER includes: definitions, theoretical analysis";
 
         if ($includePassage) {
             $passageTopicText = $passageTopic ?: $topic;
@@ -632,7 +692,11 @@ JSON مطلوب:
                 }
             }
         }
-
+        Log::info('DEBUG: Question counts at each step', [
+            'ai_generated' => count($questions),
+            'after_distribution_validation' => count($validated),
+            'total_requested' => $totalRequested
+        ]);
         Log::info('Question validation complete', [
             'total_requested' => $totalRequested,
             'total_generated' => count($questions),
@@ -642,7 +706,61 @@ JSON مطلوب:
 
         return $validated;
     }
+    private function validateQuestionsQuality(array $questions): array
+    {
+        $validationPrompt = "Review these questions for quality issues:
+    
+    " . json_encode($questions, JSON_UNESCAPED_UNICODE) . "
+    
+    Check for:
+    1. Clear Arabic language formulation
+    2. Accurate Juzoor root classification  
+    3. Quality distractors (wrong options should be plausible)
+    4. Appropriate difficulty level
+    5. Diverse question patterns
+    
+    Return improved questions in same JSON format. Fix any issues found.
+    
+    Required JSON output:
+    {
+      \"questions\": [
+    {
+      \"question\": \"نص السؤال\",
+      \"options\": [\"خيار1\", \"خيار2\", \"خيار3\", \"خيار4\"],
+      \"correct_answer\": \"الخيار الصحيح\",
+      \"root_type\": \"jawhar|zihn|waslat|roaya\",
+      \"depth_level\": 1|2|3,
+      \"explanation\": \"توضيح مختصر للإجابة\"
+    }
+      ]
+    }
+    CRITICAL: 
+- Return only valid JSON
+- No additional text before or after JSON
+- Exact 4 options per question
+- correct_answer must match one option exactly  
+    ";
 
+        try {
+            $response = $this->sendRequest($validationPrompt, [
+                'temperature' => 0.2,
+                'max_tokens' => 3000
+            ]);
+
+            $validatedData = $this->parseJsonResponse($response);
+            Log::info('Quality validation results', [
+                'input_count' => count($questions),
+                'output_count' => count($validatedData['questions'] ?? []),
+                'validation_response_preview' => substr(json_encode($validatedData), 0, 200)
+            ]);
+            return $validatedData['questions'] ?? $questions;
+        } catch (\Exception $e) {
+            Log::warning('Question validation failed, using original questions', [
+                'error' => $e->getMessage()
+            ]);
+            return $questions;
+        }
+    }
     private function isQuestionValid(array $question): bool
     {
         if (empty($question['question']) || empty($question['options']) || empty($question['correct_answer'])) {
@@ -799,6 +917,14 @@ JSON مطلوب:
             'medium' => 800,
             'long' => 1200,
             default => 800
+        };
+    }
+    private function getGradeLevelGuidance(int $gradeLevel): string
+    {
+        return match (true) {
+            $gradeLevel <= 3 => "Vocabulary: Simple everyday words | Sentences: Short and direct | Concepts: Concrete, tangible examples",
+            $gradeLevel <= 6 => "Vocabulary: Intermediate academic terms | Sentences: Compound structures | Concepts: Simple abstract ideas",
+            $gradeLevel <= 9 => "Vocabulary: Advanced academic language | Sentences: Complex structures | Concepts: Abstract and theoretical"
         };
     }
 }

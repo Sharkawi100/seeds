@@ -1,6 +1,6 @@
 # Project Structure Summary - جُذور (Juzoor)
 
-Last Updated: December 2024
+Last Updated: June 2025
 
 ## 🏛️ Architecture Overview
 
