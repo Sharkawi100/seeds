@@ -126,6 +126,21 @@ Last Updated: December 2024
 
 ## Common Issues & Solutions
 
+### Chart.js Issues
+
+#### Charts Not Rendering
+
+**Cause**: Laravel collection passed to JavaScript
+**Solution**: Use @json($results->values()) instead of @json($results)
+
+#### JSON Decode Errors
+
+**Cause**: Scores field sometimes array, sometimes string
+**Solution**: Check data type before parsing:
+
+````php
+$scores = is_array($result->scores) ? $result->scores : json_decode($result->scores ?? '{}', true);
+
 ### 🔴 Error 500: Route Not Found
 
 **Symptoms:**
@@ -150,4 +165,11 @@ php artisan view:clear
 
 # List routes to verify
 php artisan route:list | grep route_name
-```
+````
+
+### Subdirectory Installation Notes
+
+-   Laravel app files stored outside web root for security
+-   Public folder contents symlinked/copied to `/public_html/roots/`
+-   Asset URLs must include `/roots` prefix
+-   Configuration requires APP_URL=https://www.iseraj.com/roots

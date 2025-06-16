@@ -181,3 +181,9 @@ Last Updated: June 2025
 4. Added bulk operations for questions
 5. Enhanced admin user management routes
 6. Fixed stop-impersonation route placement
+
+### Quiz Management Actions (NEW)
+
+-   PATCH /quizzes/{quiz}/toggle-status # Toggle active status
+-   GET /quizzes/{quiz}/results # View quiz results
+-   POST /quizzes/{quiz}/duplicate # Copy quiz

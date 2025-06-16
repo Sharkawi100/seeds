@@ -53,9 +53,9 @@ resources/views/
 │       ├── edit.blade.php
 │       └── bulk-edit.blade.php (NEW - bulk editing)
 ├── results/
-│   ├── index.blade.php (list results)
-│   ├── show.blade.php (detailed result with Juzoor chart)
-│   ├── quiz-results.blade.php
+│   ├── index.blade.php (UPDATED - modern glassmorphism design)
+│   ├── quiz-results.blade.php (UPDATED - Chart.js integration)
+│   └── show.blade.php (detailed result with Juzoor chart)
 │   └── teacher-index.blade.php (NEW - teacher results view)
 ├── profile/
 │   ├── edit.blade.php
@@ -73,7 +73,8 @@ resources/views/
 │   │   └── show.blade.php
 │   ├── quizzes/
 │   │   ├── index.blade.php
-│   │   └── show.blade.php
+│   ├── edit.blade.php (UPDATED - TinyMCE fix, management actions)
+│   ├── show.blade.php (UPDATED - conditional management buttons)
 │   └── ai/
 │       └── index.blade.php
 ├── emails/

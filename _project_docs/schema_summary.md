@@ -1,229 +1,318 @@
-# Complete Database Schema - Juzoor (Updated)
+# Complete Schema & Routes Summary - جُذور (Juzoor)
 
-Last Updated: December 2024
+Last Updated: June 16, 2025
 
-## Tables & Relationships
+## Production Architecture
 
-### users
+### Server Directory Structure
 
--   id, name, email, password (nullable), email_verified_at
--   is_admin, is_school
--   **NEW**: google_id, facebook_id, avatar, auth_provider (email|google|facebook)
--   **NEW**: user_type (student|teacher|admin), school_name, grade_level
--   **NEW**: last_login_at, last_login_ip, login_count
--   **NEW**: account_locked, locked_until, force_password_change
--   **NEW**: password_changed_at
--   Has many: quizzes, results, user_logins
+```
+/home/jqfujdmy/
+├── roots_app/                    # Laravel application (secure, outside web root)
+│   ├── app/Http/Controllers/
+│   ├── resources/views/
+│   ├── routes/
+│   ├── database/
+│   ├── storage/
+│   ├── .env
+│   └── [all Laravel files]
+│
+└── public_html/                  # Web-accessible directory
+    ├── [main domain files]       # www.iseraj.com
+    └── roots/                    # Laravel public folder
+        ├── index.php             # Entry point
+        ├── build/                # Compiled assets
+        └── [public assets]
+```
 
-### login_attempts (NEW)
+### URL Structure
 
--   id, email, ip_address, user_agent
--   successful (boolean), attempted_at, locked_until
--   Indexes: email+attempted_at, ip_address+attempted_at
+-   **Domain**: `https://www.iseraj.com/roots`
+-   **Main Domain**: `https://www.iseraj.com`
+-   **Application Root**: `/home/jqfujdmy/roots_app/`
+-   **Web Root**: `/home/jqfujdmy/public_html/roots/`
 
-### user_logins (NEW)
+## Database Schema
 
--   id, user_id (FK), ip_address, user_agent
--   device_type, browser, platform, location
--   latitude, longitude, is_trusted
--   logged_in_at, logged_out_at
--   Belongs to: User
+### Core Tables
 
-### password_histories (NEW)
+#### users
 
--   id, user_id (FK), password (hashed)
--   created_at
--   Belongs to: User
+```sql
+id, name, email, password (nullable), email_verified_at
+google_id, facebook_id, avatar, auth_provider (email|google|facebook)
+user_type (student|teacher|admin), is_admin, is_active, is_approved
+school_name, grade_level, subjects_taught, experience_years
+last_login_at, last_login_ip, login_count
+deleted_at, created_at, updated_at
+```
 
-### quizzes
+#### quizzes
 
--   id, user_id, title, subject (arabic|english|hebrew)
--   grade_level (1-9), settings (JSON), pin
--   Has many: questions, results
+```sql
+id, user_id, title, description, subject_id (FK to subjects)
+grade_level, pin, is_active, is_demo, is_public
+shuffle_questions, shuffle_answers, time_limit, passing_score
+show_results, has_submissions, expires_at
+settings (JSON), passage_data (JSON)
+created_at, updated_at
+```
 
-### questions
+#### subjects
 
--   id, quiz_id, question, passage, passage_title
--   root_type (jawhar|zihn|waslat|roaya)
--   depth_level (1|2|3)
--   options (JSON array), correct_answer
--   Has many: answers
+```sql
+id, name, slug, is_active, sort_order
+created_at, updated_at
+```
 
-### results
+#### questions
 
--   id, quiz_id, user_id (nullable), guest_token, guest_name
--   scores (JSON: {jawhar: %, zihn: %, waslat: %, roaya: %})
--   total_score, expires_at
--   Has many: answers
+```sql
+id, quiz_id, question, passage, passage_title
+root_type (jawhar|zihn|waslat|roaya)
+depth_level (1|2|3)
+options (JSON), correct_answer
+created_at, updated_at
+```
 
-### answers
+#### results
 
--   id, question_id, result_id
--   selected_answer, is_correct
+```sql
+id, quiz_id, user_id (nullable), guest_token, guest_name
+scores (JSON: {"jawhar":85,"zihn":92,"waslat":78,"roaya":88})
+total_score, expires_at
+created_at, updated_at
+```
 
-### ai_usage_logs
+#### answers
 
--   id, type, model, count, user_id, created_at
+```sql
+id, question_id, result_id, selected_answer, is_correct
+created_at, updated_at
+```
 
-Database Schema Updates
-Users Table Additions
-sqlgoogle_id VARCHAR(255) NULL
-facebook_id VARCHAR(255) NULL  
-avatar VARCHAR(255) NULL
-auth_provider ENUM('email', 'google', 'facebook') DEFAULT 'email'
-user_type VARCHAR(20) DEFAULT 'student'
-school_name VARCHAR(255) NULL
-grade_level INT NULL
-last_login_at TIMESTAMP NULL
-last_login_ip VARCHAR(45) NULL
-login_count INT DEFAULT 0
-account_locked BOOLEAN DEFAULT FALSE
-locked_until TIMESTAMP NULL
-force_password_change BOOLEAN DEFAULT FALSE
-password_changed_at TIMESTAMP NULL
-New Tables
+### Database Relationships
 
-login_attempts - Security tracking
-user_logins - Session management
-password_histories - Password reuse prevention
+-   `quizzes.subject_id` → `subjects.id` (belongsTo)
+-   `quizzes.user_id` → `users.id` (belongsTo)
+-   `questions.quiz_id` → `quizzes.id` (belongsTo)
+-   `results.quiz_id` → `quizzes.id` (belongsTo)
+-   `results.user_id` → `users.id` (belongsTo, nullable for guests)
+-   `answers.question_id` → `questions.id` (belongsTo)
+-   `answers.result_id` → `results.id` (belongsTo)
 
-Configuration
-OAuth Setup (.env)
-envGOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-secret
-GOOGLE_REDIRECT_URL=https://www.iseraj.com/roots/auth/google/callback
-Security Settings
+## Complete Routes Reference
 
-Max login attempts: 5
-Lockout duration: 15 minutes
-Password history: 5 passwords
-Session lifetime: 120 minutes
+### Public Routes (No Authentication)
 
-API Endpoints
-GET /auth/{provider} # Redirect to OAuth provider
-GET /auth/{provider}/callback # Handle OAuth callback
-POST /profile/logout-other-devices # Logout from other devices
-Future Enhancements
+#### Landing & Information Pages
 
-Two-Factor Authentication (2FA)
-Biometric authentication
-Magic link login
-SSO for schools
-Advanced threat detection
-Login with QR code
+| Route Name       | URL                    | Method | Description                      |
+| ---------------- | ---------------------- | ------ | -------------------------------- |
+| `home`           | `/`                    | GET    | Main landing page with PIN entry |
+| `about`          | `/about`               | GET    | About جُذور platform             |
+| `juzoor.model`   | `/juzoor-model`        | GET    | Educational model explanation    |
+| `juzoor.growth`  | `/juzoor-model/growth` | GET    | Growth model details             |
+| `question.guide` | `/question-guide`      | GET    | Guide for creating questions     |
+| `for.teachers`   | `/for-teachers`        | GET    | Teachers landing page            |
+| `for.students`   | `/for-students`        | GET    | Students landing page            |
 
-# Common Route Names and File Paths - جُذور (Juzoor)
+#### Language & Contact
 
-## Common Route Names
+| Route Name       | URL              | Method | Description                |
+| ---------------- | ---------------- | ------ | -------------------------- |
+| `lang.switch`    | `/lang/{locale}` | GET    | Switch language (ar/en/he) |
+| `contact.show`   | `/contact`       | GET    | Contact form page          |
+| `contact.submit` | `/contact`       | POST   | Submit contact form        |
 
-| Purpose                  | Route Name              | URL                       | Method |
-| ------------------------ | ----------------------- | ------------------------- | ------ |
-| **Public Pages**         |
-| Home Page                | `home`                  | `/`                       | GET    |
-| About Page               | `about`                 | `/about`                  | GET    |
-| Juzoor Model             | `juzoor.model`          | `/juzoor-model`           | GET    |
-| Question Guide           | `question.guide`        | `/question-guide`         | GET    |
-| Contact Page             | `contact.show`          | `/contact`                | GET    |
-| Submit Contact           | `contact.submit`        | `/contact`                | POST   |
-| Language Switch          | `lang.switch`           | `/lang/{locale}`          | GET    |
-| **Authentication**       |
-| Login Page               | `login`                 | `/login`                  | GET    |
-| Login Submit             | `login`                 | `/login`                  | POST   |
-| Register Page            | `register`              | `/register`               | GET    |
-| Register Submit          | `register`              | `/register`               | POST   |
-| Logout                   | `logout`                | `/logout`                 | POST   |
-| Forgot Password          | `password.request`      | `/forgot-password`        | GET    |
-| Password Reset           | `password.reset`        | `/reset-password/{token}` | GET    |
-| **Quiz Public Access**   |
-| Enter PIN                | `quiz.enter-pin`        | `/quiz/enter-pin`         | POST   |
-| Demo Quiz                | `quiz.demo`             | `/quiz/demo`              | GET    |
-| Take Quiz                | `quiz.take`             | `/quiz/{quiz}/take`       | GET    |
-| Submit Quiz              | `quiz.submit`           | `/quiz/{quiz}/submit`     | POST   |
-| View Results             | `results.show`          | `/results/{result}`       | GET    |
-| **Authenticated Routes** |
-| Dashboard                | `dashboard`             | `/dashboard`              | GET    |
-| Profile                  | `profile.edit`          | `/profile`                | GET    |
-| Update Profile           | `profile.update`        | `/profile`                | PATCH  |
-| **Quiz Management**      |
-| Quiz List                | `quizzes.index`         | `/quizzes`                | GET    |
-| Create Quiz              | `quizzes.create`        | `/quizzes/create`         | GET    |
-| Store Quiz               | `quizzes.store`         | `/quizzes`                | POST   |
-| Show Quiz                | `quizzes.show`          | `/quizzes/{quiz}`         | GET    |
-| Edit Quiz                | `quizzes.edit`          | `/quizzes/{quiz}/edit`    | GET    |
-| Update Quiz              | `quizzes.update`        | `/quizzes/{quiz}`         | PUT    |
-| Delete Quiz              | `quizzes.destroy`       | `/quizzes/{quiz}`         | DELETE |
-| Generate Text            | `quizzes.generate-text` | `/quizzes/generate-text`  | POST   |
-| **Admin Routes**         |
-| Admin Dashboard          | `admin.dashboard`       | `/admin/dashboard`        | GET    |
-| Admin Users              | `admin.users.index`     | `/admin/users`            | GET    |
-| Admin AI                 | `admin.ai.index`        | `/admin/ai`               | GET    |
+#### Public Quiz Access
 
-## File Paths
+| Route Name          | URL                                 | Method | Description             |
+| ------------------- | ----------------------------------- | ------ | ----------------------- |
+| `quiz.enter-pin`    | `/quiz/enter-pin`                   | POST   | Enter quiz via PIN      |
+| `quiz.demo`         | `/quiz/demo`                        | GET    | Demo quiz access        |
+| `quiz.take`         | `/quiz/{quiz}/take`                 | GET    | Take quiz (public/auth) |
+| `quiz.submit`       | `/quiz/{quiz}/submit`               | POST   | Submit quiz answers     |
+| `quiz.guest-start`  | `/quiz/{quiz}/guest-start`          | POST   | Guest name submission   |
+| `quiz.guest-result` | `/quiz/result/{result:guest_token}` | GET    | Guest results via token |
 
-### Production Server (Namecheap)
+### Authentication Routes (Guest Only)
 
-| Description          | Path                                                  |
-| -------------------- | ----------------------------------------------------- |
-| **Application Root** | `/home/jqfujdmy/roots_app`                            |
-| Public Directory     | `/home/jqfujdmy/public_html/roots`                    |
-| Views                | `/home/jqfujdmy/roots_app/resources/views`            |
-| Controllers          | `/home/jqfujdmy/roots_app/app/Http/Controllers`       |
-| Models               | `/home/jqfujdmy/roots_app/app/Models`                 |
-| Routes               | `/home/jqfujdmy/roots_app/routes`                     |
-| Storage              | `/home/jqfujdmy/roots_app/storage`                    |
-| Logs                 | `/home/jqfujdmy/roots_app/storage/logs/laravel.log`   |
-| Cache                | `/home/jqfujdmy/roots_app/storage/framework/cache`    |
-| Sessions             | `/home/jqfujdmy/roots_app/storage/framework/sessions` |
-| Compiled Views       | `/home/jqfujdmy/roots_app/storage/framework/views`    |
-| Environment File     | `/home/jqfujdmy/roots_app/.env`                       |
-| Entry Point          | `/home/jqfujdmy/public_html/roots/index.php`          |
+#### Role Selection
+
+| Route Name | URL         | Method | Description                     |
+| ---------- | ----------- | ------ | ------------------------------- |
+| `register` | `/register` | GET    | Role selection for registration |
+| `login`    | `/login`    | GET    | Role selection for login        |
+
+#### Teacher Authentication
+
+| Route Name                 | URL                         | Method | Description            |
+| -------------------------- | --------------------------- | ------ | ---------------------- |
+| `teacher.login`            | `/teacher/login`            | GET    | Teacher login form     |
+| `teacher.register`         | `/teacher/register`         | GET    | Teacher registration   |
+| `teacher.pending-approval` | `/teacher/pending-approval` | GET    | Awaiting approval page |
+
+#### Student Authentication
+
+| Route Name         | URL                 | Method | Description          |
+| ------------------ | ------------------- | ------ | -------------------- |
+| `student.login`    | `/student/login`    | GET    | Student login form   |
+| `student.register` | `/student/register` | GET    | Student registration |
+
+#### Standard Auth (Laravel Breeze)
+
+| Route Name            | URL                       | Method   | Description               |
+| --------------------- | ------------------------- | -------- | ------------------------- |
+| `password.request`    | `/forgot-password`        | GET      | Password reset request    |
+| `password.email`      | `/forgot-password`        | POST     | Send reset email          |
+| `password.reset`      | `/reset-password/{token}` | GET      | Reset password form       |
+| `password.store`      | `/reset-password`         | POST     | Update password           |
+| `verification.notice` | `/verify-email`           | GET      | Email verification prompt |
+| `logout`              | `/logout`                 | GET/POST | User logout               |
+
+#### Social Authentication
+
+| Route Name        | URL                         | Method | Description                |
+| ----------------- | --------------------------- | ------ | -------------------------- |
+| `social.login`    | `/auth/{provider}`          | GET    | Redirect to OAuth provider |
+| `social.callback` | `/auth/{provider}/callback` | GET    | Handle OAuth callback      |
+
+### Authenticated Routes
+
+#### Dashboard & Profile
+
+| Route Name          | URL                 | Method | Description       |
+| ------------------- | ------------------- | ------ | ----------------- |
+| `dashboard`         | `/dashboard`        | GET    | User dashboard    |
+| `profile.dashboard` | `/profile`          | GET    | Profile dashboard |
+| `profile.edit`      | `/profile/edit`     | GET    | Edit profile form |
+| `profile.update`    | `/profile`          | PATCH  | Update profile    |
+| `profile.destroy`   | `/profile`          | DELETE | Delete account    |
+| `password.update`   | `/profile/password` | PUT    | Update password   |
+
+#### Quiz Management (Teachers/Admins)
+
+| Route Name              | URL                             | Method | Description         |
+| ----------------------- | ------------------------------- | ------ | ------------------- |
+| `quizzes.index`         | `/quizzes`                      | GET    | List all quizzes    |
+| `quizzes.create`        | `/quizzes/create`               | GET    | Create quiz form    |
+| `quizzes.store`         | `/quizzes`                      | POST   | Store new quiz      |
+| `quizzes.show`          | `/quizzes/{quiz}`               | GET    | Show quiz details   |
+| `quizzes.edit`          | `/quizzes/{quiz}/edit`          | GET    | Edit quiz form      |
+| `quizzes.update`        | `/quizzes/{quiz}`               | PUT    | Update quiz         |
+| `quizzes.destroy`       | `/quizzes/{quiz}`               | DELETE | Delete quiz         |
+| `quizzes.duplicate`     | `/quizzes/{quiz}/duplicate`     | POST   | Copy quiz           |
+| `quizzes.toggle-status` | `/quizzes/{quiz}/toggle-status` | PATCH  | Activate/deactivate |
+| `quizzes.results`       | `/quizzes/{quiz}/results`       | GET    | View quiz results   |
+| `quizzes.generate-text` | `/quizzes/{quiz}/generate-text` | POST   | AI text generation  |
+
+#### Question Management
+
+| Route Name                      | URL                                         | Method | Description     |
+| ------------------------------- | ------------------------------------------- | ------ | --------------- |
+| `quizzes.questions.index`       | `/quizzes/{quiz}/questions`                 | GET    | List questions  |
+| `quizzes.questions.create`      | `/quizzes/{quiz}/questions/create`          | GET    | Create question |
+| `quizzes.questions.store`       | `/quizzes/{quiz}/questions`                 | POST   | Store question  |
+| `quizzes.questions.edit`        | `/quizzes/{quiz}/questions/{question}/edit` | GET    | Edit question   |
+| `quizzes.questions.update`      | `/quizzes/{quiz}/questions/{question}`      | PUT    | Update question |
+| `quizzes.questions.destroy`     | `/quizzes/{quiz}/questions/{question}`      | DELETE | Delete question |
+| `quizzes.questions.bulk-edit`   | `/quizzes/{quiz}/questions/bulk-edit`       | GET    | Bulk edit form  |
+| `quizzes.questions.bulk-update` | `/quizzes/{quiz}/questions/bulk-update`     | PUT    | Bulk update     |
+
+#### Results Management
+
+| Route Name      | URL                    | Method | Description               |
+| --------------- | ---------------------- | ------ | ------------------------- |
+| `results.index` | `/results`             | GET    | All user results          |
+| `results.quiz`  | `/results/quiz/{quiz}` | GET    | Quiz-specific results     |
+| `results.show`  | `/results/{result}`    | GET    | Individual result details |
+
+### Admin Routes (Admin Only)
+
+#### Admin Dashboard
+
+| Route Name        | URL                | Method | Description       |
+| ----------------- | ------------------ | ------ | ----------------- |
+| `admin.dashboard` | `/admin/dashboard` | GET    | Admin dashboard   |
+| `admin.reports`   | `/admin/reports`   | GET    | Analytics reports |
+| `admin.settings`  | `/admin/settings`  | GET    | System settings   |
+
+#### User Management
+
+| Route Name                  | URL                                 | Method | Description        |
+| --------------------------- | ----------------------------------- | ------ | ------------------ |
+| `admin.users.index`         | `/admin/users`                      | GET    | Manage users       |
+| `admin.users.create`        | `/admin/users/create`               | GET    | Create user        |
+| `admin.users.store`         | `/admin/users`                      | POST   | Store user         |
+| `admin.users.show`          | `/admin/users/{user}`               | GET    | View user          |
+| `admin.users.edit`          | `/admin/users/{user}/edit`          | GET    | Edit user          |
+| `admin.users.update`        | `/admin/users/{user}`               | PUT    | Update user        |
+| `admin.users.destroy`       | `/admin/users/{user}`               | DELETE | Delete user        |
+| `admin.users.toggle-status` | `/admin/users/{user}/toggle-status` | POST   | Toggle user status |
+| `admin.users.impersonate`   | `/admin/users/{user}/impersonate`   | GET    | Impersonate user   |
+| `admin.stop-impersonation`  | `/admin/stop-impersonation`         | GET    | Stop impersonation |
+
+#### Subject Management
+
+| Route Name               | URL                              | Method | Description     |
+| ------------------------ | -------------------------------- | ------ | --------------- |
+| `admin.subjects.index`   | `/admin/subjects`                | GET    | Manage subjects |
+| `admin.subjects.create`  | `/admin/subjects/create`         | GET    | Create subject  |
+| `admin.subjects.store`   | `/admin/subjects`                | POST   | Store subject   |
+| `admin.subjects.edit`    | `/admin/subjects/{subject}/edit` | GET    | Edit subject    |
+| `admin.subjects.update`  | `/admin/subjects/{subject}`      | PUT    | Update subject  |
+| `admin.subjects.destroy` | `/admin/subjects/{subject}`      | DELETE | Delete subject  |
+
+#### AI & System Management
+
+| Route Name            | URL                    | Method | Description      |
+| --------------------- | ---------------------- | ------ | ---------------- |
+| `admin.ai.index`      | `/admin/ai`            | GET    | AI management    |
+| `admin.ai.generate`   | `/admin/ai/generate`   | POST   | Generate content |
+| `admin.logs.analyzer` | `/admin/logs/analyzer` | GET    | Log analyzer     |
+| `admin.logs.clear`    | `/admin/logs/clear`    | POST   | Clear logs       |
+
+## File Paths Reference
+
+### Production (Namecheap Shared Hosting)
+
+| Component            | Path                                                |
+| -------------------- | --------------------------------------------------- |
+| **Application Root** | `/home/jqfujdmy/roots_app/`                         |
+| **Web Directory**    | `/home/jqfujdmy/public_html/roots/`                 |
+| **Entry Point**      | `/home/jqfujdmy/public_html/roots/index.php`        |
+| **Environment**      | `/home/jqfujdmy/roots_app/.env`                     |
+| **Views**            | `/home/jqfujdmy/roots_app/resources/views/`         |
+| **Controllers**      | `/home/jqfujdmy/roots_app/app/Http/Controllers/`    |
+| **Routes**           | `/home/jqfujdmy/roots_app/routes/`                  |
+| **Logs**             | `/home/jqfujdmy/roots_app/storage/logs/laravel.log` |
+| **Cache**            | `/home/jqfujdmy/roots_app/storage/framework/cache/` |
 
 ### Local Development (Windows XAMPP)
 
-| Description          | Path                                               |
-| -------------------- | -------------------------------------------------- |
-| **Application Root** | `C:\xampp\htdocs\roots`                            |
-| Public Directory     | `C:\xampp\htdocs\roots\public`                     |
-| Views                | `C:\xampp\htdocs\roots\resources\views`            |
-| Controllers          | `C:\xampp\htdocs\roots\app\Http\Controllers`       |
-| Models               | `C:\xampp\htdocs\roots\app\Models`                 |
-| Routes               | `C:\xampp\htdocs\roots\routes`                     |
-| Storage              | `C:\xampp\htdocs\roots\storage`                    |
-| Logs                 | `C:\xampp\htdocs\roots\storage\logs\laravel.log`   |
-| Cache                | `C:\xampp\htdocs\roots\storage\framework\cache`    |
-| Sessions             | `C:\xampp\htdocs\roots\storage\framework\sessions` |
-| Compiled Views       | `C:\xampp\htdocs\roots\storage\framework\views`    |
-| Environment File     | `C:\xampp\htdocs\roots\.env`                       |
+| Component            | Path                                          |
+| -------------------- | --------------------------------------------- |
+| **Application Root** | `C:\xampp\htdocs\roots\`                      |
+| **Web Directory**    | `C:\xampp\htdocs\roots\public\`               |
+| **Environment**      | `C:\xampp\htdocs\roots\.env`                  |
+| **Views**            | `C:\xampp\htdocs\roots\resources\views\`      |
+| **Controllers**      | `C:\xampp\htdocs\roots\app\Http\Controllers\` |
 
-### Key View Files
+## Configuration Notes
 
-| View         | Local Path                                                      | Production Path                                                    |
-| ------------ | --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Welcome      | `C:\xampp\htdocs\roots\resources\views\welcome.blade.php`       | `/home/jqfujdmy/roots_app/resources/views/welcome.blade.php`       |
-| Login        | `C:\xampp\htdocs\roots\resources\views\auth\login.blade.php`    | `/home/jqfujdmy/roots_app/resources/views/auth/login.blade.php`    |
-| Dashboard    | `C:\xampp\htdocs\roots\resources\views\dashboard.blade.php`     | `/home/jqfujdmy/roots_app/resources/views/dashboard.blade.php`     |
-| App Layout   | `C:\xampp\htdocs\roots\resources\views\layouts\app.blade.php`   | `/home/jqfujdmy/roots_app/resources/views/layouts/app.blade.php`   |
-| Guest Layout | `C:\xampp\htdocs\roots\resources\views\layouts\guest.blade.php` | `/home/jqfujdmy/roots_app/resources/views/layouts/guest.blade.php` |
+### Subdirectory Installation
 
-### Important Route Files
+-   Laravel app files stored outside web root for security
+-   Public folder contents served from `/public_html/roots/`
+-   All URLs include `/roots` prefix
+-   Configuration: `APP_URL=https://www.iseraj.com/roots`
 
-| File        | Local Path                              | Production Path                            |
-| ----------- | --------------------------------------- | ------------------------------------------ |
-| Web Routes  | `C:\xampp\htdocs\roots\routes\web.php`  | `/home/jqfujdmy/roots_app/routes/web.php`  |
-| API Routes  | `C:\xampp\htdocs\roots\routes\api.php`  | `/home/jqfujdmy/roots_app/routes/api.php`  |
-| Auth Routes | `C:\xampp\htdocs\roots\routes\auth.php` | `/home/jqfujdmy/roots_app/routes/auth.php` |
+### Key Features
 
-## Quick Commands for Path Navigation
-
-### Windows (Local)
-
-```cmd
-# Navigate to project root
-cd C:\xampp\htdocs\roots
-
-# Open in VSCode
-code C:\xampp\htdocs\roots
-
-# View logs
-type storage\logs\laravel.log
-```
+-   **4-Roots Educational Model**: jawhar, zihn, waslat, roaya
+-   **Multi-language Content**: Arabic, English, Hebrew (interface Arabic only)
+-   **Guest Access**: PIN-based quiz taking with 7-day result tokens
+-   **AI Integration**: Claude-powered content generation
+-   **Social Authentication**: Google OAuth support
+-   **Role-based Access**: Students, Teachers, Admins

@@ -1,50 +1,38 @@
 # Code Patterns & Conventions - جُذور (Juzoor)
 
-Last Updated: December 2024
+Last Updated: June 16, 2025
 
-## 📛 Naming Conventions
+## Naming Conventions
 
 ### PHP/Laravel
 
--   **Models:** Singular PascalCase (User, Quiz, Question, Result, Answer)
--   **Controllers:** PascalCase + Controller suffix
+-   **Models**: Singular PascalCase (User, Quiz, Question, Result, Answer)
+-   **Controllers**: PascalCase + Controller suffix
     -   Web: QuizController, QuestionController, ResultController
     -   Auth: AuthenticatedSessionController, RegisteredUserController
     -   Admin: Admin\UserController, Admin\QuizController
--   **Migrations:** timestamp_verb_description_table
-    -   `2025_05_27_165155_create_quizzes_table.php`
-    -   `2025_05_27_192054_add_passage_to_questions_table.php`
--   **Database Tables:** Plural snake_case
-    -   users, quizzes, questions, results, answers, ai_usage_logs
--   **Database Columns:** snake_case
-    -   user_id, quiz_id, root_type, depth_level, is_correct, guest_token
--   **Routes:** kebab-case with dot notation for resources
-    -   `quizzes.index`, `quizzes.create`, `quiz.take`, `quiz.enter-pin`
+-   **Database Tables**: Plural snake_case (users, quizzes, questions, results, answers)
+-   **Database Columns**: snake_case (user_id, quiz_id, root_type, depth_level, guest_token)
+-   **Routes**: kebab-case with dot notation (quizzes.index, quiz.take, quiz.enter-pin)
 
 ### Juzoor-Specific Terms
 
--   **Root Types:** Always lowercase English in code
-    -   `jawhar`, `zihn`, `waslat`, `roaya`
--   **Arabic Display Names:**
-    -   جَوهر (Jawhar), ذِهن (Zihn), وَصلات (Waslat), رُؤية (Roaya)
--   **Depth Levels:** Integers 1, 2, 3
--   **Content Subjects:** Used for AI content generation
-    -   `arabic`, `english`, `hebrew` (for generating educational content)
+-   **Root Types**: Always lowercase English in code: `jawhar`, `zihn`, `waslat`, `roaya`
+-   **Arabic Display**: جَوهر (Jawhar), ذِهن (Zihn), وَصلات (Waslat), رُؤية (Roaya)
+-   **Depth Levels**: Integers 1, 2, 3
+-   **Subjects**: Database uses subject_id (foreign key to subjects table)
 
 ### Frontend
 
--   **Blade Views:** kebab-case.blade.php
-    -   `quiz-results.blade.php`, `update-profile-information-form.blade.php`
--   **Vue Components:** PascalCase (if used)
--   **CSS Classes:** Tailwind utility classes
--   **Custom CSS:** kebab-case (`juzoor-chart`, `root-card`)
+-   **Blade Views**: kebab-case.blade.php (quiz-results.blade.php, guest-info.blade.php)
+-   **CSS Classes**: Tailwind utility classes
+-   **Custom CSS**: kebab-case (juzoor-chart, root-card)
 
-## 🏗️ Common Patterns
+## Controller Patterns
 
-### Controller Action Patterns
+### Standard CRUD Actions
 
 ```php
-// Standard CRUD
 index()    - Display listing
 create()   - Show create form
 store()    - Handle create submission
@@ -52,364 +40,498 @@ show()     - Display single item
 edit()     - Show edit form
 update()   - Handle edit submission
 destroy()  - Delete item
+```
 
-// Quiz-specific
-take()     - Public quiz taking interface
-submit()   - Process quiz answers
+### Quiz-Specific Actions
+
+```php
+take()         - Public quiz interface
+submit()       - Process quiz answers
+toggleStatus() - Activate/deactivate quiz
+duplicate()    - Copy quiz with questions
+results()      - Redirect to quiz results
 generateText() - AI text generation
 ```
 
-### Validation Patterns
+### Authorization Pattern
 
 ```php
-// Inline validation for simple cases
-$validated = $request->validate([
-    'title' => 'required|string|max:255',
-    'subject_id' => 'required|exists:subjects,id',
-    'grade_level' => 'required|integer|min:1|max:9',
-]);
-
-// Form Request for complex validation (LoginRequest)
-public function rules(): array
-{
-    return [
-        'email' => ['required', 'string', 'email'],
-        'password' => ['required', 'string'],
-    ];
+// Standard ownership check
+if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
+    abort(403, 'غير مصرح لك بهذا الإجراء.');
 }
 
-// Custom validation for quiz answers
-'answers' => 'required|array',
-'answers.*' => 'required|string'
+// Teacher/Admin check for quiz management
+private function authorizeQuizManagement()
+{
+    if (!Auth::check() || (Auth::user()->user_type === 'student' && !Auth::user()->is_admin)) {
+        abort(403, 'غير مصرح لك بإدارة الاختبارات. هذه الصفحة للمعلمين فقط.');
+    }
+}
 ```
 
-### Database Transaction Pattern
+## Database Patterns
+
+### Transaction Pattern
 
 ```php
 DB::beginTransaction();
 try {
-    $quiz = Quiz::create([...]);
+    $quiz = Quiz::create($validated);
     $this->parseAndSaveQuestions($quiz, $aiResponse);
     DB::commit();
+    return redirect()->route('quizzes.show', $quiz);
 } catch (\Exception $e) {
     DB::rollBack();
     Log::error('Quiz creation failed', ['error' => $e->getMessage()]);
+    return redirect()->back()->with('error', 'حدث خطأ أثناء إنشاء الاختبار.');
 }
 ```
 
-### Authorization Patterns
+### Root Score Initialization
 
 ```php
-// Method 1: Direct check
-if ((int) $quiz->user_id !== Auth::id()) {
-    abort(403, 'غير مصرح لك بهذا الإجراء.');
-}
-
-// Method 2: Policy (QuizPolicy)
-$this->authorize('view', $quiz);
-
-// Method 3: Middleware
-Route::middleware(['auth', 'admin'])->group(function () {
-    // Admin routes
-});
-```
-
-## 🎯 Juzoor-Specific Patterns
-
-### Root Score Calculation
-
-```php
+// Always initialize all four roots
 $rootScores = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
 $rootCounts = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
-
-// Always initialize all four roots
-// Calculate percentages per root, not total
 ```
 
-### Language Support
+### Relationship Loading
 
 ```php
-// Interface Language: Arabic Only
-// The entire website interface is in Arabic
-// All UI text, labels, messages, and navigation are in Arabic
-
-// Content Generation: Multi-language Support
-// AI content generation supports multiple languages for educational content:
-$this->claudeService->generateEducationalText(
-    'arabic',    // Educational content in Arabic
-    'english',   // Educational content in English
-    'hebrew',    // Educational content in Hebrew
-    $gradeLevel,
-    $topic,
-    $textType,
-    $length
-);
-
-// Static UI Text (always Arabic)
-'غير مصرح لك بهذا الإجراء.'
-'تم إنشاء الاختبار بنجاح.'
-'يرجى ملء جميع الحقول المطلوبة'
-
-// No translation files needed - interface is Arabic-only
+// Always eager load required relationships
+$quiz = Quiz::with(['questions', 'subject', 'results'])->find($id);
+$results = Result::with(['quiz.subject', 'user'])->where('quiz_id', $quizId)->get();
 ```
 
-### Guest Access Pattern
+## Validation Patterns
+
+### Standard Validation
 
 ```php
-// Always check both auth and guest token
+$validated = $request->validate([
+    'title' => 'required|string|max:255',
+    'subject_id' => 'required|exists:subjects,id',
+    'grade_level' => 'required|integer|min:1|max:9',
+    'description' => 'nullable|string',
+]);
+```
+
+### Arabic Text Validation
+
+```php
+'title' => 'required|string|max:255|regex:/^[\p{Arabic}\s\p{P}\p{N}]+$/u',
+'passage' => 'nullable|string|regex:/^[\p{Arabic}\s\p{P}\p{N}\p{L}]+$/u',
+```
+
+## Guest Access Patterns
+
+### Guest Token Management
+
+```php
+// Generate guest token for results
+$guestToken = Str::random(32);
+$result = Result::create([
+    'quiz_id' => $quiz->id,
+    'user_id' => null,
+    'guest_token' => $guestToken,
+    'guest_name' => session('guest_name'),
+    'expires_at' => now()->addDays(7),
+]);
+```
+
+### Guest Authorization Check
+
+```php
+// Check guest access to results
 if (Auth::check() && $result->user_id !== null) {
     return (int) $result->user_id === Auth::id();
 }
 
 if (!Auth::check() && $result->guest_token !== null) {
-    return $result->guest_token === session('guest_token');
+    return $result->guest_token === $token;
 }
+
+return false;
 ```
 
-### AI Integration Pattern
+### Session Management
 
 ```php
-// Always wrap in try-catch
-try {
-    $response = $this->claudeService->generateJuzoorQuiz(...);
-    // Process response
-} catch (\Exception $e) {
-    Log::error('AI generation failed', [
-        'error' => $e->getMessage(),
-        'quiz_id' => $quiz->id
-    ]);
-    // Handle gracefully
+// Store guest info during quiz
+session(['guest_name' => $validated['guest_name']]);
+session(['school_class' => $validated['school_class']]);
+
+// Clear after submission
+session()->forget(['guest_name', 'school_class']);
+```
+
+## Data Handling Patterns
+
+### JSON Score Processing
+
+```php
+// Handle both array and JSON string formats
+$scores = is_array($result->scores)
+    ? $result->scores
+    : json_decode($result->scores ?? '{}', true);
+```
+
+### Laravel Collection to JavaScript
+
+```php
+// Convert for Chart.js
+const results = @json($results->values()); // Converts collection to array
+
+// JavaScript processing
+results.forEach(result => {
+    const scores = typeof result.scores === 'string'
+        ? JSON.parse(result.scores)
+        : result.scores;
+});
+```
+
+## UI Patterns
+
+### Modern Glassmorphism Cards
+
+```blade
+<div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 hover:shadow-xl transition-all duration-300">
+    <!-- Card content -->
+</div>
+```
+
+### Root Performance Display
+
+```blade
+@php
+$roots = [
+    'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => 'blue'],
+    'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => 'purple'],
+    'waslat' => ['name' => 'وَصلات', 'icon' => '🔗', 'color' => 'green'],
+    'roaya' => ['name' => 'رُؤية', 'icon' => '👁️', 'color' => 'orange']
+];
+$scores = is_array($result->scores) ? $result->scores : json_decode($result->scores ?? '{}', true);
+@endphp
+
+@foreach($roots as $key => $root)
+<div class="text-center">
+    <div class="text-2xl mb-1">{{ $root['icon'] }}</div>
+    <div class="text-sm font-bold text-{{ $root['color'] }}-600">
+        {{ $scores[$key] ?? 0 }}%
+    </div>
+</div>
+@endforeach
+```
+
+### Conditional Management Buttons
+
+```blade
+@if(!$quiz->has_submissions)
+    <a href="{{ route('quizzes.edit', $quiz) }}" class="btn-primary">
+        <i class="fas fa-edit"></i>
+        تعديل الاختبار
+    </a>
+@else
+    <form action="{{ route('quizzes.toggle-status', $quiz) }}" method="POST" class="inline">
+        @csrf
+        @method('PATCH')
+        <button type="submit" class="btn-{{ $quiz->is_active ? 'danger' : 'success' }}">
+            {{ $quiz->is_active ? 'إلغاء التفعيل' : 'تفعيل' }}
+        </button>
+    </form>
+@endif
+```
+
+## Chart.js Integration Patterns
+
+### Chart Initialization
+
+```javascript
+// Check element exists before creating chart
+const canvas = document.getElementById("rootsRadarChart");
+if (canvas) {
+    const ctx = canvas.getContext("2d");
+    new Chart(ctx, {
+        type: "radar",
+        data: {
+            labels: [
+                "جَوهر (الماهية)",
+                "ذِهن (التحليل)",
+                "وَصلات (الربط)",
+                "رُؤية (التطبيق)",
+            ],
+            datasets: [
+                {
+                    data: [
+                        rootAverages.jawhar,
+                        rootAverages.zihn,
+                        rootAverages.waslat,
+                        rootAverages.roaya,
+                    ],
+                    backgroundColor: "rgba(99, 102, 241, 0.2)",
+                    borderColor: "rgba(99, 102, 241, 1)",
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    pointLabels: {
+                        font: { family: "Tajawal" },
+                    },
+                },
+            },
+        },
+    });
 }
 ```
 
-## 🔒 Security Patterns
+### Data Processing for Charts
+
+```javascript
+// Calculate root averages
+const rootAverages = { jawhar: 0, zihn: 0, waslat: 0, roaya: 0 };
+let validResults = 0;
+
+results.forEach((result) => {
+    if (result.scores) {
+        const scores =
+            typeof result.scores === "string"
+                ? JSON.parse(result.scores)
+                : result.scores;
+        rootAverages.jawhar += scores.jawhar || 0;
+        rootAverages.zihn += scores.zihn || 0;
+        rootAverages.waslat += scores.waslat || 0;
+        rootAverages.roaya += scores.roaya || 0;
+        validResults++;
+    }
+});
+
+// Calculate averages
+Object.keys(rootAverages).forEach((key) => {
+    rootAverages[key] = validResults > 0 ? rootAverages[key] / validResults : 0;
+});
+```
+
+## TinyMCE Integration Pattern
+
+### Editor Initialization
+
+```javascript
+tinymce.init({
+    selector: ".tinymce-editor",
+    language: "ar",
+    directionality: "rtl",
+    height: 350,
+    menubar: false,
+    plugins:
+        "lists link charmap preview searchreplace autolink directionality code",
+    toolbar:
+        "undo redo | bold italic underline | bullist numlist | link | removeformat | code",
+    content_style:
+        'body { font-family: "Tajawal"; font-size: 16px; direction: rtl; }',
+    branding: false,
+    entity_encoding: "raw",
+});
+
+// Ensure content saves on form submission
+document.querySelector("form").addEventListener("submit", function (e) {
+    tinymce.triggerSave();
+});
+```
+
+### Content Display
+
+```blade
+<!-- Use {!! !!} for TinyMCE content to preserve formatting -->
+{!! $quiz->questions->first()->passage !!}
+```
+
+## AI Integration Patterns
+
+### Content Generation
+
+```php
+try {
+    $text = $this->claudeService->generateEducationalText(
+        $validated['subject'],
+        $validated['grade_level'],
+        $validated['topic'],
+        $validated['text_type'],
+        $validated['length']
+    );
+
+    return response()->json(['success' => true, 'text' => $text]);
+} catch (\Exception $e) {
+    Log::error('Text generation failed', [
+        'error' => $e->getMessage(),
+        'params' => $validated
+    ]);
+
+    return response()->json([
+        'success' => false,
+        'message' => 'فشل توليد النص: ' . $e->getMessage()
+    ], 422);
+}
+```
+
+## Security Patterns
 
 ### CSRF Protection
 
--   Automatically applied to all POST/PUT/DELETE routes
--   Use `@csrf` in all forms
+```blade
+<!-- Always include CSRF in forms -->
+<form action="{{ route('quizzes.store') }}" method="POST">
+    @csrf
+    <!-- form fields -->
+</form>
+
+<!-- AJAX requests -->
+fetch('{{ route("quizzes.generate-text") }}', {
+    method: 'POST',
+    headers: {
+        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+});
+```
 
 ### XSS Prevention
 
 ```blade
-<!-- Always use double curly braces for output -->
+<!-- Escape output by default -->
 {{ $user->name }}
 
-<!-- Use {!! !!} only for trusted HTML -->
-{!! $trustedHtml !!}
+<!-- Only use raw output for trusted HTML -->
+{!! $quiz->passage !!}
 ```
 
-### Mass Assignment Protection
+## Error Handling Patterns
+
+### User-Friendly Messages
 
 ```php
-// In Models
-protected $fillable = ['title', 'subject_id', 'grade_level', 'settings'];
-// Never include sensitive fields like is_admin
-```
+// Arabic error messages
+return redirect()->back()->with('error', 'حدث خطأ أثناء العملية. الرجاء المحاولة مرة أخرى.');
+return redirect()->route('quizzes.index')->with('success', 'تم حفظ التغييرات بنجاح.');
 
-### Rate Limiting
-
-```php
-// Applied to auth routes
-RateLimiter::hit($this->throttleKey());
-// Max 5 attempts, then locked
-```
-
-## 📝 Documentation Standards
-
-### Model Relationships
-
-```php
-/**
- * Get the questions for the quiz.
- */
-public function questions(): HasMany
-{
-    return $this->hasMany(Question::class);
-}
-```
-
-### Complex Methods
-
-```php
-/**
- * Parse and save questions from AI response
- *
- * @param Quiz $quiz
- * @param array $aiResponse
- * @throws \Exception
- */
-private function parseAndSaveQuestions(Quiz $quiz, array $aiResponse)
-```
-
-## 🎨 Frontend Patterns
-
-### Tailwind Classes Organization
-
-```blade
-<!-- Order: Display, Position, Box Model, Typography, Visual, State -->
-<div class="flex items-center justify-between p-6 text-lg font-bold bg-white rounded-lg shadow-md hover:shadow-lg transition-all">
-```
-
-### JavaScript in Blade
-
-```blade
-<!-- Inline scripts at bottom of view -->
-@push('scripts')
-<script>
-    // Use async/await for AJAX
-    async function generateQuestions() {
-        const response = await fetch('{{ route("quizzes.generate-text") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-    }
-</script>
-@endpush
-```
-
-### Alpine.js Usage
-
-```blade
-<!-- For simple interactivity -->
-<div x-data="{ open: false }">
-    <button @click="open = !open">Toggle</button>
-    <div x-show="open">Content</div>
-</div>
-```
-
-### RTL Layout Support
-
-```blade
-<!-- Built-in RTL support for Arabic interface -->
-<div class="flex items-center space-x-3 rtl:space-x-reverse">
-    <span>النص العربي</span>
-    <svg class="w-5 h-5">...</svg>
-</div>
-
-<!-- CSS utilities for RTL -->
-.rtl\:space-x-reverse > :not([hidden]) ~ :not([hidden]) {
-    --tw-space-x-reverse: 1;
-}
-```
-
-## 🚀 Performance Patterns
-
-### Eager Loading
-
-```php
-// Always eager load relationships
-$quizzes = Quiz::with('questions', 'subject')->get();
-$quiz->load('questions', 'results');
-```
-
-### Caching
-
-```php
-// Cache expensive operations
-$data = Cache::remember('welcome_page_data', 1800, function () {
-    return [
-        'stats' => $this->getGeneralStats(),
-        'activeSubjects' => $this->getActiveSubjects()
-    ];
-});
-```
-
-### Pagination
-
-```php
-// Standard pagination
-$users = User::paginate(20);
-
-// With query string preservation
-$users = User::paginate(20)->withQueryString();
-```
-
-## 🌍 Localization Pattern
-
-### Arabic-Only Interface
-
-```php
-// No localization files needed - everything is in Arabic
-// All interface text is directly written in Arabic
-
-// Blade template example
-<h1 class="text-2xl font-bold">إنشاء اختبار جديد</h1>
-<p class="text-gray-600">ابدأ رحلة تعليمية جديدة مع نموذج جُذور</p>
-
-// Success/Error messages
-return redirect()->back()->with('success', 'تم حفظ البيانات بنجاح');
-return redirect()->back()->with('error', 'حدث خطأ أثناء العملية');
-
-// Validation messages
-$validator->errors()->add('field', 'هذا الحقل مطلوب');
-```
-
-### Content Language Configuration
-
-```php
-// Only for AI-generated educational content (not interface)
-// These are content languages for educational material generation
-$supportedContentLanguages = ['arabic', 'english', 'hebrew'];
-
-// Subject configuration for content generation
-$subjects = [
-    'اللغة العربية' => 'arabic',      // Arabic language content
-    'اللغة الإنجليزية' => 'english',    // English language content
-    'اللغة العبرية' => 'hebrew',       // Hebrew language content
-    'الرياضيات' => 'arabic',          // Math content in Arabic
-    'العلوم' => 'arabic',             // Science content in Arabic
-];
-```
-
-## 🌟 API Response Pattern
-
-```php
-// All responses in Arabic
-// Success response
-return response()->json([
-    'success' => true,
-    'data' => $result,
-    'message' => 'تم بنجاح'
-]);
-
-// Error response
+// API responses
 return response()->json([
     'success' => false,
     'message' => 'فشل العملية: ' . $e->getMessage()
 ], 422);
 ```
 
-## 📱 Mobile & Responsive Patterns
+### Logging Pattern
+
+```php
+Log::error('Operation failed', [
+    'error' => $e->getMessage(),
+    'user_id' => Auth::id(),
+    'quiz_id' => $quiz->id ?? null,
+    'trace' => $e->getTraceAsString()
+]);
+```
+
+## Performance Patterns
+
+### Eager Loading
+
+```php
+// Load required relationships upfront
+$quizzes = Quiz::with(['questions', 'subject', 'results'])->where('user_id', Auth::id())->get();
+```
+
+### Pagination
+
+```php
+// Standard pagination with query preservation
+$results = Result::with(['quiz', 'user'])->paginate(20)->withQueryString();
+```
+
+### Chart Performance
+
+```javascript
+// Only create charts when elements exist
+document.addEventListener("DOMContentLoaded", function () {
+    const elements = ["rootsRadarChart", "scoreDistributionChart"];
+    elements.forEach((elementId) => {
+        const canvas = document.getElementById(elementId);
+        if (canvas) {
+            createChart(canvas, elementId);
+        }
+    });
+});
+```
+
+## Mobile & RTL Patterns
+
+### Responsive Design
 
 ```blade
-<!-- Mobile-first approach with Arabic RTL support -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <div class="p-4 bg-white rounded-lg shadow text-right">
-        <!-- Arabic text naturally aligns right -->
-        <h3 class="text-lg font-bold">عنوان القسم</h3>
-        <p class="text-gray-600">وصف المحتوى</p>
+    <div class="p-4 bg-white rounded-lg text-right">
+        <h3 class="text-lg font-bold">{{ $title }}</h3>
     </div>
 </div>
 ```
 
-## 🎯 Quiz Configuration Patterns
+### RTL Layout
+
+```css
+/* Automatic RTL support with Tailwind */
+.space-x-3 {
+    /* Automatically becomes space-x-reverse in RTL */
+}
+.text-left {
+    /* Becomes text-right in RTL */
+}
+.mr-4 {
+    /* Becomes ml-4 in RTL */
+}
+```
+
+## Route Organization Pattern
+
+### Grouped Routes
 
 ```php
-// New quiz configuration settings
-$quizSettings = [
-    'time_limit' => $request->time_limit,           // null or minutes (5-180)
-    'passing_score' => $request->passing_score,     // 50-90%
-    'shuffle_questions' => $request->shuffle_questions, // boolean
-    'shuffle_answers' => $request->shuffle_answers,     // boolean
-    'show_results' => $request->show_results,           // boolean
-    'is_active' => $request->activate_quiz,             // boolean
-];
+// Public routes
+Route::prefix('quiz')->name('quiz.')->group(function () {
+    Route::post('/enter-pin', [WelcomeController::class, 'enterPin'])->name('enter-pin');
+    Route::get('/{quiz}/take', [QuizController::class, 'take'])->name('take');
+});
 
-// Apply settings to quiz
-$quiz->update($quizSettings);
+// Authenticated routes with middleware
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('quizzes', QuizController::class);
+
+    Route::prefix('quizzes')->name('quizzes.')->group(function () {
+        Route::patch('/{quiz}/toggle-status', [QuizController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('duplicate');
+    });
+});
+```
+
+## Data Export Patterns
+
+### Collection Transformation
+
+```php
+// Transform for frontend consumption
+$transformedResults = $results->map(function ($result) {
+    return [
+        'id' => $result->id,
+        'student_name' => $result->guest_name ?: ($result->user?->name ?? 'غير معروف'),
+        'total_score' => $result->total_score,
+        'scores' => is_array($result->scores) ? $result->scores : json_decode($result->scores ?? '{}', true),
+        'created_at' => $result->created_at->format('Y-m-d H:i')
+    ];
+});
 ```
