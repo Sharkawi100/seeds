@@ -1,123 +1,403 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="bg-white rounded-lg shadow">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold">نتائج الاختبار: {{ $quiz->title }}</h1>
-                @if($results->count() > 0)
-                <button onclick="generateClassReport({{ $quiz->id }})" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                    <span>🤖</span>
-                    <span>تحليل أداء الصف بالذكاء الاصطناعي</span>
-                </button>
-                @endif
+<div class="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header Section -->
+        <div class="mb-8">
+            <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <a href="{{ route('quizzes.index') }}" 
+                               class="p-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                                <i class="fas fa-arrow-right text-gray-600"></i>
+                            </a>
+                            <div>
+                                <h1 class="text-4xl font-black text-gray-900 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                                    📊 نتائج الاختبار
+                                </h1>
+                                <p class="text-xl text-gray-700 font-medium mt-1">{{ $quiz->title }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-6 text-sm text-gray-600">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-book text-indigo-500"></i>
+                                <span>{{ $quiz->subject->name ?? 'غير محدد' }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-layer-group text-purple-500"></i>
+                                <span>الصف {{ $quiz->grade_level }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-calendar text-green-500"></i>
+                                <span>{{ $quiz->created_at->format('Y/m/d') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-right">
+                        <div class="text-3xl font-bold text-indigo-600">{{ $results->count() }}</div>
+                        <div class="text-sm text-gray-500">إجمالي المحاولات</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Dashboard -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-gradient-to-r from-green-400 to-green-600 rounded-xl">
+                        <i class="fas fa-percentage text-white text-2xl"></i>
+                    </div>
+                    <div class="mr-4">
+                        <div class="text-2xl font-bold text-gray-900">{{ round($results->avg('total_score')) }}%</div>
+                        <div class="text-sm text-gray-600">متوسط الدرجات</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl">
+                        <i class="fas fa-trophy text-white text-2xl"></i>
+                    </div>
+                    <div class="mr-4">
+                        <div class="text-2xl font-bold text-gray-900">{{ $results->max('total_score') }}%</div>
+                        <div class="text-sm text-gray-600">أعلى درجة</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-xl">
+                        <i class="fas fa-chart-line text-white text-2xl"></i>
+                    </div>
+                    <div class="mr-4">
+                        <div class="text-2xl font-bold text-gray-900">{{ $results->where('total_score', '>=', 70)->count() }}</div>
+                        <div class="text-sm text-gray-600">نجح</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-gradient-to-r from-purple-400 to-purple-600 rounded-xl">
+                        <i class="fas fa-users text-white text-2xl"></i>
+                    </div>
+                    <div class="mr-4">
+                        <div class="text-2xl font-bold text-gray-900">{{ $results->count() }}</div>
+                        <div class="text-sm text-gray-600">عدد المحاولات</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- 4-Roots Radar Chart -->
+            <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <i class="fas fa-chart-radar text-indigo-600"></i>
+                    تحليل الجُذور الأربعة
+                </h3>
+                
+                <div class="relative h-80">
+                    <canvas id="rootsRadarChart"></canvas>
+                </div>
+                
+                <!-- Legend -->
+                <div class="grid grid-cols-2 gap-4 mt-6">
+                    @php
+                    $roots = [
+                        'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => '#3B82F6', 'desc' => 'الجوهر والماهية'],
+                        'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => '#8B5CF6', 'desc' => 'التفكير والتحليل'],
+                        'waslat' => ['name' => 'وَصلات', 'icon' => '🔗', 'color' => '#10B981', 'desc' => 'الربط والتكامل'],
+                        'roaya' => ['name' => 'رُؤية', 'icon' => '👁️', 'color' => '#F59E0B', 'desc' => 'التطبيق والإبداع']
+                    ];
+                    @endphp
+                    
+                    @foreach($roots as $key => $root)
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                        <div class="text-2xl">{{ $root['icon'] }}</div>
+                        <div>
+                            <div class="font-bold text-gray-900">{{ $root['name'] }}</div>
+                            <div class="text-xs text-gray-600">{{ $root['desc'] }}</div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <!-- Score Distribution Chart -->
+            <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <i class="fas fa-chart-bar text-purple-600"></i>
+                    توزيع الدرجات
+                </h3>
+                
+                <div class="relative h-80">
+                    <canvas id="scoreDistributionChart"></canvas>
+                </div>
+                
+                <!-- Distribution Summary -->
+                <div class="grid grid-cols-4 gap-2 mt-6 text-center">
+                    <div class="p-3 bg-red-50 rounded-xl">
+                        <div class="text-lg font-bold text-red-600">{{ $results->where('total_score', '<', 50)->count() }}</div>
+                        <div class="text-xs text-red-700">ضعيف</div>
+                    </div>
+                    <div class="p-3 bg-orange-50 rounded-xl">
+                        <div class="text-lg font-bold text-orange-600">{{ $results->whereBetween('total_score', [50, 69])->count() }}</div>
+                        <div class="text-xs text-orange-700">مقبول</div>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-xl">
+                        <div class="text-lg font-bold text-blue-600">{{ $results->whereBetween('total_score', [70, 89])->count() }}</div>
+                        <div class="text-xs text-blue-700">جيد</div>
+                    </div>
+                    <div class="p-3 bg-green-50 rounded-xl">
+                        <div class="text-lg font-bold text-green-600">{{ $results->where('total_score', '>=', 90)->count() }}</div>
+                        <div class="text-xs text-green-700">ممتاز</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Results Table -->
+        <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 overflow-hidden">
+            <div class="p-6 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-table text-indigo-600"></i>
+                    النتائج التفصيلية
+                </h3>
             </div>
             
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+                <table class="w-full">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">الاسم</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">النتيجة</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">التاريخ</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">إجراءات</th>
+                            <th class="px-6 py-4 text-right text-sm font-bold text-gray-700">الطالب</th>
+                            <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">النتيجة الإجمالية</th>
+                            <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">جَوهر</th>
+                            <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">ذِهن</th>
+                            <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">وَصلات</th>
+                            <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">رُؤية</th>
+                            <th class="px-6 py-4 text-center text-sm font-bold text-gray-700">الإجراءات</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($results as $result)
-<tr>
-    <td class="px-6 py-4 whitespace-nowrap">
-        <div class="text-sm font-medium text-gray-900">
-            @if($result->user)
-                {{ $result->user->name }}
-            @else
-                {{ $result->guest_name ?? 'طالب ضيف' }}
-                <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full mr-2">ضيف</span>
-            @endif
-        </div>
-        <div class="text-sm text-gray-500">
-            @if($result->user)
-                {{ $result->user->email }}
-            @else
-                رمز: {{ substr($result->guest_token ?? '', 0, 8) }}...
-            @endif
-        </div>
-    </td>
-    <td class="px-6 py-4 whitespace-nowrap">
-        <span class="text-sm text-gray-900">{{ $result->created_at->format('Y/m/d H:i') }}</span>
-    </td>
-    <td class="px-6 py-4 whitespace-nowrap">
-        <span class="text-2xl font-bold {{ $result->total_score >= 60 ? 'text-green-600' : 'text-red-600' }}">
-            {{ $result->total_score }}%
-        </span>
-    </td>
-    <td class="px-6 py-4 whitespace-nowrap text-left">
-        <a href="{{ route('results.show', $result) }}" 
-           class="text-blue-600 hover:text-blue-900 font-medium">
-            عرض التفاصيل
-        </a>
-    </td>
-</tr>
-@endforeach
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach($results->sortByDesc('total_score') as $index => $result)
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                                        {{ $index + 1 }}
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-900">{{ $result->guest_name ?: ($result->user ? $result->user->name : 'ضيف') }}</div>
+                                        <div class="text-sm text-gray-500">{{ $result->created_at->format('Y/m/d H:i') }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex items-center justify-center">
+                                    <div class="text-lg font-bold {{ $result->total_score >= 70 ? 'text-green-600' : ($result->total_score >= 50 ? 'text-orange-600' : 'text-red-600') }}">
+                                        {{ $result->total_score }}%
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            @php
+                            $scores = is_array($result->scores) ? $result->scores : json_decode($result->scores ?? '{}', true);
+                            @endphp
+                            
+                            <td class="px-6 py-4 text-center">
+                                <span class="text-sm font-medium text-blue-600">{{ $scores['jawhar'] ?? 0 }}%</span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="text-sm font-medium text-purple-600">{{ $scores['zihn'] ?? 0 }}%</span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="text-sm font-medium text-green-600">{{ $scores['waslat'] ?? 0 }}%</span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="text-sm font-medium text-orange-600">{{ $scores['roaya'] ?? 0 }}%</span>
+                            </td>
+                            
+                            <td class="px-6 py-4 text-center">
+                                <a href="{{ route('results.show', $result) }}" 
+                                   class="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm">
+                                    <i class="fas fa-eye"></i>
+                                    عرض
+                                </a>
+                            </td>
+                        </tr>
+                        @endforeach
                     </tbody>
                 </table>
             </div>
-            
-            <div class="px-6 py-4">
-                {{ $results->links() }}
-            </div>
         </div>
     </div>
 </div>
-<!-- AI Class Report Section -->
-<div id="classReportSection" class="hidden mt-8 bg-white rounded-lg shadow-lg overflow-hidden">
-    <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-4">
-        <h3 class="text-xl font-bold text-white">تحليل الذكاء الاصطناعي لأداء الصف</h3>
-    </div>
-    <div class="p-6">
-        <div id="classReportContent" class="prose max-w-none"></div>
-    </div>
-</div>
-@push('scripts')
-<script>
-async function generateClassReport(quizId) {
-    const button = event.target.closest('button');
-    const originalContent = button.innerHTML;
-    button.innerHTML = '<svg class="animate-spin h-5 w-5 text-white mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
-    button.disabled = true;
-    
-    try {
-        const response = await fetch(`/roots/admin/ai/quiz/${quizId}/report`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-                type: 'class_analysis'
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            document.getElementById('classReportContent').innerHTML = data.report.replace(/\n/g, '<br>');
-            document.getElementById('classReportSection').classList.remove('hidden');
-            document.getElementById('classReportSection').scrollIntoView({ behavior: 'smooth' });
-        } else {
-            alert(data.message || 'حدث خطأ في توليد التقرير');
-        }
-    } catch (error) {
-        alert('حدث خطأ في الاتصال');
-        console.error(error);
-    } finally {
-        button.innerHTML = originalContent;
-        button.disabled = false;
-    }
+@endsection
+
+@push('styles')
+<style>
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
 }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculate average scores for each root
+    const results = @json($results->values()); // Convert to array
+    const rootAverages = {
+        jawhar: 0,
+        zihn: 0,
+        waslat: 0,
+        roaya: 0
+    };
+    
+    let validResults = 0;
+    results.forEach(result => {
+        if (result.scores) {
+            const scores = typeof result.scores === 'string' ? JSON.parse(result.scores) : result.scores;
+            rootAverages.jawhar += scores.jawhar || 0;
+            rootAverages.zihn += scores.zihn || 0;
+            rootAverages.waslat += scores.waslat || 0;
+            rootAverages.roaya += scores.roaya || 0;
+            validResults++;
+        }
+    });
+    
+    // Calculate averages
+    Object.keys(rootAverages).forEach(key => {
+        rootAverages[key] = validResults > 0 ? rootAverages[key] / validResults : 0;
+    });
+
+    // 4-Roots Radar Chart
+    const radarCanvas = document.getElementById('rootsRadarChart');
+    if (radarCanvas) {
+        const ctx1 = radarCanvas.getContext('2d');
+        new Chart(ctx1, {
+            type: 'radar',
+            data: {
+                labels: ['جَوهر (الماهية)', 'ذِهن (التحليل)', 'وَصلات (الربط)', 'رُؤية (التطبيق)'],
+                datasets: [{
+                    label: 'متوسط الأداء',
+                    data: [rootAverages.jawhar, rootAverages.zihn, rootAverages.waslat, rootAverages.roaya],
+                    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(99, 102, 241, 1)',
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        angleLines: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        pointLabels: {
+                            font: {
+                                size: 12,
+                                family: 'Tajawal'
+                            },
+                            color: '#374151'
+                        },
+                        ticks: {
+                            font: {
+                                size: 10
+                            },
+                            color: '#6B7280',
+                            backdropColor: 'transparent'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Score Distribution Chart
+    const doughnutCanvas = document.getElementById('scoreDistributionChart');
+    if (doughnutCanvas) {
+        const ctx2 = doughnutCanvas.getContext('2d');
+    const scoreRanges = {
+        'ضعيف (0-49)': results.filter(r => r.total_score < 50).length,
+        'مقبول (50-69)': results.filter(r => r.total_score >= 50 && r.total_score < 70).length,
+        'جيد (70-89)': results.filter(r => r.total_score >= 70 && r.total_score < 90).length,
+        'ممتاز (90-100)': results.filter(r => r.total_score >= 90).length
+    };
+
+        new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(scoreRanges),
+                datasets: [{
+                    data: Object.values(scoreRanges),
+                    backgroundColor: [
+                        '#EF4444',
+                        '#F59E0B', 
+                        '#3B82F6',
+                        '#10B981'
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            font: {
+                                family: 'Tajawal'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
 </script>
 @endpush
-@endsection

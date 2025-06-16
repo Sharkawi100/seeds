@@ -933,4 +933,35 @@ class QuizController extends Controller
 
         return $questionsCreated;
     }
+    /**
+     * Toggle quiz active status
+     */
+    public function toggleStatus(Quiz $quiz)
+    {
+        $this->authorizeQuizManagement();
+
+        if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        $quiz->update(['is_active' => !$quiz->is_active]);
+
+        $message = $quiz->is_active ? 'تم تفعيل الاختبار بنجاح.' : 'تم إلغاء تفعيل الاختبار بنجاح.';
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Show quiz results
+     */
+    public function results(Quiz $quiz)
+    {
+        $this->authorizeQuizManagement();
+
+        if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        return redirect()->route('results.quiz', $quiz);
+    }
 }

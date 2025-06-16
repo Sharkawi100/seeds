@@ -51,11 +51,33 @@
             <!-- Quick Actions -->
             <div class="p-6 bg-gray-50 border-t">
                 <div class="flex flex-wrap items-center gap-4">
-                    <a href="{{ route('quizzes.edit', $quiz) }}" 
-                       class="btn-primary">
-                        <i class="fas fa-edit"></i>
-                        تعديل الاختبار
-                    </a>
+                    @if(!$quiz->has_submissions)
+    <a href="{{ route('quizzes.edit', $quiz) }}" 
+       class="btn-primary">
+        <i class="fas fa-edit"></i>
+        تعديل الاختبار
+    </a>
+@else
+    <!-- Toggle Status -->
+    <form action="{{ route('quizzes.toggle-status', $quiz) }}" method="POST" class="inline">
+        @csrf
+        @method('PATCH')
+        <button type="submit" class="flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition
+            {{ $quiz->is_active ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200' }}">
+            <i class="fas {{ $quiz->is_active ? 'fa-pause' : 'fa-play' }}"></i>
+            {{ $quiz->is_active ? 'إلغاء التفعيل' : 'تفعيل' }}
+        </button>
+    </form>
+    
+    <!-- Copy Quiz -->
+    <form action="{{ route('quizzes.duplicate', $quiz) }}" method="POST" class="inline">
+        @csrf
+        <button type="submit" class="flex items-center gap-2 px-4 py-3 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg font-medium transition">
+            <i class="fas fa-copy"></i>
+            نسخ الاختبار
+        </button>
+    </form>
+@endif
                     
                     <a href="{{ route('quizzes.questions.index', $quiz) }}" 
                        class="btn-secondary">

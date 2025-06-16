@@ -161,6 +161,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{quiz}/generate-questions', [QuizController::class, 'generateQuestions'])->name('generate-questions');
         Route::post('/{quiz}/finalize', [QuizController::class, 'finalizeQuiz'])->name('finalize');
         Route::post('/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('duplicate');
+        Route::patch('/{quiz}/toggle-status', [QuizController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/{quiz}/results', [QuizController::class, 'results'])->name('results');
     });
 
     // AI Text Generation (Global)

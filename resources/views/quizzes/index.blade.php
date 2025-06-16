@@ -245,7 +245,7 @@
                         
                         <!-- Action Buttons -->
                         <div class="mt-auto">
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-3 gap-3">
                                 <a href="{{ route('quizzes.show', $quiz) }}" class="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-4 rounded-2xl font-bold text-center transition-all duration-300 flex items-center justify-center gap-2 border border-gray-200 shadow-sm hover:shadow-md">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -259,6 +259,13 @@
                                     </svg>
                                     تعديل
                                 </a>
+                                <a href="{{ route('quizzes.results', $quiz) }}" 
+   class="bg-green-100 hover:bg-green-200 text-green-700 py-3 px-4 rounded-2xl font-bold text-center transition-all duration-300 flex items-center justify-center gap-2 border border-green-200 shadow-sm hover:shadow-md">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    النتائج
+</a>
                             </div>
                         </div>
                     </div>

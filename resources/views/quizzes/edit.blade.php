@@ -284,14 +284,49 @@
                             إلغاء
                         </a>
                         
-                        <!-- Delete Button (Danger Zone) -->
-                        <button type="button"
-                                onclick="confirmDelete()"
-                                class="px-8 py-4 bg-red-100 hover:bg-red-600 text-red-600 hover:text-white rounded-xl font-bold text-lg transition-all duration-200 flex items-center justify-center gap-3 sm:mr-auto">
-                            <i class="fas fa-trash"></i>
-                            حذف الاختبار
-                        </button>
-                    </div>
+                        </div>
+                    <!-- Quiz Management Actions -->
+<div class="bg-gray-50 rounded-xl p-6 mb-8 border-2 border-gray-200">
+    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <i class="fas fa-cogs text-purple-600"></i>
+        إدارة الاختبار
+    </h3>
+    
+    <div class="flex flex-wrap gap-4">
+        <!-- Toggle Active Status -->
+        <form action="{{ route('quizzes.toggle-status', $quiz) }}" method="POST" class="inline-block">
+            @csrf
+            @method('PATCH')
+            <button type="submit" class="flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition
+                {{ $quiz->is_active ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200' }}">
+                <i class="fas {{ $quiz->is_active ? 'fa-pause' : 'fa-play' }}"></i>
+                {{ $quiz->is_active ? 'إلغاء تفعيل الاختبار' : 'تفعيل الاختبار' }}
+            </button>
+        </form>
+        
+        <!-- Copy Quiz -->
+        <form action="{{ route('quizzes.duplicate', $quiz) }}" method="POST" class="inline-block">
+            @csrf
+            <button type="submit" class="flex items-center gap-2 px-4 py-3 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg font-medium transition">
+                <i class="fas fa-copy"></i>
+                نسخ الاختبار
+            </button>
+        </form>
+        
+        <!-- Delete Quiz -->
+        @if(!$quiz->has_submissions)
+        <form action="{{ route('quizzes.destroy', $quiz) }}" method="POST" class="inline-block" 
+              onsubmit="return confirm('هل أنت متأكد من حذف هذا الاختبار؟ لا يمكن التراجع عن هذا الإجراء.')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="flex items-center gap-2 px-4 py-3 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg font-medium transition">
+                <i class="fas fa-trash"></i>
+                حذف الاختبار
+            </button>
+        </form>
+        @endif
+    </div>
+</div>
                 </form>
             </div>
             
@@ -619,6 +654,10 @@ document.addEventListener('keydown', function(e) {
             closeDeleteModal();
         }
     }
+});
+// Ensure TinyMCE content is submitted
+document.querySelector('form').addEventListener('submit', function(e) {
+    tinymce.triggerSave();
 });
 </script>
 @endpush
