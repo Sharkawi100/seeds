@@ -225,10 +225,10 @@ if ($validScores > 0) {
                     </label>
                     <select name="score_range" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
                         <option value="">جميع المستويات</option>
-                        <option value="excellent" {{ request('score_range') == 'excellent' ? 'selected' : '' }}>ممتاز (90-100%)</option>
-                        <option value="good" {{ request('score_range') == 'good' ? 'selected' : '' }}>جيد (70-89%)</option>
-                        <option value="fair" {{ request('score_range') == 'fair' ? 'selected' : '' }}>مقبول (50-69%)</option>
-                        <option value="poor" {{ request('score_range') == 'poor' ? 'selected' : '' }}>ضعيف (أقل من 50%)</option>
+                        <option value="excellent" {{ request('score_range') == 'excellent' ? 'selected' : '' }}>متقن (90-100%)</option>
+                        <option value="good" {{ request('score_range') == 'good' ? 'selected' : '' }}>متقدم (70-89%)</option>
+                        <option value="fair" {{ request('score_range') == 'fair' ? 'selected' : '' }}>متطور (50-69%)</option>
+                        <option value="poor" {{ request('score_range') == 'poor' ? 'selected' : '' }}>مبتدئ (أقل من 50%)</option>
                     </select>
                 </div>
 

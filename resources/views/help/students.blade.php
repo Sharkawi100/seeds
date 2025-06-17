@@ -1029,11 +1029,11 @@
 
             <div class="faq-item animate-on-scroll">
                 <button class="faq-question" onclick="toggleFAQ(this)">
-                    <span>كيف أحسن نتائجي في الجذور الضعيفة؟</span>
+                    <span>كيف أطور نموي في الجذور التي أريد تقويتها؟</span>
                     <span style="transition: transform 0.3s ease;">▼</span>
                 </button>
                 <div class="faq-answer">
-                    <p>راجع أسئلة الجذر الضعيف، اطلب شرح من معلمك، وتدرب على أنواع الأسئلة المختلفة لهذا الجذر.</p>
+                    <p>راجع أسئلة الجذر الذي تريد تطويره، اطلب شرح من معلمك، وتدرب على أنواع الأسئلة المختلفة لهذا الجذر. كل جذر ينمو بالممارسة!</p>
                 </div>
             </div>
 
