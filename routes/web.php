@@ -126,7 +126,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [ProfileController::class, 'dashboard'])->name('dashboard');
-
+    // Perspective Switching for Admins
+    Route::middleware('admin')->group(function () {
+        Route::post('/switch-to-teacher', [ProfileController::class, 'switchToTeacher'])->name('switch.teacher');
+        Route::post('/switch-to-admin', [ProfileController::class, 'switchToAdmin'])->name('switch.admin');
+    });
     // Profile Management
     Route::prefix('profile')->name('profile.')->controller(ProfileController::class)->group(function () {
         Route::get('/', 'profileDashboard')->name('dashboard');

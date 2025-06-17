@@ -1,6 +1,58 @@
 {{-- Update resources/views/dashboard.blade.php --}}
 @extends('layouts.app')
-
+{{-- Perspective Switching for Admins --}}
+@if(Auth::user()->is_admin)
+    <div class="mb-6">
+        @if(session('viewing_as') === 'teacher')
+            {{-- Admin viewing as teacher --}}
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-blue-100 rounded-full p-2 ml-3">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-blue-800">عرض منظور المعلم</h3>
+                        <p class="text-blue-600 text-sm">أنت تشاهد المنصة كما يراها المعلمون</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <form action="{{ route('switch.admin') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                            العودة للإدارة
+                        </button>
+                    </form>
+                </div>
+            </div>
+        @else
+            {{-- Admin in normal mode - show teacher view option --}}
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-gray-100 rounded-full p-2 ml-3">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">منظور الإدارة</h3>
+                        <p class="text-gray-600 text-sm">يمكنك تجربة منظور المعلم لفهم تجربة المستخدم</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <form action="{{ route('switch.teacher') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                            عرض كمعلم
+                        </button>
+                    </form>
+                </div>
+            </div>
+        @endif
+    </div>
+@endif
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
     <div class="py-12">
