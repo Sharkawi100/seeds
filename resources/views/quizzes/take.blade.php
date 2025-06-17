@@ -3,12 +3,17 @@
 @section('title', $quiz->title)
 
 @section('content')
+@php
+    $userName = Auth::check() ? Auth::user()->name : (session('guest_name') ?? 'طالب');
+@endphp
 <div id="quiz-container" class="min-h-screen flex flex-col bg-gradient-to-br from-purple-600 to-blue-600">
     <!-- Simple Header - Fixed height -->
     <header class="h-16 bg-black/20 backdrop-blur-sm flex items-center flex-shrink-0 sticky top-0 z-30">
         <div class="max-w-7xl mx-auto w-full px-4 flex items-center justify-between">
-            <h1 class="text-white text-lg md:text-xl font-bold truncate">{{ $quiz->title }}</h1>
-            
+            <div class="flex items-center gap-4">
+                <h1 class="text-white text-lg md:text-xl font-bold truncate">{{ $quiz->title }}</h1>
+                <span class="text-white/80 text-sm">• مرحباً {{ $userName }}</span>
+            </div>            
             @if($quiz->time_limit)
             <div class="bg-red-500 text-white px-3 py-2 rounded-full font-mono text-base md:text-lg font-bold">
                 <span id="timer">{{ $quiz->time_limit }}:00</span>
