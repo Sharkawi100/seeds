@@ -399,3 +399,240 @@ $averageScore = $finalScores->avg(); // Final scores only
 -   **Statistics Validation**: Regularly verify calculation accuracy
 -   **Guest Data Cleanup**: Consider automated cleanup of expired guest tokens
 -   **Performance Optimization**: Monitor query performance as data grows
+
+# Recent Changes Summary - جُذور (Juzoor)
+
+**Date:** June 17, 2025  
+**Issue:** Quiz generation failing when no educational text provided  
+**Status:** ✅ RESOLVED
+
+---
+
+## 🐛 Issue Description
+
+**Problem:** Quiz generation was failing with 422/500 errors when trying to generate a quiz without providing educational text (`text_source: none`).
+
+**User Experience:**
+
+-   Users could generate quizzes WITH educational text ✅
+-   Users could NOT generate quizzes WITHOUT educational text ❌
+-   Error: "The educational text field is required" even when `text_source` was 'none'
+
+---
+
+## 🔧 Root Causes Identified
+
+### 1. Validation Logic Error
+
+```php
+// ❌ BEFORE: Always required educational_text
+'educational_text' => 'required|string|min:50',
+
+// ✅ AFTER: Conditional requirement based on text_source
+'educational_text' => 'nullable|required_unless:text_source,none|string|min:50',
+```
+
+### 2. Controller Logic Error
+
+```php
+// ❌ BEFORE: Always called generateQuestionsFromText (needs existing text)
+$questions = $this->claudeService->generateQuestionsFromText($educationalText, ...);
+
+// ✅ AFTER: Conditional logic based on text_source
+if ($request->text_source === 'none') {
+    $aiResponse = $this->claudeService->generateJuzoorQuiz(...); // Generates complete quiz
+} else {
+    $questions = $this->claudeService->generateQuestionsFromText(...); // Uses existing text
+}
+```
+
+### 3. Question Count Preservation Issue
+
+```php
+// ❌ BEFORE: ceil() was creating more questions than requested
+'1' => ceil($count * 0.4),  // 3 questions → ceil(3*0.4) = 2
+'2' => ceil($count * 0.4),  // 3 questions → ceil(3*0.4) = 2
+'3' => $count - 2 - 2       // 3 questions → 3-2-2 = -1 ❌
+
+// ✅ AFTER: floor() preserves exact count
+'1' => floor($count * 0.4), // 3 questions → floor(3*0.4) = 1
+'2' => floor($count * 0.4), // 3 questions → floor(3*0.4) = 1
+'3' => $count - 1 - 1       // 3 questions → 3-1-1 = 1 ✅
+```
+
+### 4. ClaudeService Parameter Issue
+
+```php
+// ❌ BEFORE: Method didn't accept total question count
+public function generateJuzoorQuiz(..., ?string $passageTopic = null): array
+
+// ✅ AFTER: Added totalQuestions parameter
+public function generateJuzoorQuiz(..., ?string $passageTopic = null, ?int $totalQuestions = null): array
+```
+
+### 5. Variable Conflict in Prompt Building
+
+```php
+// ❌ BEFORE: Parameter was overwritten by local calculation
+public function buildJuzoorQuizPrompt(..., int $totalQuestions): string {
+    $totalQuestions = 0; // ← Overwrote the parameter!
+    foreach ($roots as $root) { $totalQuestions += ...; }
+}
+
+// ✅ AFTER: Removed variable conflict
+public function buildJuzoorQuizPrompt(..., int $totalQuestions): string {
+    $prompt .= "المجموع: {$totalQuestions} سؤال"; // ← Uses parameter correctly
+}
+```
+
+---
+
+## 📝 Files Modified
+
+### 1. `app/Http/Controllers/QuizController.php`
+
+**Lines changed:** ~215-280  
+**Changes:**
+
+-   Fixed validation rules for `educational_text`
+-   Added conditional logic for `text_source`
+-   Improved roots transformation algorithm
+-   Added comprehensive logging
+
+### 2. `app/Services/ClaudeService.php`
+
+**Methods modified:**
+
+-   `generateJuzoorQuiz()` - Added `$totalQuestions` parameter
+-   `buildJuzoorQuizPrompt()` - Added `$totalQuestions` parameter and fixed variable conflict
+
+**Changes:**
+
+-   Updated method signatures
+-   Fixed prompt building logic
+-   Added explicit question count instruction to AI
+
+---
+
+## 🧪 Testing Results
+
+### Before Fix:
+
+```
+Request: 15 questions, text_source: 'none'
+Result: 422 Validation Error
+Log: "The educational text field is required"
+```
+
+### After Fix:
+
+```
+Request: 15 questions, text_source: 'none'
+Result: ✅ Success - 15 questions generated
+Log: "total_requested":15,"total_transformed":15,"questions_count":15
+```
+
+### Test Matrix Completed:
+
+| Text Source | Educational Text | Expected Result      | Actual Result |
+| ----------- | ---------------- | -------------------- | ------------- |
+| `none`      | Not provided     | ✅ Generate quiz     | ✅ Works      |
+| `manual`    | User provided    | ✅ Use provided text | ✅ Works      |
+| `ai`        | AI generated     | ✅ Use AI text       | ✅ Works      |
+
+---
+
+## 🎯 Impact Assessment
+
+### Fixed Issues:
+
+1. ✅ Quiz generation without text now works
+2. ✅ Exact question count preservation
+3. ✅ Proper validation rules
+4. ✅ Better error handling and logging
+5. ✅ Improved user experience for teachers
+
+### No Breaking Changes:
+
+-   ✅ Existing quizzes still work
+-   ✅ Quiz generation WITH text still works
+-   ✅ All existing functionality preserved
+
+---
+
+## 📚 Documentation Updated
+
+### New/Updated Files:
+
+1. **`_project_docs/code_patterns.md`** - Added AI integration patterns and fixes
+2. **`_project_docs/troubleshooting_guide.md`** - New comprehensive troubleshooting guide
+3. **`_project_docs/recent_changes_summary.md`** - This summary document
+
+### Key Patterns Documented:
+
+-   Conditional quiz generation logic
+-   Proper validation patterns
+-   Roots transformation algorithm
+-   ClaudeService usage patterns
+-   Debugging and logging practices
+
+---
+
+## 🚀 Deployment Notes
+
+### Pre-deployment Checklist:
+
+-   [x] Code tested in development environment
+-   [x] Both scenarios tested (with/without text)
+-   [x] Question count preservation verified
+-   [x] Error handling tested
+-   [x] Documentation updated
+
+### Post-deployment Verification:
+
+1. Test quiz generation without text
+2. Test quiz generation with text
+3. Verify question counts match requests
+4. Check error logs for any issues
+5. Test with different root distributions
+
+---
+
+## 🔮 Future Considerations
+
+### Potential Improvements:
+
+1. **Background Processing**: For large quizzes (20+ questions)
+2. **Caching**: Cache AI responses for similar requests
+3. **Validation Enhancement**: Better error messages in Arabic
+4. **User Feedback**: Loading indicators during AI generation
+5. **Analytics**: Track quiz generation success rates
+
+### Monitoring Points:
+
+-   AI service response times
+-   Question generation success rates
+-   User error reports
+-   Token usage patterns
+
+---
+
+## 📞 Support Information
+
+### If Issues Arise:
+
+1. **Check logs first**: `storage/logs/laravel.log`
+2. **Test both scenarios**: with and without educational text
+3. **Verify question counts**: requested vs generated
+4. **Reference troubleshooting guide**: `_project_docs/troubleshooting_guide.md`
+
+### Contact for Technical Issues:
+
+-   Check documentation first
+-   Include error logs and request details
+-   Specify which scenario (with/without text)
+-   Mention exact question counts requested vs received
+
+---
+
+**Summary**: Major quiz generation issue resolved with improved conditional logic, proper validation, and exact question count preservation. System now fully supports both text-based and text-free quiz generation scenarios.

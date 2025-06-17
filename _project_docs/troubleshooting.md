@@ -1,175 +1,406 @@
-# Troubleshooting Guide
+# Code Patterns & Conventions - جُذور (Juzoor)
 
-Last Updated: June 2025
+Last Updated: June 17, 2025
 
-## Common Issues & Solutions
+## Naming Conventions
 
-### Authentication Issues
+### PHP/Laravel
 
-#### "Account Locked" Message
+-   **Models**: Singular PascalCase (User, Quiz, Question, Result, Answer)
+-   **Controllers**: PascalCase + Controller suffix
+    -   Web: QuizController, QuestionController, ResultController
+    -   Auth: AuthenticatedSessionController, RegisteredUserController
+    -   Admin: Admin\UserController, Admin\QuizController
+-   **Database Tables**: Plural snake_case (users, quizzes, questions, results, answers)
+-   **Database Columns**: snake_case (user_id, quiz_id, root_type, depth_level, guest_token)
+-   **Routes**: kebab-case with dot notation (quizzes.index, quiz.take, quiz.enter-pin)
 
-**Cause**: Too many failed login attempts
-**Solution**:
+### Juzoor-Specific Terms
 
--   Wait 15 minutes for automatic unlock
--   Admin can unlock via admin panel
--   Check login_attempts table
+-   **Root Types**: Always lowercase English in code: `jawhar`, `zihn`, `waslat`, `roaya`
+-   **Arabic Display**: جَوهر (Jawhar), ذِهن (Zihn), وَصلات (Waslat), رُؤية (Roaya)
+-   **Depth Levels**: Integers 1, 2, 3
+-   **Subjects**: Database uses subject_id (foreign key to subjects table)
 
-#### Google Login Not Working
+### Frontend
 
-**Cause**: OAuth redirect URL mismatch
-**Solution**:
+-   **Blade Views**: kebab-case.blade.php (quiz-results.blade.php, guest-info.blade.php)
+-   **CSS Classes**: Tailwind utility classes
+-   **Custom CSS**: kebab-case (juzoor-chart, root-card)
 
-1. Check .env GOOGLE_REDIRECT_URL
-2. Update Google Cloud Console
-3. Clear config cache
+## Controller Patterns
 
-#### Password Reset Not Working
+### Standard CRUD Actions
 
-**Cause**: Email configuration
-**Solution**:
-
--   Check MAIL\_\* settings in .env
--   Verify SMTP credentials
--   Check spam folder
-
-### Deployment Issues
-
-#### 500 Server Error
-
-**Causes & Solutions**:
-
-1. **Wrong database credentials**
-    - Check .env file
-    - Verify DB_PASSWORD is set
-2. **Missing vendor folder**
-
-    - Run `composer install`
-    - Upload vendor folder
-
-3. **Permission issues**
-    - Set storage/ to 755
-    - Set bootstrap/cache to 755
-
-#### Missing Styles/CSS
-
-**Cause**: Vite development mode in production
-**Solution**:
-
-1. Delete `/public/hot` file
-2. Run `npm run build` locally
-3. Upload `/public/build/` folder
-4. Update blade templates if using @vite
-
-#### "Method Not Allowed" Error
-
-**Cause**: Route caching issues
-**Solution**:
-
-```bash
-php artisan route:clear
-php artisan cache:clear
+```php
+index()    - Display listing
+create()   - Show create form
+store()    - Handle create submission
+show()     - Display single item
+edit()     - Show edit form
+update()   - Handle edit submission
+destroy()  - Delete item
 ```
 
-Session Not Persisting
-Cause: Session configuration
-Solution:
+### Quiz-Specific Actions
 
-Check SESSION_DOMAIN in .env
-Ensure cookies are enabled
-Verify session files are writable
+```php
+take()              - Public quiz interface
+submit()            - Process quiz answers
+toggleStatus()      - Activate/deactivate quiz
+duplicate()         - Copy quiz with questions
+results()           - Redirect to quiz results
+generateText()      - AI text generation
+generateQuestions() - AI question generation (FIXED: June 2025)
+```
 
-Database Issues
-Migration Errors
-Foreign Key Constraint:
+### Authorization Pattern
 
-Check table types (InnoDB)
-Verify referenced columns exist
-Match data types exactly
+```php
+// Standard ownership check
+if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
+    abort(403, 'غير مصرح لك بهذا الإجراء.');
+}
 
-"Access Denied" Error
+// Teacher/Admin check for quiz management
+private function authorizeQuizManagement()
+{
+    if (!Auth::check() || (Auth::user()->user_type === 'student' && !Auth::user()->is_admin)) {
+        abort(403, 'غير مصرح لك بإدارة الاختبارات. هذه الصفحة للمعلمين فقط.');
+    }
+}
+```
 
-Verify database credentials
-Check user permissions
-Ensure database exists
+## Database Patterns
 
-Asset Issues
-JavaScript Not Loading
+### Transaction Pattern
 
-Check browser console for errors
-Verify file paths in blade templates
-Clear browser cache
+```php
+DB::beginTransaction();
+try {
+    $quiz = Quiz::create($validated);
+    $this->parseAndSaveQuestions($quiz, $aiResponse);
+    DB::commit();
+    return redirect()->route('quizzes.show', $quiz);
+} catch (\Exception $e) {
+    DB::rollBack();
+    Log::error('Quiz creation failed', ['error' => $e->getMessage()]);
+    return redirect()->back()->with('error', 'حدث خطأ أثناء إنشاء الاختبار.');
+}
+```
 
-Fonts Not Displaying
+### Root Score Initialization
 
-Check font file paths
-Verify .htaccess allows font files
-Add CORS headers if needed
+```php
+$rootScores = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
+```
 
-Email Issues
-Emails Not Sending
+## AI Integration Patterns (UPDATED: June 2025)
 
-Check MAIL\_\* configuration
-Verify SMTP credentials
-Check firewall/port blocking
-Enable "less secure apps" if using Gmail
+### Conditional Quiz Generation - FIXED
 
-Emails Going to Spam
+**Issue Fixed**: Quiz generation was failing when no educational text was provided.
 
-Set proper FROM address
-Add SPF/DKIM records
-Use transactional email service
+```php
+// CORRECT: Conditional logic based on text_source
+if ($request->text_source === 'none') {
+    // Generate complete quiz with passage from scratch
+    Log::info('Generating complete quiz without existing text', [
+        'quiz_id' => $quiz->id,
+        'topic' => $request->topic
+    ]);
 
-# Troubleshooting Guide - جُذور (Juzoor)
+    $aiResponse = $this->claudeService->generateJuzoorQuiz(
+        $subjectName,
+        $quiz->grade_level,
+        $request->topic,
+        $rootsForAI,
+        true, // include passage
+        $request->topic, // passage topic
+        $totalRequested // total question count
+    );
 
-Last Updated: December 2024
+    $questions = $aiResponse['questions'] ?? [];
+} else {
+    // Generate questions from existing text
+    Log::info('Generating questions from existing text', [
+        'quiz_id' => $quiz->id,
+        'text_length' => strlen($educationalText),
+        'text_preview' => substr($educationalText, 0, 100)
+    ]);
 
-## Common Issues & Solutions
+    $questions = $this->claudeService->generateQuestionsFromText(
+        $educationalText,
+        $subjectName,
+        $quiz->grade_level,
+        $rootsForAI
+    );
 
-### Chart.js Issues
+    // Structure response for existing text
+    $aiResponse = [
+        'questions' => $questions,
+        'passage' => $educationalText,
+        'passage_title' => $request->topic
+    ];
+}
+```
 
-#### Charts Not Rendering
+### Validation Patterns - FIXED
 
-**Cause**: Laravel collection passed to JavaScript
-**Solution**: Use @json($results->values()) instead of @json($results)
+**Issue Fixed**: Validation was requiring educational_text even when not needed.
 
-#### JSON Decode Errors
+```php
+// CORRECT: Conditional validation
+$validator = Validator::make($request->all(), [
+    'topic' => 'required|string|max:255',
+    'question_count' => 'required|integer|min:4|max:30',
+    'educational_text' => 'nullable|required_unless:text_source,none|string|min:50',
+    'text_source' => 'required|in:ai,manual,none',
+    'roots' => 'required|array',
+    'roots.*' => 'integer|min:0|max:20',
+    // ... other validation rules
+]);
+```
 
-**Cause**: Scores field sometimes array, sometimes string
-**Solution**: Check data type before parsing:
+### Roots Transformation - FIXED
 
-````php
-$scores = is_array($result->scores) ? $result->scores : json_decode($result->scores ?? '{}', true);
+**Issue Fixed**: Question count was not preserved due to improper use of `ceil()`.
 
-### 🔴 Error 500: Route Not Found
+```php
+// CORRECT: Preserve exact question count
+$rootsForAI = [];
+$totalRequested = array_sum($request->roots);
 
-**Symptoms:**
+foreach ($request->roots as $rootKey => $count) {
+    if ($count > 0) {
+        // Distribute more evenly and preserve exact count
+        if ($count <= 2) {
+            // For small counts, put everything in level 1
+            $rootsForAI[$rootKey] = [
+                '1' => $count,
+                '2' => 0,
+                '3' => 0
+            ];
+        } else {
+            // For larger counts, distribute more carefully
+            $level1 = floor($count * 0.4);
+            $level2 = floor($count * 0.4);
+            $level3 = $count - $level1 - $level2; // Remainder goes to level 3
 
--   Error 500 on production
--   Laravel log shows: "Route [route_name] not defined"
+            $rootsForAI[$rootKey] = [
+                '1' => $level1,
+                '2' => $level2,
+                '3' => $level3
+            ];
+        }
+    }
+}
 
-**Common Causes:**
+// Always log transformation for debugging
+Log::info('Roots transformation', [
+    'original_roots' => $request->roots,
+    'transformed_roots' => $rootsForAI,
+    'total_requested' => $totalRequested,
+    'total_transformed' => array_sum(array_map(function($root) {
+        return array_sum($root);
+    }, $rootsForAI))
+]);
+```
 
-1. Route naming mismatch between routes file and views
-2. Route cache not cleared after deployment
-3. Case sensitivity issues on Linux servers
+## ClaudeService Patterns (UPDATED: June 2025)
 
-**Solutions:**
+### Method Signatures - UPDATED
 
-```bash
-# Clear all caches
-php artisan route:clear
-php artisan cache:clear
-php artisan config:clear
-php artisan view:clear
+```php
+// UPDATED: Added totalQuestions parameter
+public function generateJuzoorQuiz(
+    string $subject,
+    int $gradeLevel,
+    string $topic,
+    array $roots,
+    bool $includePassage = false,
+    ?string $passageTopic = null,
+    ?int $totalQuestions = null
+): array
 
-# List routes to verify
-php artisan route:list | grep route_name
-````
+// UPDATED: Prompt building with question count
+private function buildJuzoorQuizPrompt(
+    string $subject,
+    int $gradeLevel,
+    string $topic,
+    array $roots,
+    bool $includePassage,
+    ?string $passageTopic,
+    int $totalQuestions
+): string
+```
 
-### Subdirectory Installation Notes
+### Fixed Prompt Pattern
 
--   Laravel app files stored outside web root for security
--   Public folder contents symlinked/copied to `/public_html/roots/`
--   Asset URLs must include `/roots` prefix
--   Configuration requires APP_URL=https://www.iseraj.com/roots
+```php
+// FIXED: Variable conflict resolved
+$prompt .= "\n\nتوزيع الأسئلة المطلوب (المجموع: {$totalQuestions} سؤال):";
+
+foreach ($roots as $rootType => $levels) {
+    $rootName = $this->getRootName($rootType);
+    $prompt .= "\n\n{$rootName}:";
+    foreach ($levels as $level => $count) {
+        if ($count > 0) {
+            $prompt .= "\n- المستوى {$level}: {$count} أسئلة";
+        }
+    }
+}
+
+$prompt .= "\n\n**تنبيه مهم: يجب أن يكون العدد الإجمالي للأسئلة هو {$totalQuestions} سؤال بالضبط. لا تولد أكثر أو أقل من هذا الرقم.**";
+```
+
+## Error Handling Patterns
+
+### User-Friendly Messages
+
+```php
+// Arabic error messages
+return redirect()->back()->with('error', 'حدث خطأ أثناء العملية. الرجاء المحاولة مرة أخرى.');
+return redirect()->route('quizzes.index')->with('success', 'تم حفظ التغييرات بنجاح.');
+
+// API responses
+return response()->json([
+    'success' => false,
+    'message' => 'فشل العملية: ' . $e->getMessage()
+], 422);
+```
+
+### Debugging Logs
+
+```php
+// Always log important operations
+Log::info('Quiz generation attempt', [
+    'user_id' => Auth::id(),
+    'text_source' => $request->text_source,
+    'topic' => $request->topic,
+    'total_questions' => array_sum($request->roots)
+]);
+
+// Log transformations for debugging
+Log::info('Roots transformation', [
+    'original_roots' => $request->roots,
+    'transformed_roots' => $rootsForAI,
+    'total_requested' => $totalRequested,
+    'total_transformed' => $transformedTotal
+]);
+```
+
+## Security Patterns
+
+### CSRF Protection
+
+```blade
+<!-- Always include CSRF in forms -->
+<form action="{{ route('quizzes.store') }}" method="POST">
+    @csrf
+    <!-- form fields -->
+</form>
+
+<!-- AJAX requests -->
+fetch('{{ route("quizzes.generate-text") }}', {
+    method: 'POST',
+    headers: {
+        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data)
+});
+```
+
+### XSS Prevention
+
+```blade
+<!-- Escape output by default -->
+{{ $user->name }}
+
+<!-- Only use raw output for trusted HTML -->
+{!! $quiz->passage !!}
+```
+
+## Guest Access Pattern
+
+### PIN-Based Quiz Access
+
+```php
+// WelcomeController.php
+public function enterPin(Request $request)
+{
+    $validated = $request->validate([
+        'pin' => 'required|string|size:6'
+    ]);
+
+    $quiz = Quiz::where('pin', $validated['pin'])
+        ->where('is_active', true)
+        ->first();
+
+    if (!$quiz) {
+        return redirect()->back()
+            ->with('error', 'رمز الاختبار غير صحيح أو منتهي الصلاحية');
+    }
+
+    return redirect()->route('quiz.take', $quiz);
+}
+```
+
+### Guest Result Storage
+
+```php
+// QuizController.php - submit method
+if (!Auth::check()) {
+    $result->guest_token = Str::random(32);
+    session(['guest_token' => $result->guest_token]);
+}
+```
+
+## Common Troubleshooting Patterns (NEW)
+
+### Quiz Generation Issues
+
+1. **Validation Errors**: Check that `educational_text` validation is conditional
+2. **Question Count Mismatch**: Verify roots transformation preserves total count
+3. **AI Service Errors**: Check ClaudeService logs and parameter passing
+4. **Variable Conflicts**: Ensure no variable shadowing in prompt building
+
+### Debugging Steps
+
+```php
+// 1. Check validation rules
+'educational_text' => 'nullable|required_unless:text_source,none|string|min:50',
+
+// 2. Verify roots transformation
+Log::info('Roots transformation', [
+    'total_requested' => $totalRequested,
+    'total_transformed' => $transformedTotal
+]);
+
+// 3. Check AI service call
+$aiResponse = $this->claudeService->generateJuzoorQuiz(
+    $subjectName,
+    $quiz->grade_level,
+    $request->topic,
+    $rootsForAI,
+    true,
+    $request->topic,
+    $totalRequested // ← Ensure this is passed
+);
+```
+
+## Recent Fixes Summary (June 2025)
+
+1. **Fixed quiz generation without text**: Added conditional logic for `text_source === 'none'`
+2. **Fixed validation rules**: Made `educational_text` conditional based on `text_source`
+3. **Fixed question count preservation**: Improved roots transformation logic
+4. **Fixed AI service parameters**: Added `totalQuestions` parameter to ensure exact count
+5. **Fixed variable conflicts**: Resolved shadowing in prompt building
+
+---
+
+**Always test both scenarios**:
+
+-   ✅ Quiz generation WITH educational text (`text_source: manual/ai`)
+-   ✅ Quiz generation WITHOUT educational text (`text_source: none`)

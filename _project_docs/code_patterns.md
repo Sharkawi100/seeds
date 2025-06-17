@@ -1,6 +1,6 @@
 # Code Patterns & Conventions - جُذور (Juzoor)
 
-Last Updated: June 16, 2025
+Last Updated: June 17, 2025
 
 ## Naming Conventions
 
@@ -45,12 +45,13 @@ destroy()  - Delete item
 ### Quiz-Specific Actions
 
 ```php
-take()         - Public quiz interface
-submit()       - Process quiz answers
-toggleStatus() - Activate/deactivate quiz
-duplicate()    - Copy quiz with questions
-results()      - Redirect to quiz results
-generateText() - AI text generation
+take()              - Public quiz interface
+submit()            - Process quiz answers
+toggleStatus()      - Activate/deactivate quiz
+duplicate()         - Copy quiz with questions
+results()           - Redirect to quiz results
+generateText()      - AI text generation
+generateQuestions() - AI question generation (FIXED: June 2025)
 ```
 
 ### Authorization Pattern
@@ -91,293 +92,202 @@ try {
 ### Root Score Initialization
 
 ```php
-// Always initialize all four roots
 $rootScores = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
-$rootCounts = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
 ```
 
-### Relationship Loading
+## AI Integration Patterns (UPDATED: June 2025)
+
+### Conditional Quiz Generation - FIXED
+
+**Issue Fixed**: Quiz generation was failing when no educational text was provided.
 
 ```php
-// Always eager load required relationships
-$quiz = Quiz::with(['questions', 'subject', 'results'])->find($id);
-$results = Result::with(['quiz.subject', 'user'])->where('quiz_id', $quizId)->get();
-```
-
-## Validation Patterns
-
-### Standard Validation
-
-```php
-$validated = $request->validate([
-    'title' => 'required|string|max:255',
-    'subject_id' => 'required|exists:subjects,id',
-    'grade_level' => 'required|integer|min:1|max:9',
-    'description' => 'nullable|string',
-]);
-```
-
-### Arabic Text Validation
-
-```php
-'title' => 'required|string|max:255|regex:/^[\p{Arabic}\s\p{P}\p{N}]+$/u',
-'passage' => 'nullable|string|regex:/^[\p{Arabic}\s\p{P}\p{N}\p{L}]+$/u',
-```
-
-## Guest Access Patterns
-
-### Guest Token Management
-
-```php
-// Generate guest token for results
-$guestToken = Str::random(32);
-$result = Result::create([
-    'quiz_id' => $quiz->id,
-    'user_id' => null,
-    'guest_token' => $guestToken,
-    'guest_name' => session('guest_name'),
-    'expires_at' => now()->addDays(7),
-]);
-```
-
-### Guest Authorization Check
-
-```php
-// Check guest access to results
-if (Auth::check() && $result->user_id !== null) {
-    return (int) $result->user_id === Auth::id();
-}
-
-if (!Auth::check() && $result->guest_token !== null) {
-    return $result->guest_token === $token;
-}
-
-return false;
-```
-
-### Session Management
-
-```php
-// Store guest info during quiz
-session(['guest_name' => $validated['guest_name']]);
-session(['school_class' => $validated['school_class']]);
-
-// Clear after submission
-session()->forget(['guest_name', 'school_class']);
-```
-
-## Data Handling Patterns
-
-### JSON Score Processing
-
-```php
-// Handle both array and JSON string formats
-$scores = is_array($result->scores)
-    ? $result->scores
-    : json_decode($result->scores ?? '{}', true);
-```
-
-### Laravel Collection to JavaScript
-
-```php
-// Convert for Chart.js
-const results = @json($results->values()); // Converts collection to array
-
-// JavaScript processing
-results.forEach(result => {
-    const scores = typeof result.scores === 'string'
-        ? JSON.parse(result.scores)
-        : result.scores;
-});
-```
-
-## UI Patterns
-
-### Modern Glassmorphism Cards
-
-```blade
-<div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 p-6 hover:shadow-xl transition-all duration-300">
-    <!-- Card content -->
-</div>
-```
-
-### Root Performance Display
-
-```blade
-@php
-$roots = [
-    'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => 'blue'],
-    'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => 'purple'],
-    'waslat' => ['name' => 'وَصلات', 'icon' => '🔗', 'color' => 'green'],
-    'roaya' => ['name' => 'رُؤية', 'icon' => '👁️', 'color' => 'orange']
-];
-$scores = is_array($result->scores) ? $result->scores : json_decode($result->scores ?? '{}', true);
-@endphp
-
-@foreach($roots as $key => $root)
-<div class="text-center">
-    <div class="text-2xl mb-1">{{ $root['icon'] }}</div>
-    <div class="text-sm font-bold text-{{ $root['color'] }}-600">
-        {{ $scores[$key] ?? 0 }}%
-    </div>
-</div>
-@endforeach
-```
-
-### Conditional Management Buttons
-
-```blade
-@if(!$quiz->has_submissions)
-    <a href="{{ route('quizzes.edit', $quiz) }}" class="btn-primary">
-        <i class="fas fa-edit"></i>
-        تعديل الاختبار
-    </a>
-@else
-    <form action="{{ route('quizzes.toggle-status', $quiz) }}" method="POST" class="inline">
-        @csrf
-        @method('PATCH')
-        <button type="submit" class="btn-{{ $quiz->is_active ? 'danger' : 'success' }}">
-            {{ $quiz->is_active ? 'إلغاء التفعيل' : 'تفعيل' }}
-        </button>
-    </form>
-@endif
-```
-
-## Chart.js Integration Patterns
-
-### Chart Initialization
-
-```javascript
-// Check element exists before creating chart
-const canvas = document.getElementById("rootsRadarChart");
-if (canvas) {
-    const ctx = canvas.getContext("2d");
-    new Chart(ctx, {
-        type: "radar",
-        data: {
-            labels: [
-                "جَوهر (الماهية)",
-                "ذِهن (التحليل)",
-                "وَصلات (الربط)",
-                "رُؤية (التطبيق)",
-            ],
-            datasets: [
-                {
-                    data: [
-                        rootAverages.jawhar,
-                        rootAverages.zihn,
-                        rootAverages.waslat,
-                        rootAverages.roaya,
-                    ],
-                    backgroundColor: "rgba(99, 102, 241, 0.2)",
-                    borderColor: "rgba(99, 102, 241, 1)",
-                },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    max: 100,
-                    pointLabels: {
-                        font: { family: "Tajawal" },
-                    },
-                },
-            },
-        },
-    });
-}
-```
-
-### Data Processing for Charts
-
-```javascript
-// Calculate root averages
-const rootAverages = { jawhar: 0, zihn: 0, waslat: 0, roaya: 0 };
-let validResults = 0;
-
-results.forEach((result) => {
-    if (result.scores) {
-        const scores =
-            typeof result.scores === "string"
-                ? JSON.parse(result.scores)
-                : result.scores;
-        rootAverages.jawhar += scores.jawhar || 0;
-        rootAverages.zihn += scores.zihn || 0;
-        rootAverages.waslat += scores.waslat || 0;
-        rootAverages.roaya += scores.roaya || 0;
-        validResults++;
-    }
-});
-
-// Calculate averages
-Object.keys(rootAverages).forEach((key) => {
-    rootAverages[key] = validResults > 0 ? rootAverages[key] / validResults : 0;
-});
-```
-
-## TinyMCE Integration Pattern
-
-### Editor Initialization
-
-```javascript
-tinymce.init({
-    selector: ".tinymce-editor",
-    language: "ar",
-    directionality: "rtl",
-    height: 350,
-    menubar: false,
-    plugins:
-        "lists link charmap preview searchreplace autolink directionality code",
-    toolbar:
-        "undo redo | bold italic underline | bullist numlist | link | removeformat | code",
-    content_style:
-        'body { font-family: "Tajawal"; font-size: 16px; direction: rtl; }',
-    branding: false,
-    entity_encoding: "raw",
-});
-
-// Ensure content saves on form submission
-document.querySelector("form").addEventListener("submit", function (e) {
-    tinymce.triggerSave();
-});
-```
-
-### Content Display
-
-```blade
-<!-- Use {!! !!} for TinyMCE content to preserve formatting -->
-{!! $quiz->questions->first()->passage !!}
-```
-
-## AI Integration Patterns
-
-### Content Generation
-
-```php
-try {
-    $text = $this->claudeService->generateEducationalText(
-        $validated['subject'],
-        $validated['grade_level'],
-        $validated['topic'],
-        $validated['text_type'],
-        $validated['length']
-    );
-
-    return response()->json(['success' => true, 'text' => $text]);
-} catch (\Exception $e) {
-    Log::error('Text generation failed', [
-        'error' => $e->getMessage(),
-        'params' => $validated
+// CORRECT: Conditional logic based on text_source
+if ($request->text_source === 'none') {
+    // Generate complete quiz with passage from scratch
+    Log::info('Generating complete quiz without existing text', [
+        'quiz_id' => $quiz->id,
+        'topic' => $request->topic
     ]);
 
-    return response()->json([
-        'success' => false,
-        'message' => 'فشل توليد النص: ' . $e->getMessage()
-    ], 422);
+    $aiResponse = $this->claudeService->generateJuzoorQuiz(
+        $subjectName,
+        $quiz->grade_level,
+        $request->topic,
+        $rootsForAI,
+        true, // include passage
+        $request->topic, // passage topic
+        $totalRequested // total question count
+    );
+
+    $questions = $aiResponse['questions'] ?? [];
+} else {
+    // Generate questions from existing text
+    Log::info('Generating questions from existing text', [
+        'quiz_id' => $quiz->id,
+        'text_length' => strlen($educationalText),
+        'text_preview' => substr($educationalText, 0, 100)
+    ]);
+
+    $questions = $this->claudeService->generateQuestionsFromText(
+        $educationalText,
+        $subjectName,
+        $quiz->grade_level,
+        $rootsForAI
+    );
+
+    // Structure response for existing text
+    $aiResponse = [
+        'questions' => $questions,
+        'passage' => $educationalText,
+        'passage_title' => $request->topic
+    ];
 }
+```
+
+### Validation Patterns - FIXED
+
+**Issue Fixed**: Validation was requiring educational_text even when not needed.
+
+```php
+// CORRECT: Conditional validation
+$validator = Validator::make($request->all(), [
+    'topic' => 'required|string|max:255',
+    'question_count' => 'required|integer|min:4|max:30',
+    'educational_text' => 'nullable|required_unless:text_source,none|string|min:50',
+    'text_source' => 'required|in:ai,manual,none',
+    'roots' => 'required|array',
+    'roots.*' => 'integer|min:0|max:20',
+    // ... other validation rules
+]);
+```
+
+### Roots Transformation - FIXED
+
+**Issue Fixed**: Question count was not preserved due to improper use of `ceil()`.
+
+```php
+// CORRECT: Preserve exact question count
+$rootsForAI = [];
+$totalRequested = array_sum($request->roots);
+
+foreach ($request->roots as $rootKey => $count) {
+    if ($count > 0) {
+        // Distribute more evenly and preserve exact count
+        if ($count <= 2) {
+            // For small counts, put everything in level 1
+            $rootsForAI[$rootKey] = [
+                '1' => $count,
+                '2' => 0,
+                '3' => 0
+            ];
+        } else {
+            // For larger counts, distribute more carefully
+            $level1 = floor($count * 0.4);
+            $level2 = floor($count * 0.4);
+            $level3 = $count - $level1 - $level2; // Remainder goes to level 3
+
+            $rootsForAI[$rootKey] = [
+                '1' => $level1,
+                '2' => $level2,
+                '3' => $level3
+            ];
+        }
+    }
+}
+
+// Always log transformation for debugging
+Log::info('Roots transformation', [
+    'original_roots' => $request->roots,
+    'transformed_roots' => $rootsForAI,
+    'total_requested' => $totalRequested,
+    'total_transformed' => array_sum(array_map(function($root) {
+        return array_sum($root);
+    }, $rootsForAI))
+]);
+```
+
+## ClaudeService Patterns (UPDATED: June 2025)
+
+### Method Signatures - UPDATED
+
+```php
+// UPDATED: Added totalQuestions parameter
+public function generateJuzoorQuiz(
+    string $subject,
+    int $gradeLevel,
+    string $topic,
+    array $roots,
+    bool $includePassage = false,
+    ?string $passageTopic = null,
+    ?int $totalQuestions = null
+): array
+
+// UPDATED: Prompt building with question count
+private function buildJuzoorQuizPrompt(
+    string $subject,
+    int $gradeLevel,
+    string $topic,
+    array $roots,
+    bool $includePassage,
+    ?string $passageTopic,
+    int $totalQuestions
+): string
+```
+
+### Fixed Prompt Pattern
+
+```php
+// FIXED: Variable conflict resolved
+$prompt .= "\n\nتوزيع الأسئلة المطلوب (المجموع: {$totalQuestions} سؤال):";
+
+foreach ($roots as $rootType => $levels) {
+    $rootName = $this->getRootName($rootType);
+    $prompt .= "\n\n{$rootName}:";
+    foreach ($levels as $level => $count) {
+        if ($count > 0) {
+            $prompt .= "\n- المستوى {$level}: {$count} أسئلة";
+        }
+    }
+}
+
+$prompt .= "\n\n**تنبيه مهم: يجب أن يكون العدد الإجمالي للأسئلة هو {$totalQuestions} سؤال بالضبط. لا تولد أكثر أو أقل من هذا الرقم.**";
+```
+
+## Error Handling Patterns
+
+### User-Friendly Messages
+
+```php
+// Arabic error messages
+return redirect()->back()->with('error', 'حدث خطأ أثناء العملية. الرجاء المحاولة مرة أخرى.');
+return redirect()->route('quizzes.index')->with('success', 'تم حفظ التغييرات بنجاح.');
+
+// API responses
+return response()->json([
+    'success' => false,
+    'message' => 'فشل العملية: ' . $e->getMessage()
+], 422);
+```
+
+### Debugging Logs
+
+```php
+// Always log important operations
+Log::info('Quiz generation attempt', [
+    'user_id' => Auth::id(),
+    'text_source' => $request->text_source,
+    'topic' => $request->topic,
+    'total_questions' => array_sum($request->roots)
+]);
+
+// Log transformations for debugging
+Log::info('Roots transformation', [
+    'original_roots' => $request->roots,
+    'transformed_roots' => $rootsForAI,
+    'total_requested' => $totalRequested,
+    'total_transformed' => $transformedTotal
+]);
 ```
 
 ## Security Patterns
@@ -412,126 +322,85 @@ fetch('{{ route("quizzes.generate-text") }}', {
 {!! $quiz->passage !!}
 ```
 
-## Error Handling Patterns
+## Guest Access Pattern
 
-### User-Friendly Messages
+### PIN-Based Quiz Access
 
 ```php
-// Arabic error messages
-return redirect()->back()->with('error', 'حدث خطأ أثناء العملية. الرجاء المحاولة مرة أخرى.');
-return redirect()->route('quizzes.index')->with('success', 'تم حفظ التغييرات بنجاح.');
+// WelcomeController.php
+public function enterPin(Request $request)
+{
+    $validated = $request->validate([
+        'pin' => 'required|string|size:6'
+    ]);
 
-// API responses
-return response()->json([
-    'success' => false,
-    'message' => 'فشل العملية: ' . $e->getMessage()
-], 422);
+    $quiz = Quiz::where('pin', $validated['pin'])
+        ->where('is_active', true)
+        ->first();
+
+    if (!$quiz) {
+        return redirect()->back()
+            ->with('error', 'رمز الاختبار غير صحيح أو منتهي الصلاحية');
+    }
+
+    return redirect()->route('quiz.take', $quiz);
+}
 ```
 
-### Logging Pattern
+### Guest Result Storage
 
 ```php
-Log::error('Operation failed', [
-    'error' => $e->getMessage(),
-    'user_id' => Auth::id(),
-    'quiz_id' => $quiz->id ?? null,
-    'trace' => $e->getTraceAsString()
+// QuizController.php - submit method
+if (!Auth::check()) {
+    $result->guest_token = Str::random(32);
+    session(['guest_token' => $result->guest_token]);
+}
+```
+
+## Common Troubleshooting Patterns (NEW)
+
+### Quiz Generation Issues
+
+1. **Validation Errors**: Check that `educational_text` validation is conditional
+2. **Question Count Mismatch**: Verify roots transformation preserves total count
+3. **AI Service Errors**: Check ClaudeService logs and parameter passing
+4. **Variable Conflicts**: Ensure no variable shadowing in prompt building
+
+### Debugging Steps
+
+```php
+// 1. Check validation rules
+'educational_text' => 'nullable|required_unless:text_source,none|string|min:50',
+
+// 2. Verify roots transformation
+Log::info('Roots transformation', [
+    'total_requested' => $totalRequested,
+    'total_transformed' => $transformedTotal
 ]);
+
+// 3. Check AI service call
+$aiResponse = $this->claudeService->generateJuzoorQuiz(
+    $subjectName,
+    $quiz->grade_level,
+    $request->topic,
+    $rootsForAI,
+    true,
+    $request->topic,
+    $totalRequested // ← Ensure this is passed
+);
 ```
 
-## Performance Patterns
+## Recent Fixes Summary (June 2025)
 
-### Eager Loading
+1. **Fixed quiz generation without text**: Added conditional logic for `text_source === 'none'`
+2. **Fixed validation rules**: Made `educational_text` conditional based on `text_source`
+3. **Fixed question count preservation**: Improved roots transformation logic
+4. **Fixed AI service parameters**: Added `totalQuestions` parameter to ensure exact count
+5. **Fixed variable conflicts**: Resolved shadowing in prompt building
 
-```php
-// Load required relationships upfront
-$quizzes = Quiz::with(['questions', 'subject', 'results'])->where('user_id', Auth::id())->get();
-```
+---
 
-### Pagination
+**Always test both scenarios**:
 
-```php
-// Standard pagination with query preservation
-$results = Result::with(['quiz', 'user'])->paginate(20)->withQueryString();
-```
-
-### Chart Performance
-
-```javascript
-// Only create charts when elements exist
-document.addEventListener("DOMContentLoaded", function () {
-    const elements = ["rootsRadarChart", "scoreDistributionChart"];
-    elements.forEach((elementId) => {
-        const canvas = document.getElementById(elementId);
-        if (canvas) {
-            createChart(canvas, elementId);
-        }
-    });
-});
-```
-
-## Mobile & RTL Patterns
-
-### Responsive Design
-
-```blade
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <div class="p-4 bg-white rounded-lg text-right">
-        <h3 class="text-lg font-bold">{{ $title }}</h3>
-    </div>
-</div>
-```
-
-### RTL Layout
-
-```css
-/* Automatic RTL support with Tailwind */
-.space-x-3 {
-    /* Automatically becomes space-x-reverse in RTL */
-}
-.text-left {
-    /* Becomes text-right in RTL */
-}
-.mr-4 {
-    /* Becomes ml-4 in RTL */
-}
-```
-
-## Route Organization Pattern
-
-### Grouped Routes
-
-```php
-// Public routes
-Route::prefix('quiz')->name('quiz.')->group(function () {
-    Route::post('/enter-pin', [WelcomeController::class, 'enterPin'])->name('enter-pin');
-    Route::get('/{quiz}/take', [QuizController::class, 'take'])->name('take');
-});
-
-// Authenticated routes with middleware
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::resource('quizzes', QuizController::class);
-
-    Route::prefix('quizzes')->name('quizzes.')->group(function () {
-        Route::patch('/{quiz}/toggle-status', [QuizController::class, 'toggleStatus'])->name('toggle-status');
-        Route::post('/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('duplicate');
-    });
-});
-```
-
-## Data Export Patterns
-
-### Collection Transformation
-
-```php
-// Transform for frontend consumption
-$transformedResults = $results->map(function ($result) {
-    return [
-        'id' => $result->id,
-        'student_name' => $result->guest_name ?: ($result->user?->name ?? 'غير معروف'),
-        'total_score' => $result->total_score,
-        'scores' => is_array($result->scores) ? $result->scores : json_decode($result->scores ?? '{}', true),
-        'created_at' => $result->created_at->format('Y-m-d H:i')
-    ];
-});
-```
+-   ✅ Quiz generation WITH educational text (`text_source: manual/ai`)
+-   ✅ Quiz generation WITHOUT educational text (`text_source: none`)
