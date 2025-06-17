@@ -1,5 +1,51 @@
 # Bug Fixes Log - جُذور Platform
 
+## Fix #006: Improved Guest Retry Flow and Result Access (June 17, 2025)
+
+### Problem
+
+-   Guests were forced to re-enter their name for every retry attempt
+-   Guest session data cleared immediately after quiz submission
+-   No easy way for guests to bookmark or access their results later
+-   Confusing user experience for guest retries
+
+### Root Causes
+
+1. **Aggressive Session Clearing**: Guest session data deleted after submission
+2. **Missing Result Bookmarking**: No way to save result links for later access
+3. **Poor UX Flow**: Forced re-authentication for seamless retries
+
+### Solution Applied
+
+#### Session Management Improvements
+
+1. **Persistent Guest Sessions**: Keep guest name/class in session for seamless retries
+2. **Token Storage**: Store guest_token in session for easy result access
+3. **Smart Session Handling**: Only clear session on browser close, not after submission
+
+#### Enhanced Guest Experience
+
+1. **Result Link Bookmarking**: New section in results showing permanent access link
+2. **Copy Functionality**: One-click copy button with visual feedback
+3. **Seamless Retries**: No name re-entry required for same session
+4. **7-Day Access**: Clear explanation of result availability period
+
+#### Files Modified
+
+-   `app/Http/Controllers/QuizController.php` - Improved session management
+-   `resources/views/results/show.blade.php` - Added guest result link section
+-   Added JavaScript for copy functionality with user feedback
+
+### Testing Results
+
+✅ **Verified**: Guest session persists between quiz attempts
+✅ **Verified**: Result link section appears for guests with working copy button  
+✅ **Verified**: Seamless retry flow without name re-entry
+✅ **Verified**: Guest token access works for 7-day period
+✅ **Verified**: Visual feedback for copy action works correctly
+
+---
+
 ## Fix #001: Guest Quiz Results Redirect (June 15, 2025)
 
 ## Fix #006: Eliminate "Failure" Language Implementation (June 17, 2025)
