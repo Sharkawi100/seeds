@@ -255,4 +255,84 @@ class QuestionController extends Controller
             ], 500);
         }
     }
+    /**
+     * Show bulk edit form for multiple questions
+     */
+    public function bulkEdit(Quiz $quiz)
+    {
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.questions.index', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
+        }
+
+        $questions = $quiz->questions()->get();
+
+        if ($questions->isEmpty()) {
+            return redirect()->route('quizzes.questions.index', $quiz)
+                ->with('error', 'لا توجد أسئلة للتعديل المجمع.');
+        }
+
+        return view('quizzes.questions.bulk-edit', compact('quiz', 'questions'));
+    }
+
+    /**
+     * Process bulk edit for multiple questions
+     */
+    public function bulkUpdate(Request $request, Quiz $quiz)
+    {
+        if ((int) $quiz->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بهذا الإجراء.');
+        }
+
+        if ($quiz->has_submissions) {
+            return redirect()->route('quizzes.questions.index', $quiz)
+                ->with('error', 'لا يمكن تعديل الأسئلة بعد أن بدأ الطلاب في الاختبار.');
+        }
+
+        $validated = $request->validate([
+            'questions' => 'required|array',
+            'questions.*.id' => 'required|exists:questions,id',
+            'questions.*.question' => 'required|string|max:1000',
+            'questions.*.options' => 'required|array|min:2|max:4',
+            'questions.*.options.*' => 'required|string|max:500',
+            'questions.*.correct_answer' => 'required|string|max:500',
+            'questions.*.root_type' => 'required|in:jawhar,zihn,waslat,roaya',
+            'questions.*.depth_level' => 'required|integer|min:1|max:3',
+            'questions.*.explanation' => 'nullable|string|max:1000'
+        ]);
+
+        $updatedCount = 0;
+
+        foreach ($validated['questions'] as $questionData) {
+            // Ensure correct answer exists in options
+            if (!in_array($questionData['correct_answer'], $questionData['options'])) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', "الإجابة الصحيحة للسؤال رقم {$questionData['id']} يجب أن تكون من ضمن الخيارات المتاحة.");
+            }
+
+            $question = Question::where('id', $questionData['id'])
+                ->where('quiz_id', $quiz->id)
+                ->first();
+
+            if ($question) {
+                $question->update([
+                    'question' => $questionData['question'],
+                    'options' => $questionData['options'],
+                    'correct_answer' => $questionData['correct_answer'],
+                    'root_type' => $questionData['root_type'],
+                    'depth_level' => $questionData['depth_level'],
+                    'explanation' => $questionData['explanation'] ?? null
+                ]);
+                $updatedCount++;
+            }
+        }
+
+        return redirect()->route('quizzes.questions.index', $quiz)
+            ->with('success', "تم تحديث {$updatedCount} أسئلة بنجاح.");
+    }
 }
