@@ -126,14 +126,23 @@ class ClaudeService
         string $topic,
         array $roots,
         bool $includePassage = false,
-        ?string $passageTopic = null
+        ?string $passageTopic = null,
+        ?int $totalQuestions = null
     ): array {
+        // Calculate total questions from roots if not provided
+        if ($totalQuestions === null) {
+            $totalQuestions = array_sum(array_map(function ($root) {
+                return array_sum($root);
+            }, $roots));
+        }
+
         Log::info('Generating complete Juzoor quiz', [
             'subject' => $subject,
             'grade' => $gradeLevel,
             'topic' => $topic,
             'roots' => $roots,
-            'include_passage' => $includePassage
+            'include_passage' => $includePassage,
+            'total_questions' => $totalQuestions
         ]);
 
         $prompt = $this->buildJuzoorQuizPrompt(
@@ -142,7 +151,8 @@ class ClaudeService
             $topic,
             $roots,
             $includePassage,
-            $passageTopic
+            $passageTopic,
+            $totalQuestions
         );
 
         try {
@@ -395,7 +405,8 @@ CRITICAL:
         string $topic,
         array $roots,
         bool $includePassage,
-        ?string $passageTopic
+        ?string $passageTopic,
+        int $totalQuestions
     ): string {
         $subjectName = $this->getSubjectName($subject);
         $gradeGuidance = $this->getGradeLevelGuidance($gradeLevel);
@@ -437,8 +448,7 @@ CRITICAL:
             $prompt .= "\n- يحتاج نص/قطعة؟ نعم، حول موضوع: {$passageTopicText}";
         }
 
-        $prompt .= "\n\nتوزيع الأسئلة المطلوب:";
-        $totalQuestions = 0;
+        $prompt .= "\n\nتوزيع الأسئلة المطلوب (المجموع: {$totalQuestions} سؤال):";
 
         foreach ($roots as $rootType => $levels) {
             $rootName = $this->getRootName($rootType);
@@ -446,10 +456,11 @@ CRITICAL:
             foreach ($levels as $level => $count) {
                 if ($count > 0) {
                     $prompt .= "\n- المستوى {$level}: {$count} أسئلة";
-                    $totalQuestions += $count;
                 }
             }
         }
+
+        $prompt .= "\n\n**تنبيه مهم: يجب أن يكون العدد الإجمالي للأسئلة هو {$totalQuestions} سؤال بالضبط. لا تولد أكثر أو أقل من هذا الرقم.**";
 
         $prompt .= "\n\nنموذج الجُذور الأربعة:
 1. جَوهر (الماهية) - ما هو؟ - التعريفات والفهم الأساسي

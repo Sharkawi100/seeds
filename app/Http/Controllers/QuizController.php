@@ -215,7 +215,7 @@ class QuizController extends Controller
         $validator = Validator::make($request->all(), [
             'topic' => 'required|string|max:255',
             'question_count' => 'required|integer|min:4|max:30',
-            'educational_text' => 'required|string|min:50',
+            'educational_text' => 'nullable|required_unless:text_source,none|string|min:50',
             'text_source' => 'required|in:ai,manual,none',
             'roots' => 'required|array',
             'roots.*' => 'integer|min:0|max:20',
@@ -250,17 +250,47 @@ class QuizController extends Controller
             // CRITICAL: Use the exact text from Step 2
             $educationalText = $request->educational_text;
 
-            // Prepare roots structure for AI
+            // Prepare roots structure for AI - preserve exact count
             $rootsForAI = [];
+            $totalRequested = array_sum($request->roots);
+
             foreach ($request->roots as $rootKey => $count) {
                 if ($count > 0) {
-                    $rootsForAI[$rootKey] = [
-                        '1' => ceil($count * 0.4),
-                        '2' => ceil($count * 0.4),
-                        '3' => $count - ceil($count * 0.4) - ceil($count * 0.4)
-                    ];
+                    // Distribute more evenly and preserve exact count
+                    if ($count <= 2) {
+                        // For small counts, put everything in level 1
+                        $rootsForAI[$rootKey] = [
+                            '1' => $count,
+                            '2' => 0,
+                            '3' => 0
+                        ];
+                    } else {
+                        // For larger counts, distribute more carefully
+                        $level1 = floor($count * 0.4);
+                        $level2 = floor($count * 0.4);
+                        $level3 = $count - $level1 - $level2; // Remainder goes to level 3
+
+                        $rootsForAI[$rootKey] = [
+                            '1' => $level1,
+                            '2' => $level2,
+                            '3' => $level3
+                        ];
+                    }
                 }
             }
+
+            // Calculate actual total after transformation
+            $transformedTotal = array_sum(array_map(function ($root) {
+                return array_sum($root);
+            }, $rootsForAI));
+
+            // Log the transformation for debugging
+            Log::info('Roots transformation', [
+                'original_roots' => $request->roots,
+                'transformed_roots' => $rootsForAI,
+                'total_requested' => $totalRequested,
+                'total_transformed' => $transformedTotal
+            ]);
 
             Log::info('Generating questions from existing text', [
                 'quiz_id' => $quiz->id,
@@ -268,13 +298,46 @@ class QuizController extends Controller
                 'text_preview' => substr($educationalText, 0, 100)
             ]);
 
-            // Generate questions from existing text - DO NOT regenerate
-            $questions = $this->claudeService->generateQuestionsFromText(
-                $educationalText,
-                $subjectName,
-                $quiz->grade_level,
-                $rootsForAI
-            );
+            // Generate questions based on text source
+            if ($request->text_source === 'none') {
+                // Generate complete quiz with passage from scratch
+                Log::info('Generating complete quiz without existing text', [
+                    'quiz_id' => $quiz->id,
+                    'topic' => $request->topic
+                ]);
+
+                $aiResponse = $this->claudeService->generateJuzoorQuiz(
+                    $subjectName,
+                    $quiz->grade_level,
+                    $request->topic,
+                    $rootsForAI,
+                    true, // include passage
+                    $request->topic // passage topic
+                );
+
+                $questions = $aiResponse['questions'] ?? [];
+            } else {
+                // Generate questions from existing text
+                Log::info('Generating questions from existing text', [
+                    'quiz_id' => $quiz->id,
+                    'text_length' => strlen($educationalText),
+                    'text_preview' => substr($educationalText, 0, 100)
+                ]);
+
+                $questions = $this->claudeService->generateQuestionsFromText(
+                    $educationalText,
+                    $subjectName,
+                    $quiz->grade_level,
+                    $rootsForAI
+                );
+
+                // Structure response for existing text
+                $aiResponse = [
+                    'questions' => $questions,
+                    'passage' => $educationalText,
+                    'passage_title' => $request->topic
+                ];
+            }
 
             // Clear existing questions
             $quiz->questions()->delete();
