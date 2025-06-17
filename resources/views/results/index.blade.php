@@ -20,7 +20,9 @@ $excellentCount = $finalScores->filter(function($score) { return $score >= 90; }
 $goodCount = $finalScores->filter(function($score) { return $score >= 70 && $score < 90; })->count();
 $passedCount = $finalScores->filter(function($score) { return $score >= 70; })->count();
 $totalUniqueStudents = $uniqueStudentResults->count();
-$todayResults = $results->whereDate('created_at', today())->count();
+$todayResults = $results->filter(function($result) {
+    return $result->created_at->isToday();
+})->count();
 
 // Calculate root performance averages
 $rootAverages = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
@@ -210,11 +212,7 @@ if ($validScores > 0) {
                     </label>
                     <select name="quiz_id" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all">
                         <option value="">جميع الاختبارات</option>
-                        @foreach($quizzes as $quiz)
-                        <option value="{{ $quiz->id }}" {{ request('quiz_id') == $quiz->id ? 'selected' : '' }}>
-                            {{ $quiz->title }}
-                        </option>
-                        @endforeach
+                        {{-- Quiz filter temporarily disabled --}}
                     </select>
                 </div>
                 

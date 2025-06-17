@@ -234,35 +234,50 @@ $studentName = $result->user ? $result->user->name : ($result->guest_name ?? 'ط
                         $scores = is_array($result->scores) ? $result->scores : json_decode($result->scores ?? '{}', true);
                         @endphp
 
-                        @foreach($roots as $key => $root)
-                        @php $score = $scores[$key] ?? 0; @endphp
-                        <div class="text-center p-6 bg-gradient-to-br from-{{ $root['color'] }}-50 to-{{ $root['color'] }}-100 rounded-2xl border border-{{ $root['color'] }}-200 hover:shadow-xl transition-all duration-300 group">
-                            <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">{{ $root['icon'] }}</div>
-                            <h4 class="text-xl font-bold text-gray-800 mb-2">{{ $root['name'] }}</h4>
-                            <div class="text-3xl font-black text-{{ $root['color'] }}-600 mb-3">{{ $score }}%</div>
-                            
-                            <!-- Root Progress Bar -->
-                            <div class="w-full bg-white/60 rounded-full h-3 mb-3 shadow-inner">
-                                <div class="h-3 bg-gradient-to-r from-{{ $root['color'] }}-400 to-{{ $root['color'] }}-600 rounded-full transition-all duration-1000" 
-                                     style="width: {{ $score }}%"></div>
-                            </div>
-                            
-                            <p class="text-sm text-{{ $root['color'] }}-700 font-medium mb-3">{{ $root['desc'] }}</p>
-                            
-                            <!-- Performance Level -->
-                            <div class="mt-3">
-                                @if($score >= 80)
-                                    <span class="text-xs bg-green-200 text-green-800 px-3 py-1 rounded-full font-medium">ممتاز</span>
-                                @elseif($score >= 60)
-                                    <span class="text-xs bg-blue-200 text-blue-800 px-3 py-1 rounded-full font-medium">جيد</span>
-                                @elseif($score >= 40)
-                                    <span class="text-xs bg-orange-200 text-orange-800 px-3 py-1 rounded-full font-medium">مقبول</span>
-                                @else
-                                    <span class="text-xs bg-red-200 text-red-800 px-3 py-1 rounded-full font-medium">يحتاج تطوير</span>
-                                @endif
-                            </div>
-                        </div>
-                        @endforeach
+@php
+// Sort roots by score (strongest first)
+$sortedRootsByScore = collect($roots)->sortByDesc(function($root, $key) use ($scores) {
+    return $scores[$key] ?? 0;
+});
+@endphp
+
+@foreach($sortedRootsByScore as $key => $root)
+@php $score = $scores[$key] ?? 0; @endphp
+<div class="text-center p-6 bg-gradient-to-br from-{{ $root['color'] }}-50 to-{{ $root['color'] }}-100 rounded-2xl border border-{{ $root['color'] }}-200 hover:shadow-xl transition-all duration-300 group {{ $loop->first ? 'ring-4 ring-yellow-300 ring-opacity-50' : '' }}">
+    @if($loop->first && $score > 0)
+        <div class="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+            ⭐ نقطة قوتك
+        </div>
+    @endif
+    
+    <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">{{ $root['icon'] }}</div>
+    <h4 class="text-xl font-bold text-gray-800 mb-2">{{ $root['name'] }}</h4>
+    <div class="text-3xl font-black text-{{ $root['color'] }}-600 mb-3">{{ $score }}%</div>
+    
+    <!-- Root Progress Bar -->
+    <div class="w-full bg-white/60 rounded-full h-3 mb-3 shadow-inner">
+        <div class="h-3 bg-gradient-to-r from-{{ $root['color'] }}-400 to-{{ $root['color'] }}-600 rounded-full transition-all duration-1000" 
+             style="width: {{ $score }}%"></div>
+    </div>
+    
+    <p class="text-sm text-{{ $root['color'] }}-700 font-medium mb-3">{{ $root['desc'] }}</p>
+    
+    <!-- Performance Level with Strength-Based Language -->
+    <div class="mt-3">
+        @if($loop->first && $score >= 60)
+            <span class="text-xs bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-900 px-3 py-1 rounded-full font-bold">✨ جذرك المتميز</span>
+        @elseif($score >= 80)
+            <span class="text-xs bg-green-200 text-green-800 px-3 py-1 rounded-full font-medium">ممتاز</span>
+        @elseif($score >= 60)
+            <span class="text-xs bg-blue-200 text-blue-800 px-3 py-1 rounded-full font-medium">جيد</span>
+        @elseif($score >= 40)
+            <span class="text-xs bg-orange-200 text-orange-800 px-3 py-1 rounded-full font-medium">ينمو</span>
+        @else
+            <span class="text-xs bg-purple-200 text-purple-800 px-3 py-1 rounded-full font-medium">في طور التطوير</span>
+        @endif
+    </div>
+</div>
+@endforeach
                     </div>
 
                     <!-- Juzoor Chart -->
@@ -272,45 +287,72 @@ $studentName = $result->user ? $result->user->name : ($result->guest_name ?? 'ط
                         </div>
                     </div>
 
-                    <!-- Root Analysis Summary -->
-                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
-                        <h4 class="text-lg font-bold text-indigo-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-lightbulb"></i>
-                            تحليل الأداء حسب الجذور
-                        </h4>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            @php
-                            $sortedRoots = collect($scores)->sortByDesc(function($score, $key) { return $score; });
-                            $strongestRoot = $sortedRoots->keys()->first();
-                            $weakestRoot = $sortedRoots->keys()->last();
-                            @endphp
+                    <!-- Strength-Based Root Analysis -->
+<div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
+    <h4 class="text-lg font-bold text-indigo-800 mb-4 flex items-center gap-2">
+        <i class="fas fa-seedling"></i>
+        خريطة قوتك في الجذور
+    </h4>
+    
+    @php
+    $sortedRoots = collect($scores)->sortByDesc(function($score, $key) { return $score; });
+    $strongestRoot = $sortedRoots->keys()->first();
+    $secondStrongest = $sortedRoots->keys()->skip(1)->first();
+    $growthRoot = $sortedRoots->keys()->last();
+    $strongestScore = $scores[$strongestRoot] ?? 0;
+    $growthScore = $scores[$growthRoot] ?? 0;
+    @endphp
 
-                            @if($scores[$strongestRoot] >= 70)
-                            <div class="bg-white/60 rounded-lg p-4">
-                                <h5 class="font-bold text-green-700 mb-2 flex items-center gap-2">
-                                    <i class="fas fa-star"></i>
-                                    نقطة قوتك: {{ $roots[$strongestRoot]['name'] }}
-                                </h5>
-                                <p class="text-sm text-gray-700">
-                                    ممتاز! حصلت على {{ $scores[$strongestRoot] }}% في هذا الجذر.
-                                </p>
-                            </div>
-                            @endif
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Always Show Strength First -->
+        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border-2 border-green-200">
+            <h5 class="font-bold text-green-700 mb-2 flex items-center gap-2">
+                <i class="fas fa-crown text-yellow-500"></i>
+                جذرك المتميز: {{ $roots[$strongestRoot]['name'] }}
+            </h5>
+            <p class="text-sm text-gray-700 leading-relaxed">
+                @if($strongestScore >= 80)
+                    🌟 متفوق! حققت {{ $strongestScore }}% في هذا الجذر. هذا يُظهر إتقاناً رائعاً يمكن الاعتماد عليه لدعم نمو الجذور الأخرى.
+                @elseif($strongestScore >= 60)
+                    ⭐ قوي! حققت {{ $strongestScore }}% في هذا الجذر. لديك أساس متين يمكن بناء المزيد عليه.
+                @elseif($strongestScore >= 40)
+                    💪 واعد! حققت {{ $strongestScore }}% في هذا الجذر. هذا يُظهر إمكانيات جيدة تحتاج لمزيد من التنمية.
+                @else
+                    🌱 بداية! كل خبير كان مبتدئاً يوماً ما. جذر {{ $roots[$strongestRoot]['name'] }} يُظهر بوادر نمو إيجابية.
+                @endif
+            </p>
+        </div>
 
-                            @if($scores[$weakestRoot] < 60)
-                            <div class="bg-white/60 rounded-lg p-4">
-                                <h5 class="font-bold text-orange-700 mb-2 flex items-center gap-2">
-                                    <i class="fas fa-target"></i>
-                                    للتطوير: {{ $roots[$weakestRoot]['name'] }}
-                                </h5>
-                                <p class="text-sm text-gray-700">
-                                    يحتاج تركيز أكبر - حصلت على {{ $scores[$weakestRoot] }}% في هذا الجذر.
-                                </p>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
+        <!-- Growth Opportunity (Not Weakness) -->
+        @if($growthRoot !== $strongestRoot)
+        <div class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-4 border-2 border-blue-200">
+            <h5 class="font-bold text-blue-700 mb-2 flex items-center gap-2">
+                <i class="fas fa-rocket"></i>
+                فرصتك للنمو: {{ $roots[$growthRoot]['name'] }}
+            </h5>
+            <p class="text-sm text-gray-700 leading-relaxed">
+                @if($growthScore >= 40)
+                    🚀 في المسار الصحيح! مع التركيز على هذا الجذر، ستحقق قفزة نوعية في أدائك العام.
+                @else
+                    🌱 منطقة النمو الذهبية! هنا تكمن فرصتك الأكبر للتطوير. كل تحسن صغير سيحدث فرقاً كبيراً.
+                @endif
+            </p>
+        </div>
+        @endif
+    </div>
+
+    <!-- Personal Learning Path -->
+    <div class="mt-4 p-4 bg-white/60 rounded-lg border border-purple-200">
+        <h6 class="font-bold text-purple-700 mb-2 flex items-center gap-2">
+            <i class="fas fa-route"></i>
+            مسارك التعليمي الشخصي
+        </h6>
+        <p class="text-sm text-gray-700">
+            استفد من قوتك في <strong>{{ $roots[$strongestRoot]['name'] }}</strong> لدعم نمو <strong>{{ $roots[$growthRoot]['name'] }}</strong>. 
+            عندما تربط بين الجذور، يصبح التعلم أقوى وأعمق.
+        </p>
+    </div>
+</div>
                 </div>
 
                 <!-- Enhanced Smart Report Section -->
@@ -366,18 +408,88 @@ $studentName = $result->user ? $result->user->name : ($result->guest_name ?? 'ط
                             
                             <div class="space-y-6 text-gray-700">
                                 <!-- Overall Performance -->
-                                <div class="p-6 bg-white/80 rounded-xl border-r-4 {{ $totalScore >= 80 ? 'border-green-500' : ($totalScore >= 60 ? 'border-yellow-500' : 'border-red-500') }} shadow-lg">
-                                    <h4 class="font-bold text-gray-900 mb-3 text-lg">📊 تقييم الأداء العام</h4>
-                                    <p class="leading-relaxed">
-                                        @if($totalScore >= 80)
-                                            🌟 أداء متميز يعكس إتقاناً عالياً للمادة. {{ $studentName }} يُظهر فهماً عميقاً وقدرة على تطبيق المفاهيم بكفاءة عالية. هذا المستوى يدل على استعداد ممتاز للتقدم إلى مراحل أكثر تعقيداً.
-                                        @elseif($totalScore >= 60)
-                                            ⭐ أداء جيد مع إمكانية التحسين. {{ $studentName }} لديه أساس قوي يحتاج إلى تعزيز في بعض الجوانب. مع التركيز على نقاط الضعف، يمكن تحقيق تحسن ملحوظ.
-                                        @else
-                                            💪 يحتاج إلى دعم إضافي. مراجعة المفاهيم الأساسية ضرورية لبناء فهم أقوى. لا تيأس، كل تحدي فرصة للتعلم والنمو!
-                                        @endif
-                                    </p>
-                                </div>
+                                <!-- Strength-Based Detailed Roots Analysis -->
+<div class="p-6 bg-white/80 rounded-xl shadow-lg">
+    <h4 class="font-bold text-gray-900 mb-4 text-lg">🌱 خريطة جذورك التعليمية</h4>
+    
+    @php
+    // Sort roots by score for strength-first display
+    $sortedDetailedRoots = collect($scores)->sortByDesc(function($score) { return $score; });
+    $rootIcons = ['jawhar' => '🎯', 'zihn' => '🧠', 'waslat' => '🔗', 'roaya' => '👁️'];
+    $rootNames = ['jawhar' => 'جَوهر', 'zihn' => 'ذِهن', 'waslat' => 'وَصلات', 'roaya' => 'رُؤية'];
+    @endphp
+    
+    <div class="space-y-4">
+        @foreach($sortedDetailedRoots as $root => $score)
+        <div class="relative overflow-hidden rounded-xl border-2 transition-all duration-300 hover:shadow-lg
+            {{ $loop->first ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300' : 
+               ($score >= 60 ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300' : 
+                'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-300') }}">
+            
+            @if($loop->first)
+                <div class="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full">
+                    ⭐ الأقوى
+                </div>
+            @endif
+            
+            <div class="p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">{{ $rootIcons[$root] }}</span>
+                        <div>
+                            <h5 class="font-bold text-lg text-gray-800">{{ $rootNames[$root] }}</h5>
+                            <p class="text-sm text-gray-600">
+                                @if($loop->first)
+                                    🌟 جذرك المميز
+                                @elseif($score >= 60)
+                                    💪 جذر قوي
+                                @elseif($score >= 40)
+                                    🌱 جذر نامي
+                                @else
+                                    🔥 جذر الإمكانيات المخفية
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold 
+                            {{ $loop->first ? 'text-green-700' : 
+                               ($score >= 60 ? 'text-blue-700' : 'text-purple-700') }}">
+                            {{ $score }}%
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="w-full bg-white/60 rounded-full h-3 mb-3 shadow-inner">
+                    <div class="h-3 rounded-full transition-all duration-1000
+                        {{ $loop->first ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 
+                           ($score >= 60 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' : 
+                            'bg-gradient-to-r from-purple-400 to-pink-500') }}" 
+                         style="width: {{ $score }}%"></div>
+                </div>
+                
+                <!-- Growth-Oriented Message -->
+                <p class="text-sm leading-relaxed
+                    {{ $loop->first ? 'text-green-800' : 
+                       ($score >= 60 ? 'text-blue-800' : 'text-purple-800') }}">
+                    @if($loop->first)
+                        🎯 <strong>منطقة تفوقك!</strong> هذا الجذر يُظهر قدراتك الاستثنائية. استخدم هذه القوة كجسر للنمو في الجذور الأخرى.
+                    @elseif($score >= 80)
+                        ⚡ <strong>أداء متميز!</strong> تُظهر إتقاناً رائعاً في هذا الجذر. يمكنك الاعتماد عليه كنقطة قوة.
+                    @elseif($score >= 60)
+                        💫 <strong>أساس متين!</strong> لديك فهم جيد يحتاج لمزيد من الصقل والممارسة لتحقيق التميز.
+                    @elseif($score >= 40)
+                        🚀 <strong>في رحلة النمو!</strong> تُظهر تقدماً واضحاً. مع التركيز والممارسة، ستحقق قفزات مذهلة.
+                    @else
+                        💎 <strong>كنز مدفون!</strong> هنا تكمن إمكانياتك الأعظم. كل تحسن صغير سيحدث فرقاً كبيراً في رحلتك التعليمية.
+                    @endif
+                </p>
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
                                 
                                 <!-- Roots Analysis -->
                                 <div class="p-6 bg-white/80 rounded-xl shadow-lg">
