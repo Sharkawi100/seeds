@@ -610,6 +610,7 @@ class QuizController extends Controller
             abort(404, 'هذا الاختبار غير متاح حالياً.');
         }
 
+        // For guests: check if they have name in session OR if they want to use a different name
         if (!Auth::check() && !session('guest_name')) {
             return view('quiz.guest-info', compact('quiz'));
         }
@@ -758,7 +759,7 @@ class QuizController extends Controller
 
             // Clear guest session data after submission
             if (!Auth::check()) {
-                session()->forget(['guest_name', 'school_class']);
+                session(['guest_token' => $result->guest_token]);
             }
 
             Log::info('Quiz submitted successfully', [

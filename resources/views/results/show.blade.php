@@ -617,9 +617,41 @@ $sortedRootsByScore = collect($roots)->sortByDesc(function($root, $key) use ($sc
                     <a href="{{ route('quiz.take', $result->quiz) }}" 
                        class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-4 rounded-xl font-bold transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
                         <i class="fas fa-redo"></i>
-                        إعادة الاختبار
+                        إعادة المحاولة
                     </a>
-                    
+                    @if(!Auth::check() && $result->guest_token)
+                    <!-- Guest Result Link Section -->
+                    <div class="w-full bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 mx-4">
+                        <div class="text-center">
+                            <h3 class="text-lg font-bold text-amber-800 mb-3">
+                                <i class="fas fa-bookmark text-amber-600"></i>
+                                احفظ رابط النتيجة
+                            </h3>
+                            <p class="text-amber-700 mb-4">يمكنك الوصول لهذه النتيجة خلال 7 أيام باستخدام الرابط التالي:</p>
+                            
+                            <!-- Result Link -->
+                            <div class="bg-white border-2 border-amber-300 rounded-lg p-3 mb-4">
+                                <div class="flex items-center gap-2 justify-center flex-wrap">
+                                    <input type="text" 
+                                           id="resultLink" 
+                                           value="{{ route('quiz.guest-result', ['result' => $result->guest_token]) }}" 
+                                           readonly 
+                                           class="flex-1 min-w-0 text-sm text-gray-600 bg-transparent border-none outline-none text-center">
+                                    <button onclick="copyResultLink()" 
+                                            class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                                        <i class="fas fa-copy"></i>
+                                        نسخ
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <p class="text-sm text-amber-600">
+                                <i class="fas fa-info-circle"></i>
+                                انسخ هذا الرابط لتتمكن من مراجعة نتيجتك لاحقاً
+                            </p>
+                        </div>
+                    </div>
+                    @endif
                     @if(Auth::check() && (Auth::user()->is_admin || Auth::user()->user_type === 'teacher'))
                     <a href="{{ route('quizzes.index') }}" 
                        class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-medium transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg">
@@ -666,4 +698,35 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<script>
+    function copyResultLink() {
+        const resultLink = document.getElementById('resultLink');
+        resultLink.select();
+        resultLink.setSelectionRange(0, 99999); // For mobile devices
+        
+        navigator.clipboard.writeText(resultLink.value).then(function() {
+            // Success feedback
+            const button = event.target.closest('button');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
+            button.classList.remove('bg-amber-600', 'hover:bg-amber-700');
+            button.classList.add('bg-green-600');
+            
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.classList.remove('bg-green-600');
+                button.classList.add('bg-amber-600', 'hover:bg-amber-700');
+            }, 2000);
+        }).catch(function(err) {
+            // Fallback for older browsers
+            try {
+                document.execCommand('copy');
+                const button = event.target.closest('button');
+                button.innerHTML = '<i class="fas fa-check"></i> تم النسخ!';
+            } catch (err) {
+                alert('فشل في نسخ الرابط');
+            }
+        });
+    }
+    </script>
 @endsection
