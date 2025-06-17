@@ -556,7 +556,7 @@ class QuizController extends Controller
             ->orderBy('total_attempts', 'desc')
             ->get();
 
-        return view('quizzes.attempt-analytics', compact('quiz', 'analytics'));
+        return view('results.quiz-results', compact('quiz', 'analytics'));
     }
 
     /**
@@ -788,14 +788,14 @@ class QuizController extends Controller
             ]);
 
             return redirect()->route('quiz.take', $quiz)
-                ->with('error', 'حدث خطأ أثناء حفظ النتائج. الرجاء المحاولة مرة أخرى.');
+                ->with('error', 'نحتاج إلى إعادة تجربة حفظ إجاباتك. الرجاء المحاولة مرة أخرى.');
         }
     }
 
     /**
      * Generate educational text using AI (AJAX endpoint)
      */
-    public function generateText(Request $request, Quiz $quiz = null)
+    public function generateText(Request $request, ?Quiz $quiz = null)
     {
         $this->authorizeQuizManagement();
 
@@ -907,7 +907,7 @@ class QuizController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'فشل توليد النص: ' . $e->getMessage()
+                    'message' => 'لم نتمكن من توليد النص حالياً: ' . $e->getMessage()
                 ], 422);
             }
         }
