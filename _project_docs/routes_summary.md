@@ -51,18 +51,18 @@ Last Updated: June 2025
 -   POST /teacher/register # Process teacher registration
 -   GET /teacher/pending-approval # Pending approval page (auth required)
 
-### Student Authentication (NEW)
+### Student Authentication
 
 -   GET /student/login # Student login form
--   POST /student/login # Process student login (email)
--   POST /student/pin-login # Student PIN login
+-   POST /student/login # Process student login (email/password)
+-   POST /student/pin-login # Student PIN login (school code + student ID)
 -   GET /student/register # Student registration form
 -   POST /student/register # Process student registration
 
 ### Standard Auth
 
 -   GET/POST /forgot-password # Password reset
--   GET /auth/{provider} # Social login redirect (Google/Facebook)
+-   GET /auth/{provider} # Social login redirect (Google)
 -   GET /auth/{provider}/callback # Social login callback
 -   POST /logout # Logout
 -   GET /logout-now # Simple logout (no CSRF)

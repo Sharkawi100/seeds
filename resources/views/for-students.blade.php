@@ -471,9 +471,7 @@
         </div>
         
         <div class="flex justify-center gap-4 mb-8">
-            <a href="#" class="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition transform hover:rotate-12">
-                <i class="fab fa-facebook-f"></i>
-            </a>
+            
             <a href="#" class="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition transform hover:rotate-12">
                 <i class="fab fa-twitter"></i>
             </a>

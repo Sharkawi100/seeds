@@ -39,7 +39,6 @@ class User extends Authenticatable
         'student_school_id',
         'student_data',
         'google_id',
-        'facebook_id',
         'avatar',
         'auth_provider',
         'last_login_at',

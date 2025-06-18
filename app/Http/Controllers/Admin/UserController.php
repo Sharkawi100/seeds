@@ -278,7 +278,7 @@ class UserController extends Controller
     public function disconnectSocial(Request $request, User $user)
     {
         $validated = $request->validate([
-            'provider' => ['required', 'in:google,facebook']
+            'provider' => ['required', 'in:google']
         ]);
 
         $provider = $validated['provider'];

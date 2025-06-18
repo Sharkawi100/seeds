@@ -173,12 +173,12 @@ created_at, updated_at
 
 #### Social Authentication
 
-| Route Name        | URL                         | Method | Description                |
-| ----------------- | --------------------------- | ------ | -------------------------- |
-| `social.login`    | `/auth/{provider}`          | GET    | Redirect to OAuth provider |
-| `social.callback` | `/auth/{provider}/callback` | GET    | Handle OAuth callback      |
+| Route Name        | URL                         | Method | Description              |
+| ----------------- | --------------------------- | ------ | ------------------------ |
+| `social.login`    | `/auth/{provider}`          | GET    | Redirect to Google OAuth |
+| `social.callback` | `/auth/{provider}/callback` | GET    | Handle Google callback   |
 
-### Authenticated Routes
+**Note**: Currently supports Google OAuth only. Facebook OAuth removed.
 
 #### Dashboard & Profile
 

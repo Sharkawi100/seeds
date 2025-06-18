@@ -18,6 +18,13 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
         ]);
 
+        // Register middleware aliases
+        $middleware->alias([
+            'admin' => IsAdmin::class,
+            'teacher' => \App\Http\Middleware\CanCreateQuizzes::class,
+            'active' => CheckUserActive::class,
+        ]);
+
         // Add CSRF exception for social callbacks
         $middleware->validateCsrfTokens(except: [
             'auth/*/callback',

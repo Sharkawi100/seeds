@@ -139,7 +139,7 @@ class SocialAuthController extends Controller
      */
     protected function validateProvider(string $provider): void
     {
-        if (!in_array($provider, ['google', 'facebook'])) {
+        if (!in_array($provider, ['google'])) {
             abort(404);
         }
     }
@@ -151,7 +151,7 @@ class SocialAuthController extends Controller
     {
         return match ($provider) {
             'google' => 'جوجل',
-            'facebook' => 'فيسبوك',
+
             default => $provider
         };
     }

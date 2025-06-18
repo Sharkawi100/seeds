@@ -193,12 +193,7 @@
                                             <i class="fab fa-google"></i> Google
                                         </span>
                                     @endif
-                                    @if($user->facebook_id)
-                                        <span class="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                                            <i class="fab fa-facebook"></i> Facebook
-                                        </span>
-                                    @endif
-                                    @if($user->school_name)
+                                                                        @if($user->school_name)
                                         <span class="text-xs text-gray-500">
                                             <i class="fas fa-school ml-1"></i> {{ $user->school_name }}
                                         </span>

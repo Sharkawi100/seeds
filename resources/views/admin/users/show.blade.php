@@ -144,8 +144,7 @@
                         </div>
                         
                         {{-- Social Accounts --}}
-                        @if($user->google_id || $user->facebook_id)
-                            <div class="info-row">
+                        @if($user->google_id)                            <div class="info-row">
                                 <span class="text-gray-600">حسابات مرتبطة:</span>
                                 <div class="flex gap-2">
                                     @if($user->google_id)
@@ -153,11 +152,7 @@
                                             <i class="fab fa-google"></i> Google
                                         </span>
                                     @endif
-                                    @if($user->facebook_id)
-                                        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                                            <i class="fab fa-facebook"></i> Facebook
-                                        </span>
-                                    @endif
+                                    
                                 </div>
                             </div>
                         @endif

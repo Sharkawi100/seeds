@@ -169,36 +169,13 @@
                                 @endif
                             </div>
                             
-                            {{-- Facebook Account --}}
-                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
-                                <div class="flex items-center gap-3">
-                                    <i class="fab fa-facebook text-2xl text-blue-600"></i>
-                                    <div>
-                                        <p class="font-medium">Facebook</p>
-                                        @if($user->facebook_id)
-                                            <p class="text-xs text-gray-500">ID: {{ substr($user->facebook_id, 0, 10) }}...</p>
-                                        @endif
-                                    </div>
-                                </div>
-                                @if($user->facebook_id)
-                                    <button type="button" 
-                                            class="bg-red-500 hover:bg-red-700 text-white text-sm px-3 py-1 rounded"
-                                            onclick="disconnectSocial('facebook', {{ $user->id }})">
-                                        <i class="fas fa-unlink ml-1"></i>
-                                        فصل الحساب
-                                    </button>
-                                @else
-                                    <span class="text-gray-400 text-sm">غير متصل</span>
-                                @endif
-                            </div>
-                            
+                                                      
                             {{-- Auth Provider Info --}}
                             <div class="mt-2 text-sm text-gray-600">
                                 <i class="fas fa-info-circle ml-1"></i>
                                 طريقة التسجيل الأساسية: 
                                 <span class="font-medium">
-                                    {{ $user->auth_provider == 'google' ? 'Google' : ($user->auth_provider == 'facebook' ? 'Facebook' : 'البريد الإلكتروني') }}
-                                </span>
+                                    {{ $user->auth_provider == 'google' ? 'Google' : 'البريد الإلكتروني' }}                                </span>
                             </div>
                         </div>
                     </div>

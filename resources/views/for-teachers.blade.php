@@ -470,9 +470,7 @@
             <div>
                 <h4 class="text-lg font-bold text-white mb-4">تابعنا</h4>
                 <div class="flex gap-4 mb-6">
-                    <a href="#" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition">
-                        <i class="fab fa-facebook-f"></i>
-                    </a>
+                    
                     <a href="#" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition">
                         <i class="fab fa-twitter"></i>
                     </a>

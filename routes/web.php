@@ -103,7 +103,9 @@ Route::middleware('guest')->group(function () {
 
     // Student Authentication
     Route::prefix('student')->name('student.')->group(function () {
-        Route::get('/login', fn() => view('auth.student.login'))->name('login');
+        Route::get('/login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'showLoginForm'])->name('login');
+        Route::post('/login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'login']);
+        Route::post('/pin-login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'pinLogin'])->name('pin-login');
         Route::get('/register', fn() => view('auth.student.register'))->name('register');
     });
 });
@@ -144,6 +146,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/preferences', 'updatePreferences')->name('preferences');
         Route::patch('/privacy', 'updatePrivacy')->name('privacy');
     });
+    Route::get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
+    Route::get('/reports', [App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
 
     // Password Update
     Route::put('/profile/password', [PasswordController::class, 'update'])->name('password.update');

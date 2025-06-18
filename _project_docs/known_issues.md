@@ -83,3 +83,26 @@ $user->update([
 `user_id` int unsigned NOT NULL  -- Not bigint
 ```
 ````
+
+### 6. Facebook OAuth Integration Removed (December 2024)
+
+**Issue**: Facebook OAuth setup required business verification and complex approval process
+**Solution**:
+
+-   Completely removed Facebook OAuth from codebase
+-   Cleaned all Facebook references from views and controllers
+-   Removed `facebook_id` database column and updated enums
+-   Streamlined authentication to Google OAuth + email/password only
+
+**Result**: Cleaner, more maintainable authentication system focused on core functionality
+
+### 7. Student PIN Login Route Missing (December 2024)
+
+**Issue**: `Route [student.pin-login] not defined` error on student login page
+**Solution**:
+
+-   Added missing POST route: `/student/pin-login`
+-   Connected route to `StudentLoginController@pinLogin` method
+-   Registered middleware aliases in `bootstrap/app.php`
+
+**Result**: Student PIN login now fully functional for classroom access

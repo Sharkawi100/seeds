@@ -63,15 +63,11 @@
                         </div>
                         
                         <!-- Login Provider Badge -->
-                        @if(auth()->user()->auth_provider !== 'email')
-                            <div class="mt-3 inline-flex items-center px-3 py-1 bg-white/20 backdrop-blur rounded-full text-sm">
-                                @if(auth()->user()->auth_provider === 'google')
-                                    <i class="fab fa-google ml-2"></i> تسجيل عبر Google
-                                @elseif(auth()->user()->auth_provider === 'facebook')
-                                    <i class="fab fa-facebook ml-2"></i> تسجيل عبر Facebook
-                                @endif
-                            </div>
-                        @endif
+                        @if(auth()->user()->auth_provider === 'google')
+                        <div class="mt-3 inline-flex items-center px-3 py-1 bg-white/20 backdrop-blur rounded-full text-sm">
+                            <i class="fab fa-google ml-2"></i> تسجيل عبر Google
+                        </div>
+                    @endif
                     </div>
                     
                     <!-- Profile Completion -->

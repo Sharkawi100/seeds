@@ -48,7 +48,7 @@ Last Updated: December 2024
 
 ## Security Features (NEW)
 
--   OAuth 2.0: Google, Facebook login
+-   OAuth 2.0: Google login integration
 -   Device Detection: Browser, OS, location tracking
 -   Rate Limiting: Built-in Laravel + custom implementation
 -   Password Policies: Custom validation rules
@@ -67,7 +67,7 @@ Add these updates:
 
 ## Authentication Packages
 
--   **laravel/socialite**: OAuth integration (Google, Facebook)
+-   **laravel/socialite**: OAuth integration (Google)
 -   **jenssegers/agent**: Device detection for login tracking
 
 ## Production Optimizations

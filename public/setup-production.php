@@ -46,9 +46,7 @@ try {
 // Check social login columns
 echo "<h3>Checking Social Login Setup...</h3>";
 $hasGoogleId = Schema::hasColumn('users', 'google_id');
-$hasFacebookId = Schema::hasColumn('users', 'facebook_id');
 echo "Google ID column: " . ($hasGoogleId ? "✓ Exists" : "✗ Missing") . "<br>";
-echo "Facebook ID column: " . ($hasFacebookId ? "✓ Exists" : "✗ Missing") . "<br>";
 
 echo "<hr>";
 echo "<h2 style='color:red'>⚠️ IMPORTANT: DELETE THIS FILE NOW!</h2>";

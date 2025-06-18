@@ -1,9 +1,11 @@
 # Key Code Snippets - جُذور (Juzoor)
+
 Last Updated: December 2024
 
 ## 🔐 Authentication Patterns
 
 ### Login Implementation
+
 ```php
 // AuthenticatedSessionController.php
 public function store(LoginRequest $request): RedirectResponse
@@ -17,19 +19,20 @@ public function store(LoginRequest $request): RedirectResponse
 public function authenticate(): void
 {
     $this->ensureIsNotRateLimited();
-    
+
     if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
         RateLimiter::hit($this->throttleKey());
         throw ValidationException::withMessages([
             'email' => trans('auth.failed'),
         ]);
     }
-    
+
     RateLimiter::clear($this->throttleKey());
 }
 ```
 
 ### Registration Pattern
+
 ```php
 // RegisteredUserController.php
 public function store(Request $request): RedirectResponse
@@ -48,7 +51,7 @@ public function store(Request $request): RedirectResponse
 
     event(new Registered($user));
     Auth::login($user);
-    
+
     return redirect(route('dashboard', absolute: false));
 }
 ```
@@ -56,6 +59,7 @@ public function store(Request $request): RedirectResponse
 ## 📝 Quiz Creation Patterns
 
 ### AI-Powered Quiz Generation
+
 ```php
 // QuizController.php
 if ($validated['creation_method'] === 'ai') {
@@ -67,12 +71,13 @@ if ($validated['creation_method'] === 'ai') {
         true, // include passage
         $validated['passage_topic'] ?? null
     );
-    
+
     $this->parseAndSaveQuestions($quiz, $aiResponse);
 }
 ```
 
 ### Question Storage Pattern
+
 ```php
 Question::create([
     'quiz_id' => $quiz->id,
@@ -89,6 +94,7 @@ Question::create([
 ## 🎯 Guest Access Pattern
 
 ### PIN-Based Quiz Access
+
 ```php
 // WelcomeController.php
 public function enterPin(Request $request)
@@ -111,6 +117,7 @@ public function enterPin(Request $request)
 ```
 
 ### Guest Result Storage
+
 ```php
 // QuizController.php - submit method
 if (!Auth::check()) {
@@ -122,6 +129,7 @@ if (!Auth::check()) {
 ## 📊 Results Calculation Pattern
 
 ### Root-wise Scoring
+
 ```php
 // Calculate scores per root
 $rootScores = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
@@ -130,16 +138,16 @@ $rootCounts = ['jawhar' => 0, 'zihn' => 0, 'waslat' => 0, 'roaya' => 0];
 foreach ($validated['answers'] as $questionId => $selectedAnswer) {
     $question = $quiz->questions->find($questionId);
     if (!$question) continue;
-    
+
     $isCorrect = $question->correct_answer === $selectedAnswer;
-    
+
     Answer::create([
         'question_id' => $questionId,
         'result_id' => $result->id,
         'selected_answer' => $selectedAnswer,
         'is_correct' => $isCorrect
     ]);
-    
+
     $rootCounts[$question->root_type]++;
     if ($isCorrect) {
         $rootScores[$question->root_type]++;
@@ -157,6 +165,7 @@ foreach ($rootScores as $root => $score) {
 ## 🤖 AI Integration Patterns
 
 ### Claude Service Usage
+
 ```php
 // Generate educational text
 $text = $this->claudeService->generateEducationalText(
@@ -179,6 +188,7 @@ $questions = $this->claudeService->generateQuestionsFromText(
 ## 🔒 Authorization Patterns
 
 ### Policy-based Authorization
+
 ```php
 // QuizPolicy.php
 public function view(User $user, Quiz $quiz): bool
@@ -193,6 +203,7 @@ if ((int) $quiz->user_id !== Auth::id()) {
 ```
 
 ### Admin Middleware
+
 ```php
 // IsAdmin.php
 public function handle(Request $request, Closure $next): Response
@@ -200,11 +211,11 @@ public function handle(Request $request, Closure $next): Response
     if (!Auth::check()) {
         return redirect()->route('login');
     }
-    
+
     if (!Auth::user()->is_admin) {
         abort(403, 'غير مصرح لك بالوصول لهذه الصفحة');
     }
-    
+
     return $next($request);
 }
 ```
@@ -212,6 +223,7 @@ public function handle(Request $request, Closure $next): Response
 ## 🌐 Localization Pattern
 
 ### Multi-language Support
+
 ```php
 // SetLocale Middleware
 public function handle(Request $request, Closure $next)
@@ -234,6 +246,7 @@ Route::get('/lang/{locale}', function ($locale) {
 ## 📧 Email Pattern
 
 ### Contact Form Handling
+
 ```php
 Mail::to(config('mail.admin_email', 'admin@iseraj.com'))
     ->send(new ContactInquiry($validated));
@@ -242,17 +255,36 @@ Mail::to(config('mail.admin_email', 'admin@iseraj.com'))
 ## 🎨 Blade Component Usage
 
 ### Custom Juzoor Chart Component
-```blade
+
+````blade
 <x-juzoor-chart :scores="$result->scores" size="medium" />
 
 <!-- Component accepts scores array -->
 @props(['scores' => null, 'size' => 'medium'])
 @php
 $defaultScores = $scores ?? [
-    'jawhar' => 0, 
-    'zihn' => 0, 
-    'waslat' => 0, 
+    'jawhar' => 0,
+    'zihn' => 0,
+    'waslat' => 0,
     'roaya' => 0
 ];
 @endphp
-```
+```## 🔐 Middleware Registration Pattern
+
+### Middleware Aliases (Laravel 11)
+```php
+// bootstrap/app.php
+->withMiddleware(function (Middleware $middleware) {
+    // Register custom middleware aliases
+    $middleware->alias([
+        'admin' => IsAdmin::class,
+        'teacher' => CanCreateQuizzes::class,
+        'active' => CheckUserActive::class,
+    ]);
+
+    // Web middleware stack
+    $middleware->web(append: [
+        \App\Http\Middleware\SetLocale::class,
+    ]);
+})
+````
