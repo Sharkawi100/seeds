@@ -591,7 +591,8 @@
                                     <div class="flex justify-between items-center py-3 px-4 bg-white rounded-lg border border-gray-200 table-row-hover">
                                         <button class="font-medium text-purple-600 hover:text-purple-800 transition-colors duration-200 cursor-pointer student-result-btn" 
                                                 data-student="{{ $result->guest_name }}" 
-                                                data-quiz="{{ $result->quiz_id }}">
+                                                data-quiz="{{ $result->quiz_id }}"
+                                                data-result="{{ $result->id }}">
                                             👤 {{ $result->guest_name }}
                                         </button>
                                         <span class="font-bold text-lg">{{ $result->total_score }}%</span>
@@ -738,7 +739,8 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             const studentName = this.dataset.student;
             const quizId = this.dataset.quiz;
-            showStudentResults(studentName, quizId);
+            const resultId = this.dataset.result;
+            showStudentResults(studentName, quizId, resultId);
         });
     });
 
@@ -824,7 +826,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Student Results Modal
-    function showStudentResults(studentName, quizId) {
+    function showStudentResults(studentName, quizId, resultId) {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
         modal.innerHTML = `
@@ -897,11 +899,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="flex gap-3">
-                        <a href="/roots/reports?student_search=${encodeURIComponent(studentName)}" 
-                           class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-4 rounded-xl text-center hover:from-purple-700 hover:to-blue-700 transition-all duration-300">
-                            عرض التقرير المفصل
+                        <a href="/roots/results/${resultId}" 
+                           class="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-xl text-center hover:from-green-700 hover:to-green-800 transition-all duration-300">
+                            <i class="fas fa-eye ml-2"></i>
+                            عرض النتيجة الكاملة
                         </a>
-                        <button class="close-modal flex-1 bg-gray-300 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-400 transition-all duration-300">
+                        <a href="/roots/results/${resultId}" 
+                           class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-4 rounded-xl text-center hover:from-purple-700 hover:to-blue-700 transition-all duration-300">
+                            <i class="fas fa-chart-line ml-2"></i>
+                            تقرير الطالب المفصل
+                        </a>
+                    </div>
+                    
+                    <div class="flex justify-center">
+                        <button class="close-modal bg-gray-300 text-gray-700 py-3 px-6 rounded-xl hover:bg-gray-400 transition-all duration-300">
+                            <i class="fas fa-times ml-2"></i>
                             إغلاق
                         </button>
                     </div>
