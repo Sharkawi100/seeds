@@ -689,14 +689,33 @@ class QuizController extends Controller
     }
 
     /**
-     * Display the specified quiz
+     * Display the specified quiz with all necessary relationships
      */
     public function show(Quiz $quiz)
     {
-        $this->authorizeQuizManagement();
-        $this->authorizeQuizOwnership($quiz);
+        // Check authentication first
+        if (!Auth::check()) {
+            return redirect()->route('quiz.take', $quiz)
+                ->with('info', 'يمكنك أخذ الاختبار مباشرة أو تسجيل الدخول لإدارته.');
+        }
 
-        $quiz->load(['questions', 'subject', 'results']);
+        $this->authorizeQuizManagement();
+
+        // Allow admin to view any quiz, others only their own quizzes
+        if (!Auth::user()->is_admin && (int) $quiz->user_id !== Auth::id()) {
+            return redirect()->route('quiz.take', $quiz)
+                ->with('info', 'يمكنك أخذ الاختبار لكن لا يمكنك إدارته.');
+        }
+
+        // Load all necessary relationships for the view
+        $quiz->load([
+            'questions' => function ($query) {
+                $query->orderBy('id'); // Maintain question order
+            },
+            'user:id,name,avatar,experience_years', // Teacher info with specific fields
+            'subject:id,name,slug', // Subject info from database
+            'results:id,quiz_id,total_score,created_at' // Results for statistics
+        ]);
 
         return view('quizzes.show', compact('quiz'));
     }

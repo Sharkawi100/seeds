@@ -1,49 +1,145 @@
 @extends('layouts.app')
 
-@section('title', $quiz->title)
+@section('title', $quiz->title . ' - إدارة الاختبار')
 
 @section('content')
-<div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Quiz Header -->
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden mb-8">
-            <div class="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 px-8 py-12">
-                <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-3 mb-4">
-                            <span class="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium">
-                                {{ ($quiz->subject ?? 'arabic') == 'arabic' ? '🌍 عربي' : (($quiz->subject ?? 'arabic') == 'english' ? '🌎 إنجليزي' : '🌏 عبري') }}
-                            </span>
-                            <span class="bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium">
-                                الصف {{ $quiz->grade_level }}
-                            </span>
+{{-- 
+    IMPORTANT: Controller must load relationships:
+    $quiz->load(['questions', 'user', 'subject', 'results']);
+--}}
+
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Breadcrumb -->
+        <nav class="mb-6">
+            <ol class="flex items-center gap-2 text-sm text-gray-500">
+                <li><a href="{{ route('dashboard') }}" class="hover:text-purple-600 transition">الرئيسية</a></li>
+                <li>←</li>
+                <li><a href="{{ route('quizzes.index') }}" class="hover:text-purple-600 transition">اختباراتي</a></li>
+                <li>←</li>
+                <li class="text-gray-900 font-medium">{{ $quiz->title }}</li>
+            </ol>
+        </nav>
+
+        <!-- Quiz Header Card -->
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
+            @php
+                // Force dark gradients with inline styles as backup
+                $gradientStyles = [
+                    'background: linear-gradient(135deg, #1f2937 0%, #111827 50%, #000000 100%);',           // Gray to black
+                    'background: linear-gradient(135deg, #1e3a8a 0%, #312e81 50%, #581c87 100%);',           // Blue to purple
+                    'background: linear-gradient(135deg, #14532d 0%, #064e3b 50%, #134e4a 100%);',           // Green to teal
+                    'background: linear-gradient(135deg, #7f1d1d 0%, #881337 50%, #831843 100%);',           // Red to pink
+                    'background: linear-gradient(135deg, #581c87 0%, #6b21a8 50%, #86198f 100%);',           // Purple to violet
+                    'background: linear-gradient(135deg, #78350f 0%, #9a3412 50%, #7f1d1d 100%);'            // Orange to red
+                ];
+                $gradientClasses = [
+                    'bg-gradient-to-br from-gray-800 via-gray-900 to-black',
+                    'bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900',
+                    'bg-gradient-to-br from-green-900 via-emerald-900 to-teal-900',
+                    'bg-gradient-to-br from-red-900 via-rose-900 to-pink-900',
+                    'bg-gradient-to-br from-purple-900 via-violet-900 to-fuchsia-900',
+                    'bg-gradient-to-br from-amber-900 via-orange-900 to-red-900'
+                ];
+                $gradientIndex = abs($quiz->id) % count($gradientStyles);
+                $selectedGradient = $gradientClasses[$gradientIndex];
+                $selectedStyle = $gradientStyles[$gradientIndex];
+            @endphp
+            
+            <div class="relative {{ $selectedGradient }} p-6 text-white min-h-[160px] flex items-center justify-between" style="{{ $selectedStyle }}">
+                <!-- Background decorations -->
+                <div class="absolute inset-0 opacity-10" style="background-image: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.1"><circle cx="7" cy="7" r="1"/><circle cx="27" cy="7" r="1"/><circle cx="47" cy="7" r="1"/><circle cx="7" cy="27" r="1"/><circle cx="27" cy="27" r="1"/><circle cx="47" cy="27" r="1"/><circle cx="7" cy="47" r="1"/><circle cx="27" cy="47" r="1"/><circle cx="47" cy="47" r="1"/></g></g></svg>');"></div>
+                
+                <div class="relative z-10 flex-1">
+                    <!-- Quiz Title -->
+                    <h1 class="text-2xl md:text-3xl font-bold leading-tight mb-4 text-white drop-shadow-sm">
+                        {{ $quiz->title }}
+                    </h1>
+                    
+                    <!-- Teacher Info - Stylishly added -->
+                    <div class="flex items-center gap-3 mb-4 p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+                        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                            @if($quiz->user->avatar)
+                                <img src="{{ $quiz->user->avatar }}" alt="{{ $quiz->user->name }}" class="w-full h-full rounded-full object-cover">
+                            @else
+                                <i class="fas fa-user-tie text-white/80"></i>
+                            @endif
                         </div>
-                        <h1 class="text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">
-                            {{ $quiz->title }}
-                        </h1>
-                        @if($quiz->description)
-                        <div class="text-white/90 text-lg leading-relaxed prose prose-lg max-w-none prose-invert">
-                            {!! $quiz->description !!}
+                        <div>
+                            <p class="text-white/90 font-medium">المعلم: {{ $quiz->user->name }}</p>
+                            <p class="text-white/70 text-sm">
+                                @if($quiz->user->experience_years)
+                                    <i class="fas fa-graduation-cap ml-1"></i>
+                                    {{ $quiz->user->experience_years }} سنوات خبرة
+                                @else
+                                    <i class="fas fa-chalkboard-teacher ml-1"></i>
+                                    معلم
+                                @endif
+                            </p>
                         </div>
+                    </div>
+                    
+                    <!-- Quiz Meta Info -->
+                    <div class="flex flex-wrap items-center gap-4 text-white/90 text-sm">
+                        <span class="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/20">
+                            <i class="fas fa-book-open"></i>
+                            <span class="font-bold">{{ $quiz->subject->name ?? 'اللغة العربية' }}</span>
+                        </span>
+                        <span class="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/20">
+                            <i class="fas fa-layer-group"></i>
+                            <span class="font-bold">الصف {{ $quiz->grade_level }}</span>
+                        </span>
+                        @if($quiz->time_limit)
+                        <span class="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/20">
+                            <i class="fas fa-clock"></i>
+                            <span class="font-bold">{{ $quiz->time_limit }} دقيقة</span>
+                        </span>
                         @endif
                     </div>
                     
-                    <!-- Quiz Stats -->
-                    <div class="flex flex-col sm:flex-row lg:flex-col gap-4">
-                        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                            <div class="text-3xl font-bold text-white">{{ $quiz->questions->count() }}</div>
-                            <div class="text-white/80 text-sm">سؤال</div>
+                    @if($quiz->description)
+                    <div class="mt-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+                        <p class="text-white/90 leading-relaxed">{!! nl2br(e($quiz->description)) !!}</p>
+                    </div>
+                    @endif
+                </div>
+                
+                <!-- Status and PIN -->
+                <div class="relative z-10 text-left">
+                    <div class="flex items-center justify-center gap-3 mb-4">
+                        <span class="flex items-center gap-2 text-sm font-bold">
+                            <div class="w-3 h-3 rounded-full {{ $quiz->is_active ? 'bg-green-400' : 'bg-gray-400' }} animate-pulse"></div>
+                            {{ $quiz->is_active ? 'نشط' : 'معطل' }}
+                        </span>
+                        <div class="text-2xl font-mono font-black text-white bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30 shadow-lg hover:bg-white/30 transition-all duration-300">
+                            {{ $quiz->pin ?? '---' }}
                         </div>
-                        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                            <div class="text-3xl font-bold text-white">{{ $quiz->results->count() }}</div>
-                            <div class="text-white/80 text-sm">محاولة</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quiz Stats -->
+            <div class="p-6 flex-1 flex flex-col">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-2xl p-4 text-center border border-blue-100">
+                        <div class="text-3xl font-black text-blue-700 mb-1">{{ $quiz->questions->count() }}</div>
+                        <div class="text-sm text-blue-600 font-bold">سؤال</div>
+                    </div>
+                    <div class="bg-green-50 rounded-2xl p-4 text-center border border-green-100">
+                        <div class="text-3xl font-black text-green-700 mb-1">{{ $quiz->results->count() }}</div>
+                        <div class="text-sm text-green-600 font-bold">محاولة</div>
+                    </div>
+                    @if($quiz->time_limit)
+                    <div class="bg-orange-50 rounded-2xl p-4 text-center border border-orange-100">
+                        <div class="text-3xl font-black text-orange-700 mb-1">{{ $quiz->time_limit }}</div>
+                        <div class="text-sm text-orange-600 font-bold">دقيقة</div>
+                    </div>
+                    @endif
+                    <div class="bg-purple-50 rounded-2xl p-4 text-center border border-purple-100">
+                        <div class="text-3xl font-black text-purple-700 mb-1">
+                            {{ $quiz->results->count() > 0 ? number_format($quiz->results->avg('total_score'), 1) : 0 }}%
                         </div>
-                        @if($quiz->time_limit)
-                        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
-                            <div class="text-3xl font-bold text-white">{{ $quiz->time_limit }}</div>
-                            <div class="text-white/80 text-sm">دقيقة</div>
-                        </div>
-                        @endif
+                        <div class="text-sm text-purple-600 font-bold">متوسط النتائج</div>
                     </div>
                 </div>
             </div>
@@ -52,157 +148,52 @@
             <div class="p-6 bg-gray-50 border-t">
                 <div class="flex flex-wrap items-center gap-4">
                     @if(!$quiz->has_submissions)
-    <a href="{{ route('quizzes.edit', $quiz) }}" 
-       class="btn-primary">
-        <i class="fas fa-edit"></i>
-        تعديل الاختبار
-    </a>
-@else
-    <!-- Toggle Status -->
-    <form action="{{ route('quizzes.toggle-status', $quiz) }}" method="POST" class="inline">
-        @csrf
-        @method('PATCH')
-        <button type="submit" class="flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition
-            {{ $quiz->is_active ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200' }}">
-            <i class="fas {{ $quiz->is_active ? 'fa-pause' : 'fa-play' }}"></i>
-            {{ $quiz->is_active ? 'إلغاء التفعيل' : 'تفعيل' }}
-        </button>
-    </form>
-    
-    <!-- Copy Quiz -->
-    <form action="{{ route('quizzes.duplicate', $quiz) }}" method="POST" class="inline">
-        @csrf
-        <button type="submit" class="flex items-center gap-2 px-4 py-3 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg font-medium transition">
-            <i class="fas fa-copy"></i>
-            نسخ الاختبار
-        </button>
-    </form>
-@endif
-                    
-                    <a href="{{ route('quizzes.questions.index', $quiz) }}" 
-                       class="btn-secondary">
-                        <i class="fas fa-question-circle"></i>
-                        إدارة الأسئلة
+                    <a href="{{ route('quizzes.edit', $quiz) }}" 
+                       class="btn-primary">
+                        <i class="fas fa-edit"></i>
+                        تعديل الاختبار
                     </a>
+                    @else
+                    <!-- Toggle Status -->
+                    <form action="{{ route('quizzes.toggle-status', $quiz) }}" method="POST" class="inline">
+                        @csrf
+                        @method('PATCH')
+                        <button type="submit" class="flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition
+                            {{ $quiz->is_active ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200' }}">
+                            <i class="fas {{ $quiz->is_active ? 'fa-pause' : 'fa-play' }}"></i>
+                            {{ $quiz->is_active ? 'إيقاف الاختبار' : 'تفعيل الاختبار' }}
+                        </button>
+                    </form>
+                    @endif
                     
-                    <a href="{{ route('quiz.take', $quiz) }}" 
-                       class="btn-success" 
-                       target="_blank">
-                        <i class="fas fa-play"></i>
-                        بدء الاختبار
+                    <button onclick="copyQuizLink()" class="btn-secondary">
+                        <i class="fas fa-link"></i>
+                        نسخ الرابط
+                    </button>
+                    
+                    <button onclick="shareQuiz()" class="btn-info">
+                        <i class="fas fa-share-alt"></i>
+                        مشاركة
+                    </button>
+                    
+                    @if($quiz->results->count() > 0)
+                    <a href="{{ route('quizzes.results', $quiz) }}" class="btn-purple">
+                        <i class="fas fa-chart-bar"></i>
+                        تقرير النتائج
                     </a>
-                    
-                    <!-- PIN Display -->
-                    <div class="mr-auto">
-                        <div class="pin-card">
-                            <div class="flex items-center gap-3">
-                                <div class="text-lg font-bold text-purple-600">{{ $quiz->pin }}</div>
-                                <button onclick="copyPIN('{{ $quiz->pin }}')" 
-                                        class="text-gray-500 hover:text-purple-600 transition-colors">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                            <div class="text-xs text-gray-500 mt-1">رمز الدخول</div>
-                        </div>
-                    </div>
+                    @endif
                 </div>
             </div>
         </div>
 
-        <!-- Quiz Analytics -->
-        @if($quiz->results->count() > 0)
-        <div class="grid md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">متوسط الدرجات</h3>
-                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-chart-line text-green-600 text-xl"></i>
-                    </div>
-                </div>
-                <div class="text-3xl font-bold text-gray-900">
-                    {{ round($quiz->results->avg('total_score')) }}%
-                </div>
-                <p class="text-sm text-gray-500 mt-1">من جميع المحاولات</p>
-            </div>
-            
-            <div class="bg-white rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">معدل النجاح</h3>
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-trophy text-blue-600 text-xl"></i>
-                    </div>
-                </div>
-                <div class="text-3xl font-bold text-gray-900">
-                    {{ $quiz->results->where('total_score', '>=', $quiz->passing_score ?? 60)->count() }}
-                </div>
-                <p class="text-sm text-gray-500 mt-1">من {{ $quiz->results->count() }} محاولة</p>
-            </div>
-            
-            <div class="bg-white rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">آخر نشاط</h3>
-                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-clock text-purple-600 text-xl"></i>
-                    </div>
-                </div>
-                <div class="text-lg font-bold text-gray-900">
-                    {{ $quiz->results->sortByDesc('created_at')->first()?->created_at?->diffForHumans() ?? 'لا يوجد' }}
-                </div>
-                <p class="text-sm text-gray-500 mt-1">آخر محاولة</p>
-            </div>
-        </div>
-        @endif
-
-        <!-- Roots Distribution -->
-        @if($quiz->questions->count() > 0)
-        @php
-            $roots = [
-                'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯', 'color' => 'red'],
-                'zihn' => ['name' => 'ذِهن', 'icon' => '🧠', 'color' => 'blue'],
-                'waslat' => ['name' => 'وَصلات', 'icon' => '🔗', 'color' => 'orange'],
-                'roaya' => ['name' => 'رُؤية', 'icon' => '👁️', 'color' => 'purple']
-            ];
-            $rootCounts = $quiz->questions->groupBy('root_type')->map->count();
-            $totalQuestions = $quiz->questions->count();
-        @endphp
-        
-        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                🌳 توزيع الجذور التعليمية
-            </h2>
-            
-            <div class="grid md:grid-cols-4 gap-6">
-                @foreach($roots as $key => $root)
-                <div class="text-center">
-                    <div class="w-20 h-20 mx-auto mb-4 bg-{{ $root['color'] }}-100 rounded-full flex items-center justify-center">
-                        <span class="text-3xl">{{ $root['icon'] }}</span>
-                    </div>
-                    <h3 class="font-bold text-gray-800 mb-2">{{ $root['name'] }}</h3>
-                    <div class="text-center">
-                        <span class="text-2xl font-bold text-{{ $root['color'] }}-600">
-                            {{ $rootCounts[$key] ?? 0 }}
-                        </span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div class="bg-{{ $root['color'] }}-500 h-2 rounded-full transition-all duration-500" 
-                             style="width: {{ $totalQuestions > 0 ? (($rootCounts[$key] ?? 0) / $totalQuestions) * 100 : 0 }}%"></div>
-                    </div>
-                    <p class="text-sm text-gray-600 mt-2">
-                        {{ $totalQuestions > 0 ? round((($rootCounts[$key] ?? 0) / $totalQuestions) * 100) : 0 }}% من الأسئلة
-                    </p>
-                </div>
-                @endforeach
-            </div>
-        </div>
-        @endif
-
-        <!-- Educational Passage -->
-        @if($quiz->questions->where('passage', '!=', null)->first())
-        <div class="bg-white rounded-2xl shadow-lg mb-8 overflow-hidden">
-            <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+        <!-- Educational Passage Section -->
+        @if($quiz->passage)
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
+            <div class="px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                        📖 {{ $quiz->questions->where('passage', '!=', null)->first()->passage_title ?: 'النص التعليمي' }}
+                    <h2 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fas fa-file-text"></i>
+                        {{ $quiz->passage_title ?: 'النص التعليمي' }}
                     </h2>
                     <button onclick="togglePassage()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
                         <span id="toggleText">إخفاء</span>
@@ -215,7 +206,7 @@
             <div id="passageContent" class="passage-content">
                 <div class="p-6">
                     <div class="prose prose-lg max-w-none text-gray-700 leading-relaxed">
-                        {!! $quiz->questions->where('passage', '!=', null)->first()->passage !!}
+                        {!! $quiz->passage !!}
                     </div>
                 </div>
             </div>
@@ -247,41 +238,57 @@
                     <!-- Root indicator stripe -->
                     @php
                         $questionRootType = $question->root_type ?: 'jawhar'; // Default to jawhar if empty
-                        $rootData = $roots[$questionRootType] ?? $roots['jawhar']; // Fallback to jawhar
+                        $roots = [
+                            'jawhar' => ['name' => 'جَوهر', 'description' => 'ما هو؟', 'color' => 'emerald', 'icon' => '💎'],
+                            'zihn' => ['name' => 'ذِهن', 'description' => 'كيف يعمل؟', 'color' => 'blue', 'icon' => '🧠'],
+                            'waslat' => ['name' => 'وَصلات', 'description' => 'كيف يرتبط؟', 'color' => 'orange', 'icon' => '🔗'],
+                            'roaya' => ['name' => 'رُؤية', 'description' => 'كيف نستخدمه؟', 'color' => 'purple', 'icon' => '👁️']
+                        ];
+                        $rootData = $roots[$questionRootType] ?? $roots['jawhar'];
                     @endphp
-                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-{{ $rootData['color'] }}-500"></div>
+                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-{{ $rootData['color'] }}-500 rounded-r-lg"></div>
                     
-                    <div class="flex items-start gap-4 mr-3">
-                        <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center font-bold text-gray-700 text-lg shadow-sm">
-                            {{ $index + 1 }}
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex flex-wrap items-center gap-3 mb-4">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-{{ $rootData['color'] }}-100 text-{{ $rootData['color'] }}-700 font-medium">
-                                    {{ $rootData['icon'] }} {{ $rootData['name'] }}
-                                </span>
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
-                                    <i class="fas fa-layer-group mr-1.5"></i>
-                                    مستوى {{ $question->depth_level ?? 1 }}
-                                </span>
-                                <span class="text-sm text-gray-500">
+                    <div class="flex items-start gap-4">
+                        <!-- Question Number & Root Badge -->
+                        <div class="flex-shrink-0 flex flex-col items-center gap-2">
+                            <div class="w-10 h-10 bg-gradient-to-br from-gray-600 to-gray-700 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                                {{ $index + 1 }}
+                            </div>
+                            <div class="px-2 py-1 bg-{{ $rootData['color'] }}-100 text-{{ $rootData['color'] }}-700 border border-{{ $rootData['color'] }}-200 rounded-lg text-center min-w-16">
+                                <span class="text-lg">{{ $rootData['icon'] }}</span>
+                                <div class="text-xs font-bold">{{ $rootData['name'] }}</div>
+                            </div>
+                            <!-- Depth Level Badge -->
+                            <div class="px-2 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-lg text-center min-w-16">
+                                <div class="text-xs font-bold mb-1">المستوى</div>
+                                <div class="flex items-center justify-center gap-1">
                                     @for($i = 1; $i <= 3; $i++)
-                                        @if($i <= ($question->depth_level ?? 1))
-                                            <span class="text-yellow-500">●</span>
+                                        @if($i <= $question->depth_level)
+                                            <span class="text-yellow-500 text-xs">●</span>
                                         @else
-                                            <span class="text-gray-300">●</span>
+                                            <span class="text-gray-300 text-xs">●</span>
                                         @endif
                                     @endfor
-                                </span>
+                                </div>
+                                <div class="text-xs">
+                                    {{ $question->depth_level == 1 ? 'سطحي' : ($question->depth_level == 2 ? 'متوسط' : 'عميق') }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Question Content -->
+                        <div class="flex-1">
+                            <!-- Question Text -->
+                            <div class="mb-4">
+                                <h3 class="text-lg font-medium text-gray-900 mb-2 leading-relaxed">
+                                    {!! $question->question !!}
+                                </h3>
                             </div>
                             
-                            <h3 class="question-title text-lg font-bold text-gray-900 mb-4 leading-relaxed">
-                                {!! $question->question !!}
-                            </h3>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <!-- Answer Options -->
+                            <div class="space-y-2">
                                 @foreach($question->options as $optionIndex => $option)
-                                <div class="answer-option flex items-center gap-3 p-3 bg-gray-50 rounded-lg {{ $option === $question->correct_answer ? 'bg-green-50 border border-green-200' : '' }}">
+                                <div class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 transition-colors {{ $option === $question->correct_answer ? 'bg-green-50 border border-green-200' : '' }}">
                                     <span class="flex-shrink-0 w-8 h-8 {{ $option === $question->correct_answer ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700' }} rounded-full flex items-center justify-center text-sm font-bold">
                                         {{ ['أ', 'ب', 'ج', 'د', 'هـ', 'و'][$optionIndex] ?? $optionIndex + 1 }}
                                     </span>
@@ -343,152 +350,218 @@
     </div>
 </div>
 
-<!-- Results Modal -->
-<div id="results-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50">
+<!-- Share Modal -->
+<div id="shareModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div class="p-6 border-b">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-bold">تقرير النتائج المفصل</h3>
-                    <button onclick="closeResults()" class="text-gray-500 hover:text-gray-700">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-bounce-in">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-gray-900">مشاركة الاختبار</h3>
+                <button onclick="closeShareModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="p-6 overflow-y-auto max-h-[70vh]">
-                <!-- Results content will be loaded here -->
-                <div class="text-center py-8">
-                    <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
-                    <p class="text-gray-500 mt-2">جاري تحميل البيانات...</p>
+            
+            <div class="space-y-4">
+                <!-- Quiz Link -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">رابط الاختبار</label>
+                    <div class="flex gap-2">
+                        <input type="text" 
+                               id="quizLink" 
+                               value="{{ route('quiz.take', $quiz) }}"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                               readonly>
+                        <button onclick="copyText('quizLink')" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- PIN Code -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">رمز الاختبار (PIN)</label>
+                    <div class="flex gap-2">
+                        <input type="text" 
+                               id="quizPin" 
+                               value="{{ $quiz->pin }}"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-center text-lg"
+                               readonly>
+                        <button onclick="copyText('quizPin')" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Instructions -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 class="font-medium text-blue-900 mb-2">تعليمات للطلاب:</h4>
+                    <ol class="text-sm text-blue-800 space-y-1">
+                        <li>1. اذهب إلى الموقع: <span class="font-mono">iseraj.com/roots</span></li>
+                        <li>2. أدخل الرمز: <span class="font-mono font-bold">{{ $quiz->pin }}</span></li>
+                        <li>3. اكتب اسمك وابدأ الاختبار</li>
+                    </ol>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 @endsection
 
 @push('styles')
 <style>
-    /* Button Styles */
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
+/* Button Styles */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background: white;
+    color: #4f46e5;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 2px solid #4f46e5;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background: #eff6ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    color: #4f46e5;
+    text-decoration: none;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    color: white;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-purple {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-purple:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+/* Passage Content */
+.passage-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    max-height: 1000px;
+}
+
+.passage-content.hidden {
+    max-height: 0;
+}
+
+/* Animation */
+@keyframes bounce-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
     }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        color: white;
-        text-decoration: none;
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
     }
-    
-    .btn-secondary {
-        background: white;
-        color: #4f46e5;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
-        border: 2px solid #4f46e5;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
+    70% {
+        transform: scale(0.9);
     }
-    
-    .btn-secondary:hover {
-        background: #eff6ff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        color: #4f46e5;
-        text-decoration: none;
+    100% {
+        opacity: 1;
+        transform: scale(1);
     }
-    
-    .btn-success {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
+}
+
+.animate-bounce-in {
+    animation: bounce-in 0.5s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .btn-primary, .btn-secondary, .btn-success, .btn-info, .btn-purple {
+        padding: 10px 16px;
+        font-size: 14px;
     }
-    
-    .btn-success:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-        color: white;
-        text-decoration: none;
-    }
-    
-    .btn-info {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        color: white;
-        font-weight: 600;
-        padding: 12px 24px;
-        border-radius: 12px;
-        border: none;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-    }
-    
-    .btn-info:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-    }
-    
-    .pin-card {
-        background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
-        border: 2px solid #3b82f6;
-        padding: 12px 16px;
-        border-radius: 12px;
-        text-align: center;
-        min-width: 120px;
-    }
-    
-    .question-title {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: #111827;
-        line-height: 1.6;
-        margin-bottom: 1rem;
-    }
-    
-    .passage-content {
-        transition: all 0.3s ease;
-        overflow: hidden;
-    }
-    
-    .passage-content.hidden {
-        max-height: 0;
-        padding: 0;
-    }
-    
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .btn-primary, .btn-secondary, .btn-success, .btn-info {
-            padding: 10px 16px;
-            font-size: 14px;
-        }
-        
-        .question-title {
-            font-size: 1rem;
-        }
-    }
+}
 </style>
 @endpush
 
@@ -511,65 +584,69 @@ function togglePassage() {
     }
 }
 
-// Copy PIN to clipboard
-function copyPIN(pin) {
-    navigator.clipboard.writeText(pin).then(() => {
-        showNotification('تم نسخ رمز الدخول بنجاح', 'success');
-    }).catch(() => {
-        showNotification('فشل في نسخ الرمز', 'error');
+// Copy quiz link
+function copyQuizLink() {
+    const link = "{{ route('quiz.take', $quiz) }}";
+    navigator.clipboard.writeText(link).then(() => {
+        showToast('تم نسخ رابط الاختبار!', 'success');
     });
 }
 
-// Show results modal
+// Share quiz modal
+function shareQuiz() {
+    document.getElementById('shareModal').classList.remove('hidden');
+}
+
+function closeShareModal() {
+    document.getElementById('shareModal').classList.add('hidden');
+}
+
+// Copy text from input
+function copyText(inputId) {
+    const input = document.getElementById(inputId);
+    input.select();
+    input.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(input.value).then(() => {
+        showToast('تم النسخ!', 'success');
+    });
+}
+
+// Show results
 function showResults() {
-    document.getElementById('results-modal').classList.remove('hidden');
-    // Here you would load the actual results data
+    window.open("{{ route('quizzes.results', $quiz) }}", '_blank');
 }
 
-// Close results modal
-function closeResults() {
-    document.getElementById('results-modal').classList.add('hidden');
-}
-
-// Notification system
-function showNotification(message, type = 'success') {
-    const colors = {
-        success: 'from-green-500 to-emerald-500',
-        error: 'from-red-500 to-pink-500',
-        warning: 'from-yellow-500 to-orange-500',
-        info: 'from-blue-500 to-cyan-500'
-    };
+// Toast notification
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-lg text-white font-medium transition-all duration-300 ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 
+        'bg-blue-500'
+    }`;
+    toast.textContent = message;
     
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-    };
-    
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 bg-gradient-to-r ${colors[type]} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 transform translate-x-full transition-transform duration-300 z-50`;
-    notification.innerHTML = `
-        <i class="fas ${icons[type]} text-xl"></i>
-        <p class="font-medium">${message}</p>
-    `;
-    
-    document.body.appendChild(notification);
+    document.body.appendChild(toast);
+    setTimeout(() => toast.style.transform = 'translate(-50%, 0)', 10);
     
     setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-    }, 10);
-    
-    setTimeout(() => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => notification.remove(), 300);
+        toast.style.transform = 'translate(-50%, -100%)';
+        toast.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(toast), 300);
     }, 3000);
 }
 
-// Close modal on background click
-document.getElementById('results-modal').addEventListener('click', function(e) {
+// Close modal when clicking outside
+document.getElementById('shareModal').addEventListener('click', function(e) {
     if (e.target === this) {
-        closeResults();
+        closeShareModal();
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeShareModal();
     }
 });
 </script>
