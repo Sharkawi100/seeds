@@ -316,3 +316,361 @@ created_at, updated_at
 -   **AI Integration**: Claude-powered content generation
 -   **Social Authentication**: Google OAuth support
 -   **Role-based Access**: Students, Teachers, Admins
+
+# Complete Schema & Routes Summary - جُذور (Juzoor)
+
+Last Updated: June 22, 2025
+
+## Production Architecture
+
+### Server Directory Structure
+
+```
+/home/jqfujdmy/
+├── roots_app/                    # Laravel application (secure, outside web root)
+│   ├── app/Http/Controllers/
+│   ├── resources/views/
+│   ├── routes/
+│   ├── database/
+│   ├── storage/
+│   ├── .env
+│   └── [all Laravel files]
+│
+└── public_html/                  # Web-accessible directory
+    ├── [main domain files]       # www.iseraj.com
+    └── roots/                    # Laravel public folder
+        ├── index.php             # Entry point
+        ├── build/                # Compiled assets
+        └── [public assets]
+```
+
+### URL Structure
+
+-   **Domain**: `https://www.iseraj.com/roots`
+-   **Main Domain**: `https://www.iseraj.com`
+-   **Application Root**: `/home/jqfujdmy/roots_app/`
+-   **Web Root**: `/home/jqfujdmy/public_html/roots/`
+
+## Database Schema
+
+### Core Tables
+
+#### users
+
+```sql
+id, name, email, password (nullable), email_verified_at
+google_id, facebook_id, avatar, auth_provider (email|google|facebook)
+user_type (student|teacher|admin), is_admin, is_active, is_approved
+school_name, grade_level, subjects_taught, experience_years
+last_login_at, last_login_ip, login_count
+
+-- NEW: Subscription fields
+subscription_active (boolean), subscription_expires_at (timestamp)
+lemon_squeezy_customer_id (varchar), subscription_plan (varchar)
+subscription_status (enum: active|cancelled|expired|paused)
+
+deleted_at, created_at, updated_at
+```
+
+#### quizzes
+
+```sql
+id, user_id, title, description, subject_id (FK to subjects)
+grade_level, pin, is_active, is_demo, is_public
+shuffle_questions, shuffle_answers, time_limit, passing_score
+max_attempts, scoring_method (enum: latest|average|highest|first_only)
+show_results, has_submissions, expires_at
+settings (JSON), passage_data (JSON)
+created_at, updated_at
+```
+
+#### subjects
+
+```sql
+id, name, slug, is_active, sort_order
+created_at, updated_at
+```
+
+#### questions
+
+```sql
+id, quiz_id, question, passage, passage_title
+root_type (jawhar|zihn|waslat|roaya), depth_level (1|2|3)
+options (JSON), correct_answer, sort_order
+created_at, updated_at
+```
+
+#### results
+
+```sql
+id, quiz_id, user_id (nullable), guest_name (nullable), guest_token
+school_class, scores (JSON), total_score, percentage
+attempt_number, is_latest_attempt, ip_address, user_agent
+created_at, updated_at
+```
+
+#### answers
+
+```sql
+id, result_id, question_id, selected_answer, is_correct
+created_at, updated_at
+```
+
+### NEW: Subscription System Tables
+
+#### subscription_plans
+
+```sql
+id, name, lemon_squeezy_variant_id
+monthly_quiz_limit, monthly_ai_text_limit, monthly_ai_quiz_limit
+price_monthly, is_active
+created_at, updated_at
+```
+
+#### subscriptions
+
+```sql
+id, user_id, lemon_squeezy_subscription_id, lemon_squeezy_customer_id
+status, plan_name, plan_id (FK to subscription_plans)
+current_period_start, current_period_end, trial_ends_at
+created_at, updated_at
+```
+
+#### monthly_quotas
+
+```sql
+id, user_id, year, month
+quiz_count, ai_text_requests, ai_quiz_requests
+created_at, updated_at
+```
+
+#### ai_usage_logs
+
+```sql
+id, type, model, count, user_id, metadata (JSON)
+created_at, updated_at
+```
+
+## Route Structure
+
+### Public Routes
+
+#### Landing & Information
+
+-   GET `/` - Welcome page with PIN entry
+-   GET `/about` - About جُذور model
+-   GET `/juzoor-model` - Educational model explanation
+-   GET `/question-guide` - Question writing guide
+-   GET `/for-teachers` - Teachers landing page
+-   GET `/for-students` - Students landing page
+
+#### Quiz Taking (Public Access)
+
+-   GET `/quiz/pin` - PIN entry form
+-   POST `/quiz/enter-pin` - Process PIN entry
+-   GET `/quiz/{quiz:pin}` - Take quiz by PIN
+-   POST `/quiz/{quiz}/submit` - Submit quiz answers
+
+#### Guest Results
+
+-   GET `/quiz/{quiz}/result/{token}` - View guest results
+
+### Authenticated Routes
+
+#### Authentication
+
+-   GET `/login` - Login page
+-   POST `/login` - Process login
+-   GET `/register` - Registration page
+-   POST `/register` - Process registration
+-   POST `/logout` - Logout
+-   GET `/forgot-password` - Password reset request
+-   POST `/forgot-password` - Send reset email
+-   GET `/reset-password/{token}` - Password reset form
+-   POST `/reset-password` - Process password reset
+
+#### Dashboard & Profile
+
+-   GET `/dashboard` - User dashboard
+-   GET `/profile` - User profile page
+-   GET `/profile/edit` - Edit profile
+-   PATCH `/profile` - Update profile
+-   DELETE `/profile` - Delete account
+
+### Teacher/Admin Routes
+
+#### Quiz Management
+
+-   GET `/quizzes` - List user's quizzes
+-   GET `/quizzes/create` - Create quiz form
+-   POST `/quizzes/create-step-1` - Process basic info
+-   GET `/quizzes/{quiz}` - Show quiz details
+-   GET `/quizzes/{quiz}/edit` - Edit quiz
+-   PUT `/quizzes/{quiz}` - Update quiz
+-   DELETE `/quizzes/{quiz}` - Delete quiz
+-   PATCH `/quizzes/{quiz}/toggle-status` - Toggle active status
+
+#### Quiz Creation (AI Integration)
+
+-   POST `/quizzes/{quiz}/generate-text` - Generate educational text
+-   POST `/quizzes/{quiz}/generate-questions` - Generate questions
+
+#### Question Management
+
+-   GET `/quizzes/{quiz}/questions` - List questions
+-   GET `/quizzes/{quiz}/questions/create` - Create question
+-   POST `/quizzes/{quiz}/questions` - Store question
+-   GET `/quizzes/{quiz}/questions/{question}/edit` - Edit question
+-   PUT `/quizzes/{quiz}/questions/{question}` - Update question
+-   DELETE `/quizzes/{quiz}/questions/{question}` - Delete question
+
+#### Results Management
+
+-   GET `/results` - All user results
+-   GET `/results/quiz/{quiz}` - Quiz-specific results
+-   GET `/results/{result}` - Individual result details
+
+### NEW: Subscription Routes
+
+#### User Subscription Management
+
+-   GET `/subscription/upgrade` - Subscription plans page
+-   POST `/subscription/checkout` - Create Lemon Squeezy checkout
+-   GET `/subscription/success` - Payment success page
+-   GET `/subscription/manage` - Manage subscription
+
+#### Webhooks
+
+-   POST `/webhooks/lemonsqueezy` - Lemon Squeezy webhook handler
+
+### Admin Routes (Admin Only)
+
+#### Dashboard & Reports
+
+-   GET `/admin/dashboard` - Admin dashboard
+-   GET `/admin/reports` - Analytics reports
+-   GET `/admin/settings` - System settings
+
+#### User Management
+
+-   GET `/admin/users` - List all users
+-   GET `/admin/users/create` - Create user form
+-   POST `/admin/users` - Store new user
+-   GET `/admin/users/{user}` - Show user details
+-   GET `/admin/users/{user}/edit` - Edit user form
+-   PUT `/admin/users/{user}` - Update user
+-   DELETE `/admin/users/{user}` - Delete user
+-   POST `/admin/users/{user}/toggle-status` - Toggle user status
+-   GET `/admin/users/{user}/impersonate` - Start impersonation
+
+#### NEW: Subscription Plan Management
+
+-   GET `/admin/subscription-plans` - List subscription plans
+-   GET `/admin/subscription-plans/create` - Create plan form
+-   POST `/admin/subscription-plans` - Store new plan
+-   GET `/admin/subscription-plans/{plan}` - Show plan details
+-   GET `/admin/subscription-plans/{plan}/edit` - Edit plan form
+-   PUT `/admin/subscription-plans/{plan}` - Update plan
+-   DELETE `/admin/subscription-plans/{plan}` - Delete plan
+-   PATCH `/admin/subscription-plans/{plan}/toggle` - Toggle plan status
+
+#### NEW: Subscription User Management
+
+-   GET `/admin/subscription-plans-users` - List subscription users
+-   GET `/admin/users/{user}/manage-subscription` - Manage user subscription
+-   PUT `/admin/users/{user}/update-subscription` - Update user subscription
+
+#### Quiz Management (Admin)
+
+-   GET `/admin/quizzes` - List all quizzes
+-   Resource routes for admin quiz management
+-   POST `/admin/quizzes/{quiz}/toggle-status` - Toggle quiz status
+
+#### AI Management
+
+-   GET `/admin/ai` - AI management dashboard
+-   POST `/admin/ai/generate` - Generate with AI
+
+## Key Features & Business Logic
+
+### Subscription System
+
+-   **Freemium Model**: Manual quiz creation free, AI features require subscription
+-   **Monthly Quotas**: 40 quiz limit per month for all teachers
+-   **Lemon Squeezy Integration**: Secure payment processing
+-   **Admin Management**: Full subscription control via admin interface
+
+### AI Integration
+
+-   **Feature Gating**: AI text/quiz generation behind paywall
+-   **Claude API**: Anthropic Claude for Arabic content generation
+-   **Smart Fallbacks**: Manual question creation for non-subscribers
+
+### Quiz Creation Flow
+
+-   **3-Step Wizard**: Basic info → Text source → Question settings
+-   **Multiple Text Sources**: AI generation, manual input, or no text
+-   **4-Roots Model**: جَوهر (Jawhar), ذِهن (Zihn), وَصلات (Waslat), رُؤية (Roaya)
+
+### Access Control
+
+-   **PIN System**: Guest access via 6-character PIN
+-   **Attempt Tracking**: Multiple attempts with scoring methods
+-   **Result Persistence**: 7-day token access for guests
+
+### Multilingual Support
+
+-   **Primary Language**: Arabic (RTL)
+-   **Secondary Languages**: English, Hebrew
+-   **Content Creation**: All three languages supported
+
+## Security & Performance
+
+### Authentication & Authorization
+
+-   **Laravel Breeze**: Built-in authentication
+-   **Social Login**: Google OAuth integration
+-   **Role-Based Access**: Student/Teacher/Admin levels
+-   **CSRF Protection**: All forms protected
+
+### Database Optimization
+
+-   **Indexes**: Strategic indexing for performance
+-   **Soft Deletes**: User data preservation
+-   **JSON Fields**: Flexible settings storage
+-   **UTF-8 Support**: Proper Arabic text handling
+
+### Hosting Considerations
+
+-   **Shared Hosting**: Optimized for Namecheap hosting
+-   **Memory Management**: Efficient resource usage
+-   **File Storage**: Minimal external dependencies
+
+## Current System Status
+
+### Implemented Features ✅
+
+-   Complete subscription system with Lemon Squeezy
+-   Monthly quota tracking and enforcement
+-   AI feature gating for subscribers
+-   Admin subscription management interface
+-   Profile management with subscription status
+-   Arabic RTL interface with English/Hebrew support
+
+### Active Integrations
+
+-   **Payment**: Lemon Squeezy ($15/month Pro Teacher)
+-   **AI**: Anthropic Claude API
+-   **Analytics**: Built-in usage tracking
+-   **Social Auth**: Google OAuth
+
+### Performance Metrics
+
+-   **Free Users**: 5 quizzes/month, manual creation only
+-   **Subscribers**: 40 quizzes/month + unlimited AI features
+-   **Guest Access**: 7-day result retention
+-   **Admin Users**: Unlimited everything
+
+---
+
+_Last Updated: June 22, 2025 - Added comprehensive subscription system with Lemon Squeezy integration_

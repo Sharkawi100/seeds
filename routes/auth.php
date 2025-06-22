@@ -63,8 +63,11 @@ use App\Http\Controllers\Auth\SocialAuthController;
 
 // Social Login Routes
 Route::middleware('guest')->group(function () {
+    // Only redirect needs guest middleware
     Route::get('auth/{provider}', [SocialAuthController::class, 'redirect'])
         ->name('social.login');
-    Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback'])
-        ->name('social.callback');
 });
+
+// Callback OUTSIDE guest middleware (user gets logged in during callback)
+Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+    ->name('social.callback');

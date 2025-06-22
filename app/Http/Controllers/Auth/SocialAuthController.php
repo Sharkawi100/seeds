@@ -109,15 +109,15 @@ class SocialAuthController extends Controller
         }
 
         // Try to find by email
-        $user = User::where('email', $socialUser->getEmail())->first();
+        $user = User::withTrashed()->where('email', $socialUser->getEmail())->first();
 
-        if ($user) {
-            // Link social account to existing user
+        if ($user && $user->trashed()) {
+            // Restore soft-deleted user and link social account
+            $user->restore();
             $user->update([
                 $provider . '_id' => $socialUser->getId(),
                 'avatar' => $user->avatar ?: $socialUser->getAvatar(),
             ]);
-
             return $user;
         }
 

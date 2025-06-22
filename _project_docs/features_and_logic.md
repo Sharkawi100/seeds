@@ -1,258 +1,303 @@
-# Features & Logic - جُذور (Juzoor) - Updated June 2025
+# جُذور (Juzoor) Platform - Complete Feature Overview
+
+**Last Updated**: June 22, 2025  
+**Version**: 2.0 with Subscription System  
+**Platform**: Laravel 11 + Lemon Squeezy Integration
 
 ## 🎯 Core Educational Model
 
-### The Four Roots (الجُذور الأربعة)
+### The 4 Roots Assessment Framework
 
-1. **جَوهر (Jawhar)** - Essence: "What is it?" - Definitions and core understanding
-2. **ذِهن (Zihn)** - Mind: "How does it work?" - Analysis and critical thinking
-3. **وَصلات (Waslat)** - Connections: "How does it connect?" - Relationships and integration
-4. **رُؤية (Roaya)** - Vision: "How can we use it?" - Application and innovation
+جُذور implements a unique holistic assessment model based on four cognitive dimensions:
 
-Each root supports 3 depth levels:
+1. **جَوهر (Jawhar) - Essence** 🎯
 
--   **Level 1**: Surface understanding (40% of questions)
--   **Level 2**: Medium depth (40% of questions)
--   **Level 3**: Deep comprehension (20% of questions)
+    - "What is it?" - Definitions and core understanding
+    - Surface, medium, and deep comprehension levels
 
-## 🔄 **NEW: Comprehensive Attempt Tracking System**
+2. **ذِهن (Zihn) - Mind** 🧠
 
-### **Multi-Attempt Management**
+    - "How does it work?" - Analysis and critical thinking
+    - Logical reasoning and problem-solving assessment
 
-**For Registered Users:**
+3. **وَصلات (Waslat) - Connections** 🔗
 
--   **Sequential Tracking**: Attempts numbered 1, 2, 3, etc.
--   **Limit Enforcement**: Teachers set 1-10 attempts or unlimited
--   **Progress Analysis**: Complete attempt history with score progression
--   **Latest Flagging**: Most recent attempt clearly marked
+    - "How does it connect?" - Relationships and integration
+    - Cross-curricular and conceptual linking
 
-**For Guest Users:**
+4. **رُؤية (Roaya) - Vision** 👁️
+    - "How can we use it?" - Application and innovation
+    - Creative application and future thinking
 
--   **Name-Based Tracking**: Multiple attempts tracked by guest name
--   **Session Continuity**: Guest data maintained across attempts
--   **Unlimited Access**: No attempt restrictions for guests
--   **7-Day Results**: Token-based access to all guest attempts
+## 💳 NEW: Subscription System (June 2025)
 
-### **Smart Scoring Methods**
+### Freemium Business Model
 
-Teachers can choose how final scores are calculated:
+-   **Free Tier**: Manual quiz creation with 5 quiz/month limit
+-   **Pro Teacher**: $15/month - AI features + 40 quiz/month limit
+-   **Admin Users**: Unlimited access to all features
 
-1. **Latest Score** (default): Most recent attempt counts
-2. **Average Score**: Mean of all attempts (discourages gaming)
-3. **Highest Score**: Best performance achieved (encourages practice)
-4. **First Only**: Initial attempt only (pure assessment)
+### Payment Integration
 
-### **Attempt Analytics & Insights**
+-   **Provider**: Lemon Squeezy for secure payment processing
+-   **Checkout Flow**: Seamless subscription activation
+-   **Webhook Integration**: Real-time subscription status updates
+-   **Self-Service**: User subscription management portal
 
-**Student Benefits:**
+### Feature Gating
 
--   **Progress Tracking**: Visual improvement across attempts
--   **Performance Patterns**: Identify strengths and weaknesses over time
--   **Targeted Feedback**: Specific suggestions based on attempt history
--   **Motivation**: Clear improvement indicators and encouragement
+-   **AI Text Generation**: Subscriber-only feature
+-   **AI Quiz Generation**: Requires active subscription
+-   **"No Text" Quizzes**: AI-powered, subscription required
+-   **Manual Creation**: Always free for all users
 
-**Teacher Benefits:**
+## 🤖 AI-Powered Content Generation
 
--   **Learning vs Gaming**: Distinguish genuine improvement from memorization
--   **Intervention Triggers**: Identify students needing extra help
--   **Pattern Analysis**: Understand how students approach learning
--   **Flexible Assessment**: Choose scoring method per educational goal
+### Text Generation (Subscription Required)
 
-## 🚀 Enhanced Quiz Creation System
+-   **Multiple Formats**: Stories, articles, dialogues, descriptions
+-   **Length Control**: Short (50-100), Medium (150-250), Long (300-500 words)
+-   **Subject-Specific**: Tailored for Arabic, English, Hebrew curricula
+-   **Grade-Appropriate**: Content adjusted for grades 1-9
 
-### Creation Wizard (3-Step Process)
+### Question Generation (Subscription Required)
 
-#### **Step 1: Basic Information**
+-   **From Topics**: Generate complete quizzes from subject topics
+-   **From Text**: Create questions based on provided educational text
+-   **4-Roots Distribution**: Automatic balancing across cognitive dimensions
+-   **Multiple Choice**: 4-option questions with automatic scoring
 
--   Quiz title and description
--   Subject selection (from database)
--   Grade level (1-9)
--   Main topic definition
+### Smart Fallbacks
 
-#### **Step 2: Educational Content**
+-   **Non-Subscribers**: Graceful redirect to manual question creation
+-   **Mixed Workflows**: AI text generation with manual question entry
+-   **Preservation**: All manual creation remains fully functional
 
-**Three Text Sources:**
+## 📝 Quiz Creation & Management
 
--   **AI Generation**: Smart content creation with type/length options
--   **Manual Input**: Teacher-written or pasted content
--   **No Text**: Direct questions without reading passage
+### Multi-Modal Creation Wizard
 
-#### **Step 3: Questions & Advanced Configuration**
+1. **Basic Information**: Title, subject, grade level, topic
+2. **Text Source Selection**:
+    - AI generation (subscription required)
+    - Manual input (free for all)
+    - No text/direct questions (subscription required)
+3. **Question Configuration**: 4-roots distribution, quiz settings
 
-**4-Roots Question Distribution:**
+### Flexible Quiz Configuration
 
--   Visual grid for each root (Jawhar, Zihn, Waslat, Roaya)
--   Depth level controls (1-3) per root
--   Quick presets: Balanced, Comprehension, Analytical, Creative
+-   **Time Limits**: Optional 5-180 minute restrictions
+-   **Attempt Control**: 1-5 attempts or unlimited
+-   **Scoring Methods**: Latest, average, highest, first-only
+-   **Randomization**: Questions and answer options
+-   **Auto-Activation**: Immediate student access
 
-**🆕 ATTEMPT MANAGEMENT SETTINGS:**
+### Preset Templates
 
-**Attempt Controls:**
+-   **Balanced**: Equal distribution across all roots
+-   **Comprehension**: Focus on جَوهر (essence) questions
+-   **Analytical**: Emphasis on ذِهن (mind) critical thinking
+-   **Creative**: Heavy وَصلات (connections) and رُؤية (vision)
 
--   **Max Attempts**: 1-10 attempts or unlimited (default: 1)
--   **Scoring Method**: How final score is calculated (default: average)
--   **Guest Policy**: Unlimited attempts for non-registered users
+## 👥 User Management & Access Control
 
-**Behavior Controls:**
+### Role-Based Access
 
--   **Question Shuffling**: Randomize order per student
--   **Answer Shuffling**: Randomize choice positions
--   **Results Display**: Control student access to scores
--   **Auto-Activation**: Enable quiz immediately upon creation
+-   **Students**: Quiz taking and result viewing
+-   **Teachers**: Full quiz creation and management
+-   **Admins**: Complete system control and analytics
 
-**Time & Assessment:**
+### Guest Access System
 
--   **Time Limits**: Optional 5-120 minute restrictions
--   **Passing Score**: Configurable 50%-90% thresholds
+-   **PIN-Based Entry**: 6-character codes for instant access
+-   **No Registration Required**: Seamless student experience
+-   **7-Day Result Access**: Token-based result retrieval
+-   **Class Information**: Optional school/class tracking
 
-## 🎮 Enhanced Quiz Taking Experience
+### NEW: Subscription Management
 
-### **Attempt-Aware Taking Flow**
+-   **User Dashboard**: Subscription status and usage tracking
+-   **Admin Interface**: Complete subscription lifecycle management
+-   **Manual Overrides**: Admin can grant/revoke subscriptions
+-   **Usage Analytics**: Monthly quota tracking and reporting
 
-**First-Time Users:**
+## 📊 Advanced Analytics & Reporting
 
--   **Guest Info Collection**: Name and optional school/class
--   **Attempt Awareness**: Clear indication this is attempt #1
--   **Progress Tracking**: Immediate feedback on performance
+### Teacher Dashboard
 
-**Returning Users:**
+-   **Quiz Performance**: Success rates and improvement tracking
+-   **Root Analysis**: Detailed breakdown by cognitive dimension
+-   **Student Progress**: Individual and class-wide trends
+-   **Attempt Patterns**: Multiple attempt analysis
 
--   **Attempt Counter**: "This is attempt 2 of 3" messaging
--   **Previous Performance**: Optional display of past scores
--   **Limit Warnings**: Clear notification when approaching attempt limit
--   **Progress Celebration**: Recognition of improvement patterns
+### Result Processing
 
-### **Smart Result Handling**
+-   **Real-Time Scoring**: Instant feedback upon submission
+-   **Root-Wise Breakdown**: Performance across 4 cognitive dimensions
+-   **Visual Charts**: Interactive Chart.js visualizations
+-   **Export Options**: Data export for external analysis
 
-**Immediate Feedback:**
+### NEW: Subscription Analytics
 
--   **Current Attempt Score**: What they just achieved
--   **Final Score**: How this contributes to their official grade
--   **Attempt Status**: Whether they can try again
--   **Improvement Tracking**: Progress since previous attempts
+-   **Usage Tracking**: AI feature utilization rates
+-   **Quota Monitoring**: Monthly limits and consumption
+-   **Revenue Dashboard**: Subscription metrics for admins
+-   **Conversion Tracking**: Free-to-paid user journeys
 
-**Long-term Access:**
+## 🌐 Multilingual Support
 
--   **Result Tokens**: 7-day access for guests
--   **Permanent Storage**: Full history for registered users
--   **Attempt Timeline**: Complete chronological view
+### Interface Languages
 
-## 📊 **NEW: Advanced Results & Analytics**
+-   **Primary**: Arabic (complete RTL support)
+-   **Secondary**: English, Hebrew interfaces
+-   **Dynamic Switching**: User preference-based language selection
 
-### **Accurate Statistics Dashboard**
+### Content Creation
 
-**Teacher Analytics:**
+-   **Subject Support**: Arabic literature, English language, Hebrew studies
+-   **Cultural Adaptation**: Region-appropriate content generation
+-   **Mixed Language**: Support for multilingual educational contexts
 
--   **Unique Student Metrics**: No double-counting of multiple attempts
--   **Final Score Averages**: Based on scoring method, not raw attempts
--   **True Success Rates**: Percentage who achieve passing score as final result
--   **Attempt Pattern Analysis**: How many students needed multiple tries
+## 🔒 Security & Privacy
 
-**Class Performance:**
+### Authentication System
 
--   **4-Roots Comparison**: Average final performance per learning dimension
--   **Improvement Tracking**: Class-wide progress across attempts
--   **Intervention Insights**: Students showing concerning patterns
--   **Assessment Effectiveness**: Which scoring methods work best
+-   **Laravel Breeze**: Secure authentication foundation
+-   **Social Login**: Google OAuth integration
+-   **Password Security**: Robust hashing and reset procedures
+-   **Session Management**: Secure session handling
 
-### **Enhanced Student Results Experience**
+### Data Protection
 
-**Individual Student Dashboard:**
+-   **Guest Privacy**: Minimal data collection for non-registered users
+-   **GDPR Compliance**: User data control and deletion rights
+-   **Audit Logging**: Complete action tracking for administrators
+-   **Payment Security**: Lemon Squeezy PCI compliance
 
--   **Final Score Prominence**: Clear display of official grade
--   **Attempt History**: Complete timeline with score progression
--   **Root Performance Tracking**: Improvement per learning dimension
--   **Smart Recommendations**: Personalized study suggestions
+## 📱 User Experience Features
 
-**🆕 Rule-Based Smart Report:**
+### Modern Interface Design
 
--   **Performance Assessment**: Automatic analysis of strengths/weaknesses
--   **Learning Pattern Recognition**: Identifies improvement trends
--   **Targeted Suggestions**: Specific advice per 4-roots performance
--   **Encouragement System**: Positive reinforcement for effort and growth
+-   **Glassmorphism**: Contemporary blur and transparency effects
+-   **Responsive Design**: Mobile-first responsive layout
+-   **RTL Optimization**: Perfect Arabic text rendering
+-   **Dark Mode**: Optional dark theme support
 
-## 🔐 **Updated Security & Access Control**
+### Interactive Elements
 
-### **Enhanced User Roles**
+-   **Real-Time Validation**: Instant form feedback
+-   **Progress Indicators**: Clear multi-step process visualization
+-   **Loading States**: Engaging loading animations
+-   **Notification System**: Toast notifications for user feedback
 
-**Students:**
+### Accessibility
 
--   Quiz taking with attempt tracking
--   Complete result history access
--   Progress monitoring tools
--   Smart feedback reception
+-   **Screen Reader Support**: Full ARIA compliance
+-   **Keyboard Navigation**: Complete keyboard accessibility
+-   **High Contrast**: Accessibility-focused color schemes
+-   **Font Scaling**: Responsive text sizing
 
-**Teachers:**
+## 🔧 Technical Architecture
 
--   Full quiz management with attempt configuration
--   Advanced analytics with attempt insights
--   Individual student progress tracking
--   Flexible scoring method selection
+### Backend Technology
 
-**Admins:**
+-   **Framework**: Laravel 11 with PHP 8.2+
+-   **Database**: MySQL 8.0 with UTF-8 support
+-   **AI Integration**: Anthropic Claude API for content generation
+-   **Payment Processing**: Lemon Squeezy integration
+-   **File Storage**: Local storage optimized for shared hosting
 
--   System administration with attempt oversight
--   Platform-wide analytics
--   User management with attempt data
--   Performance optimization tools
+### Frontend Technology
 
-### **Improved Guest Access**
+-   **Templating**: Blade with Arabic RTL support
+-   **Styling**: Tailwind CSS 3.x for responsive design
+-   **JavaScript**: Alpine.js 3.x for interactive components
+-   **Charts**: Chart.js for educational analytics
+-   **Icons**: FontAwesome for comprehensive iconography
 
-**Enhanced Guest Experience:**
+### Hosting Optimization
 
--   **Multi-attempt Support**: Track multiple tries by name
--   **Session Continuity**: Maintain data across attempts
--   **Result Persistence**: 7-day token access to all attempts
--   **Progress Visualization**: See improvement even as guest
+-   **Shared Hosting**: Optimized for Namecheap hosting environment
+-   **Performance**: Minimal external dependencies
+-   **Memory Management**: Efficient resource utilization
+-   **Caching**: Strategic caching for improved performance
 
-**Security Measures:**
+## 📈 Current Statistics & Metrics
 
--   **Token Security**: Unique 32-character tokens per result
--   **Expiration Control**: 7-day limit on guest result access
--   **Session Management**: Proper cleanup after submission
--   **Attempt Validation**: Prevent gaming through name changes
+### Platform Usage
 
-## 🌟 **Key Improvements & Benefits**
+-   **Active Features**: Complete quiz lifecycle management
+-   **Subscription Model**: Freemium with $15/month Pro tier
+-   **User Capacity**: Unlimited users with quota management
+-   **Quiz Limits**: 5/month free, 40/month Pro, unlimited Admin
 
-### **For Educators:**
+### Performance Benchmarks
 
--   **Pedagogical Flexibility**: Choose scoring methods that align with teaching goals
--   **Genuine Assessment**: Distinguish learning from memorization
--   **Early Intervention**: Identify struggling students quickly
--   **Data-Driven Decisions**: Rich analytics for curriculum improvement
+-   **Quiz Creation**: <30 seconds for AI-generated content
+-   **Result Processing**: Real-time scoring and feedback
+-   **Dashboard Loading**: <2 seconds for analytics
+-   **Mobile Performance**: Optimized for mobile devices
 
-### **For Students:**
+## 🚀 Recent Updates (June 2025)
 
--   **Growth Mindset**: Focus on improvement over single performance
--   **Reduced Anxiety**: Multiple chances reduce test stress
--   **Self-Paced Learning**: Practice until mastery achieved
--   **Clear Progress**: Visual feedback on learning journey
+### Major Feature Additions
 
-### **For Administrators:**
+1. **Complete Subscription System**: Lemon Squeezy integration
+2. **Monthly Quota Management**: Usage tracking and enforcement
+3. **AI Feature Gating**: Subscriber-only advanced features
+4. **Admin Subscription Management**: Full lifecycle control
+5. **Enhanced Profile Management**: Subscription status integration
 
--   **Accurate Metrics**: True student performance without attempt inflation
--   **Usage Insights**: Understanding of how platform is used
--   **Quality Assurance**: Evidence-based assessment of learning outcomes
--   **Resource Planning**: Data for educational resource allocation
+### Bug Fixes & Improvements
 
-## 🔮 **Future Roadmap**
+1. **Quiz Generation Flow**: Fixed AI/manual text workflows
+2. **Subscription UI**: Seamless upgrade prompts and status indicators
+3. **Arabic Text Rendering**: Improved RTL text processing
+4. **Mobile Responsiveness**: Enhanced mobile quiz-taking experience
 
-### **Phase 1: Enhanced Analytics (Current Priority)**
+## 🔮 Upcoming Features (Roadmap)
 
--   **Learning Pattern AI**: Advanced analysis of attempt progressions
--   **Predictive Insights**: Early warning systems for student struggles
--   **Comparative Analytics**: Benchmarking across schools and regions
+### Short Term (Q3 2025)
 
-### **Phase 2: Gamification & Engagement**
+-   **Team Subscriptions**: School and district pricing
+-   **Advanced Analytics**: Machine learning insights
+-   **Mobile App**: Native iOS/Android applications
+-   **API Access**: Third-party integrations
 
--   **Achievement System**: Badges for improvement across attempts
--   **Progress Quests**: Guided learning paths with milestones
--   **Peer Comparison**: Safe competition with attempt fairness
+### Long Term (Q4 2025)
 
-### **Phase 3: Advanced Features**
+-   **Multiple Assessment Types**: Beyond multiple choice
+-   **Collaborative Features**: Teacher collaboration tools
+-   **Parent Portals**: Family engagement features
+-   **Advanced AI**: GPT-4 integration options
 
--   **Adaptive Testing**: Difficulty adjustment based on attempt history
--   **Collaborative Attempts**: Team-based learning with shared attempts
--   **Parent Integration**: Family involvement in student progress
+## 📞 Support & Documentation
 
-**Platform Status**: Production-ready with comprehensive attempt tracking system that transforms جُذور from a simple assessment tool into a complete learning analytics platform.
+### User Support
+
+-   **Documentation**: Comprehensive Arabic user guides
+-   **Video Tutorials**: Step-by-step Arabic tutorials
+-   **Community Forum**: Arabic-speaking user community
+-   **Technical Support**: Direct support for subscribers
+
+### Developer Resources
+
+-   **Code Documentation**: Complete technical documentation
+-   **API Documentation**: RESTful API reference
+-   **Integration Guides**: Third-party integration instructions
+-   **Troubleshooting**: Common issue resolution guides
+
+---
+
+## 🎯 Platform Mission
+
+جُذور represents a revolutionary approach to educational assessment that:
+
+-   **Honors Arabic Education**: Prioritizes Arabic language and cultural context
+-   **Embraces Technology**: Leverages AI while maintaining educational integrity
+-   **Supports Educators**: Provides powerful tools without overwhelming complexity
+-   **Enables Learning**: Creates assessments that truly measure understanding
+-   **Builds Community**: Connects educators through shared pedagogical innovation
+
+**Current Status**: ✅ Production Ready with Complete Subscription System  
+**Next Milestone**: 1000+ Active Teacher Subscriptions by Q4 2025

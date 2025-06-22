@@ -1,0 +1,320 @@
+# جُذور Subscription System Documentation
+
+**Implementation Date**: June 2025  
+**Version**: 1.0  
+**Payment Provider**: Lemon Squeezy  
+
+## Overview
+
+جُذور implements a freemium subscription model where manual quiz creation remains free, but AI-powered features require a paid subscription. This maintains accessibility while monetizing advanced features.
+
+## Business Model
+
+### Free Tier
+- **Manual Quiz Creation**: Unlimited manual quiz creation
+- **Monthly Limit**: 5 quizzes per month
+- **Question Creation**: Manual question entry only
+- **Result Analysis**: Full analytics and reporting
+- **Guest Access**: Complete PIN-based access system
+
+### Pro Teacher Subscription ($15/month)
+- **AI Text Generation**: Claude-powered educational text creation
+- **AI Quiz Generation**: Complete quiz generation from topics
+- **Monthly Limit**: 40 quizzes per month (manual + AI)
+- **All Free Features**: Everything from free tier included
+- **Priority Support**: Enhanced customer support
+
+### Admin Users
+- **Unlimited Access**: No quotas or restrictions
+- **Full Management**: Complete subscription and user management
+- **System Control**: All administrative features
+
+## Technical Architecture
+
+### Database Schema
+
+#### Core Subscription Tables
+```sql
+-- User subscription status
+users:
+  subscription_active (boolean)
+  subscription_expires_at (timestamp)
+  lemon_squeezy_customer_id (varchar)
+
+-- Subscription plans
+subscription_plans:
+  name, lemon_squeezy_variant_id
+  monthly_quiz_limit, monthly_ai_text_limit, monthly_ai_quiz_limit
+  price_monthly, is_active
+
+-- Active subscriptions  
+subscriptions:
+  user_id, lemon_squeezy_subscription_id
+  status, plan_id, current_period_start, current_period_end
+
+-- Usage tracking
+monthly_quotas:
+  user_id, year, month
+  quiz_count, ai_text_requests, ai_quiz_requests
+```
+
+### Key Models and Methods
+
+#### User Model Extensions
+```php
+// Subscription status checking
+public function hasActiveSubscription(): bool
+public function canUseAI(): bool
+public function getCurrentQuotaLimits(): array
+public function hasReachedQuizLimit(): bool
+
+// Relationships
+public function subscription()
+public function monthlyQuota()
+```
+
+#### Subscription Plans
+```php
+class SubscriptionPlan extends Model
+{
+    // Plan details: limits, pricing, Lemon Squeezy integration
+    public function subscriptions()
+}
+```
+
+#### Monthly Quota Tracking
+```php
+class MonthlyQuota extends Model
+{
+    public static function getOrCreateCurrent($userId): self
+    public function incrementQuizCount(): void
+    public function incrementAiTextRequests(): void
+    public function incrementAiQuizRequests(): void
+}
+```
+
+### Service Layer
+
+#### LemonSqueezyService
+```php
+class LemonSqueezyService
+{
+    // Checkout creation
+    public function createCheckout(User $user, SubscriptionPlan $plan): string
+    
+    // Webhook handling
+    public function handleWebhook(Request $request)
+    
+    // Subscription lifecycle
+    protected function handleSubscriptionCreated($data)
+    protected function handleSubscriptionUpdated($data)  
+    protected function handleSubscriptionCancelled($data)
+}
+```
+
+### Middleware & Guards
+
+#### RequireSubscription Middleware
+```php
+class RequireSubscription
+{
+    // Blocks AI features for non-subscribers
+    // Returns upgrade prompts for AJAX requests
+    // Redirects to subscription page for web requests
+}
+```
+
+## Feature Gating Implementation
+
+### Quiz Creation Flow
+
+#### Text Source Selection
+- **AI Generation**: Requires active subscription
+- **Manual Input**: Available to all, but triggers different flows:
+  - **Subscribers**: Can use AI to generate questions from text
+  - **Non-subscribers**: Redirected to manual question creation
+- **No Text**: Requires subscription (AI-generated questions only)
+
+#### JavaScript Integration
+```javascript
+// Subscription checks in quiz creation
+function handleNoTextOption() {
+    @if(!Auth::user()->canUseAI())
+        // Show upgrade modal
+    @else
+        // Allow access
+    @endif
+}
+
+function generateQuestions() {
+    @if(!Auth::user()->canUseAI())
+        // Block AI features, redirect appropriately
+    @endif
+}
+```
+
+### Backend Enforcement
+```php
+// In QuizController
+public function generateText(Request $request) {
+    if (!Auth::user()->canUseAI()) {
+        return response()->json([
+            'upgrade_required' => true
+        ], 403);
+    }
+}
+
+public function store(Request $request) {
+    // Check monthly quota
+    if (Auth::user()->hasReachedQuizLimit()) {
+        return redirect()->back()->with('error', 'Monthly limit reached');
+    }
+    
+    // Increment counter
+    $quota = MonthlyQuota::getOrCreateCurrent(Auth::id());
+    $quota->incrementQuizCount();
+}
+```
+
+## User Interface Integration
+
+### Dashboard Indicators
+- **Subscription Status Widget**: Shows active/inactive status
+- **Usage Progress Bars**: Monthly quota consumption
+- **Upgrade Prompts**: Strategic placement for conversion
+
+### Profile Management
+- **Subscription Overview**: Current plan, expiration date
+- **Usage Statistics**: Monthly consumption across all features
+- **Upgrade/Manage Links**: Direct access to subscription management
+
+### Admin Interface
+- **User List Enhancements**: Subscription status icons (💎, ⏰, 🎓)
+- **Subscription Management**: Full CRUD for user subscriptions
+- **Analytics Dashboard**: Revenue, active subscribers, usage patterns
+
+## Payment Integration
+
+### Lemon Squeezy Configuration
+```env
+LEMONSQUEEZY_API_KEY=your_api_key
+LEMONSQUEEZY_STORE_ID=193304
+LEMONSQUEEZY_VARIANT_ID_PRO=863809
+LEMONSQUEEZY_SIGNING_SECRET=your_webhook_secret
+```
+
+### Checkout Flow
+1. **Plan Selection**: User chooses subscription plan
+2. **Lemon Squeezy Redirect**: Secure payment processing
+3. **Webhook Processing**: Automatic subscription activation
+4. **Confirmation**: User redirected to success page
+
+### Webhook Handling
+- **subscription_created**: Activate user subscription, create records
+- **subscription_updated**: Update subscription status and expiration
+- **subscription_cancelled**: Deactivate but maintain access until period end
+
+## Subscription Management
+
+### User Self-Service
+- **View Status**: Current plan, expiration date, usage
+- **Manage Subscription**: Change plan, update payment method
+- **Cancel Subscription**: Cancel but maintain access until period end
+
+### Admin Management
+- **Manual Subscriptions**: Grant/revoke subscriptions manually
+- **Subscription History**: Complete audit trail
+- **Usage Analytics**: Monitor feature adoption and usage patterns
+
+### Cancellation Handling
+- **Immediate Effect**: For admin-cancelled subscriptions
+- **End of Period**: For user-initiated cancellations
+- **Grace Period**: Maintain access through paid period
+
+## Security & Compliance
+
+### Data Protection
+- **PII Handling**: Minimal customer data storage
+- **Payment Security**: All payments processed by Lemon Squeezy
+- **Webhook Verification**: Cryptographic signature validation
+
+### Access Control
+- **Feature Gating**: Multiple layers of subscription checking
+- **API Protection**: Middleware-based access control
+- **Audit Logging**: Complete usage and access tracking
+
+## Monitoring & Analytics
+
+### Key Metrics
+- **Monthly Recurring Revenue (MRR)**: Track subscription revenue
+- **Conversion Rate**: Free to paid subscription conversion
+- **Churn Rate**: Subscription cancellation tracking
+- **Feature Usage**: AI feature adoption and usage patterns
+
+### Admin Dashboard
+- **Subscription Overview**: Active/cancelled/expired breakdown
+- **Revenue Tracking**: Monthly and annual revenue summaries
+- **User Analytics**: Subscription lifecycle and behavior
+
+## Troubleshooting
+
+### Common Issues
+
+#### Subscription Not Activating
+- **Check Webhook Configuration**: Verify signing secret and endpoint
+- **Validate Customer Data**: Ensure user_id passed correctly
+- **Review Logs**: Check Laravel logs for webhook processing errors
+
+#### Quota Not Updating
+- **Verify Middleware**: Ensure quota increment in controllers
+- **Check Monthly Reset**: Quotas reset automatically each month
+- **Database Validation**: Verify monthly_quotas table structure
+
+#### Payment Failures
+- **Lemon Squeezy Status**: Check payment processor status
+- **Webhook Delays**: Allow up to 5 minutes for activation
+- **Manual Verification**: Admin can manually verify and activate
+
+### Debug Tools
+```php
+// Check user subscription status
+$user = User::find($id);
+dd([
+    'has_subscription' => $user->hasActiveSubscription(),
+    'can_use_ai' => $user->canUseAI(),
+    'quota_limits' => $user->getCurrentQuotaLimits(),
+    'current_usage' => $user->monthlyQuota
+]);
+```
+
+## Future Enhancements
+
+### Planned Features
+- **Multiple Plan Tiers**: Basic, Pro, Enterprise levels
+- **Annual Discounts**: Yearly subscription options
+- **Team Subscriptions**: School and district plans
+- **Usage-Based Billing**: Per-quiz or per-student pricing
+
+### Technical Improvements
+- **Background Processing**: Async webhook handling
+- **Enhanced Analytics**: Advanced usage reporting
+- **API Rate Limiting**: Feature-based rate limiting
+- **Mobile App Integration**: Subscription status sync
+
+## Support & Maintenance
+
+### User Support
+- **Subscription Issues**: Direct users to Lemon Squeezy support
+- **Feature Access**: Guide users through subscription verification
+- **Billing Questions**: Provide clear billing documentation
+
+### System Maintenance
+- **Regular Webhook Testing**: Monthly webhook verification
+- **Quota Reset Monitoring**: Automated monthly quota reset verification
+- **Payment Provider Updates**: Stay current with Lemon Squeezy changes
+
+---
+
+**Implementation Status**: ✅ Complete and Production Ready  
+**Last Updated**: June 22, 2025  
+**Next Review**: September 2025
