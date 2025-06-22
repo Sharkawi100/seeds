@@ -79,27 +79,50 @@
                             }
                         }
                     @endphp
-
+                
                     @if($savedPassage)
-                        <!-- Display saved passage with option to edit -->
-                        <div class="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <h3 class="text-lg font-bold text-green-800 flex items-center gap-2">
-                                    ✅ تم حفظ النص مسبقاً
-                                </h3>
-                                <button type="button" onclick="togglePassageEdit()" 
-                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm transition">
-                                    <i class="fas fa-edit"></i> تعديل النص
+                        <!-- Saved Passage Display -->
+                        <div class="bg-green-50 border border-green-200 rounded-lg mb-6">
+                            <!-- Header with expand/collapse -->
+                            <div class="flex items-center justify-between p-4 border-b border-green-200">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check text-white text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-green-800">النص التعليمي محفوظ</h3>
+                                        @if($savedPassageTitle)
+                                            <p class="text-green-600 text-sm">{{ $savedPassageTitle }}</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                <button type="button" 
+                                        onclick="togglePassageContent()" 
+                                        id="toggle-passage-btn"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm transition flex items-center gap-2">
+                                    <i class="fas fa-eye" id="toggle-icon"></i>
+                                    <span id="toggle-text">عرض النص</span>
                                 </button>
                             </div>
                             
-                            <!-- Display Mode -->
-                            <div id="passage-display">
-                                @if($savedPassageTitle)
-                                    <h4 class="font-bold text-gray-800 mb-2">{{ $savedPassageTitle }}</h4>
-                                @endif
-                                <div class="text-gray-700 leading-relaxed bg-white p-4 rounded-lg border">
-                                    {!! nl2br(e($savedPassage)) !!}
+                            <!-- Expandable Content -->
+                            <div id="passage-content" class="hidden">
+                                <div class="p-6 bg-white m-4 rounded border">
+                                    <div class="prose prose-lg max-w-none" dir="rtl" style="font-family: 'Tajawal', 'Cairo', Arial, sans-serif;">
+                                        {!! $savedPassage !!}
+                                    </div>
+                                    
+                                    <!-- Reading Info -->
+                                    <div class="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600 flex justify-between">
+                                        <span id="passage-word-count" class="flex items-center gap-2">
+                                            <i class="fas fa-align-left text-green-600"></i>
+                                            <span class="font-medium">... كلمة</span>
+                                        </span>
+                                        <span id="passage-reading-time" class="flex items-center gap-2">
+                                            <i class="fas fa-clock text-green-600"></i>
+                                            <span class="font-medium">... دقيقة قراءة</span>
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -111,38 +134,177 @@
                         <div id="passage-edit">
                     @endif
                     
-                        <div class="grid md:grid-cols-4 gap-4 mb-4">
-                            <div class="md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">عنوان النص</label>
-                                <input type="text" 
-                                       name="passage_title" 
-                                       value="{{ old('passage_title', $savedPassageTitle) }}"
-                                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                       placeholder="مثال: قصة الأسد والفأر">
-                                @error('passage_title')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
+                        <div class="bg-white border border-gray-200 rounded-lg p-6">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <i class="fas fa-book-open text-blue-600"></i>
+                                إضافة النص التعليمي
+                            </h3>
+                            
+                            <div class="grid md:grid-cols-4 gap-4 mb-4">
+                                <div class="md:col-span-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">عنوان النص</label>
+                                    <input type="text" 
+                                           name="passage_title" 
+                                           value="{{ old('passage_title', $savedPassageTitle) }}"
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                           placeholder="مثال: قصة الأسد والفأر">
+                                    @error('passage_title')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                
+                                <div class="md:col-span-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">النص التعليمي</label>
+                                    <textarea name="passage" 
+                                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
+                                              rows="6"
+                                              placeholder="اكتب النص التعليمي هنا..."
+                                              onkeyup="updateWordCount()">{{ old('passage', $savedPassage) }}</textarea>
+                                    <div class="flex justify-between items-center mt-2">
+                                        <small class="text-gray-500">سيظهر هذا النص للطلاب قبل الأسئلة</small>
+                                        <small id="word-count" class="text-sm text-gray-500">0 كلمة</small>
+                                    </div>
+                                    @error('passage')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
                             </div>
                             
-                            <div class="md:col-span-3">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">النص التعليمي</label>
-                                <textarea name="passage" 
-                                          class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-                                          rows="6"
-                                          placeholder="اكتب النص التعليمي هنا..."
-                                          onkeyup="updateWordCount()">{{ old('passage', $savedPassage) }}</textarea>
-                                <div class="flex justify-between items-center mt-2">
-                                    <small class="text-gray-500">سيظهر هذا النص للطلاب قبل الأسئلة</small>
-                                    <small id="word-count" class="text-gray-500">0 كلمة</small>
-                                </div>
-                                @error('passage')
-                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                @enderror
-                            </div>
+                
                         </div>
                         
                     </div> <!-- Close passage-edit div -->
                 </div>
+                
+                <script>
+                // Toggle passage content visibility
+                function togglePassageContent() {
+                    const content = document.getElementById('passage-content');
+                    const icon = document.getElementById('toggle-icon');
+                    const text = document.getElementById('toggle-text');
+                    
+                    if (content.classList.contains('hidden')) {
+                        content.classList.remove('hidden');
+                        icon.className = 'fas fa-eye-slash';
+                        text.textContent = 'إخفاء النص';
+                        
+                        // Calculate reading stats when content is shown
+                        calculatePassageStats();
+                    } else {
+                        content.classList.add('hidden');
+                        icon.className = 'fas fa-eye';
+                        text.textContent = 'عرض النص';
+                    }
+                }
+                
+                // Calculate passage reading statistics
+                function calculatePassageStats() {
+                    const proseContent = document.querySelector('#passage-content .prose');
+                    const wordCountElement = document.getElementById('passage-word-count');
+                    const readingTimeElement = document.getElementById('passage-reading-time');
+                    
+                    if (proseContent && wordCountElement && readingTimeElement) {
+                        // Get text content without HTML tags
+                        const textContent = proseContent.textContent || proseContent.innerText || '';
+                        
+                        // Count words (Arabic and English)
+                        const words = textContent.trim().split(/\s+/).filter(word => word.length > 0);
+                        const wordCount = words.length;
+                        
+                        // Calculate reading time (Arabic reading speed: ~150-180 WPM)
+                        const readingSpeed = 165; // words per minute
+                        const readingTimeMinutes = Math.ceil(wordCount / readingSpeed);
+                        
+                        // Update display with icons and better formatting
+                        wordCountElement.innerHTML = `
+                            <i class="fas fa-align-left text-green-600"></i>
+                            <span class="font-medium">${wordCount} كلمة</span>
+                        `;
+                        
+                        readingTimeElement.innerHTML = `
+                            <i class="fas fa-clock text-green-600"></i>
+                            <span class="font-medium">${readingTimeMinutes} ${readingTimeMinutes === 1 ? 'دقيقة' : 'دقائق'} قراءة</span>
+                        `;
+                        
+                        // Add difficulty indicator based on text length
+                        const difficultyBadge = getDifficultyBadge(wordCount);
+                        if (difficultyBadge && !document.querySelector('.difficulty-badge')) {
+                            const statsContainer = wordCountElement.parentElement;
+                            statsContainer.insertAdjacentHTML('beforeend', `
+                                <span class="difficulty-badge text-xs px-2 py-1 rounded-full ${difficultyBadge.class}">
+                                    ${difficultyBadge.text}
+                                </span>
+                            `);
+                        }
+                    }
+                }
+                
+                // Get difficulty badge based on word count
+                function getDifficultyBadge(wordCount) {
+                    if (wordCount < 50) {
+                        return {
+                            class: 'bg-green-100 text-green-800',
+                            text: 'نص قصير'
+                        };
+                    } else if (wordCount < 150) {
+                        return {
+                            class: 'bg-blue-100 text-blue-800',
+                            text: 'نص متوسط'
+                        };
+                    } else if (wordCount < 300) {
+                        return {
+                            class: 'bg-orange-100 text-orange-800',
+                            text: 'نص طويل'
+                        };
+                    } else {
+                        return {
+                            class: 'bg-red-100 text-red-800',
+                            text: 'نص مفصل'
+                        };
+                    }
+                }
+                
+                // Update word count for textarea
+                function updateWordCount() {
+                    const textarea = document.querySelector('textarea[name="passage"]');
+                    const wordCountElement = document.getElementById('word-count');
+                    
+                    if (textarea && wordCountElement) {
+                        const text = textarea.value.trim();
+                        const words = text ? text.split(/\s+/).filter(word => word.length > 0) : [];
+                        const wordCount = words.length;
+                        
+                        // Calculate reading time
+                        const readingTime = Math.ceil(wordCount / 165);
+                        
+                        // Update display with color coding
+                        let colorClass = 'text-gray-500';
+                        if (wordCount > 0) {
+                            if (wordCount < 50) {
+                                colorClass = 'text-orange-600';
+                            } else if (wordCount > 400) {
+                                colorClass = 'text-red-600';
+                            } else {
+                                colorClass = 'text-green-600';
+                            }
+                        }
+                        
+                        wordCountElement.className = `text-sm font-medium ${colorClass}`;
+                        wordCountElement.innerHTML = `${wordCount} كلمة${wordCount > 0 ? ` • ${readingTime} ${readingTime === 1 ? 'دقيقة' : 'دقائق'}` : ''}`;
+                    }
+                }
+                
+                // Initialize on page load
+                document.addEventListener('DOMContentLoaded', function() {
+                    updateWordCount();
+                    
+                    // If passage content exists, calculate stats immediately
+                    const passageContent = document.getElementById('passage-content');
+                    if (passageContent && !passageContent.classList.contains('hidden')) {
+                        calculatePassageStats();
+                    }
+                });
+                </script>
             </div>
 
             <!-- Questions Section -->
