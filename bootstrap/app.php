@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => IsAdmin::class,
             'teacher' => \App\Http\Middleware\CanCreateQuizzes::class,
             'active' => CheckUserActive::class,
+            'subscription' => \App\Http\Middleware\RequireSubscription::class,
         ]);
 
         // Add CSRF exception for social callbacks

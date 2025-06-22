@@ -54,6 +54,52 @@
     </div>
 @endif
 @section('content')
+@section('content')
+
+{{-- Add subscription status widget here --}}
+@if(Auth::user()->user_type === 'teacher' || Auth::user()->is_admin)
+    @if(Auth::user()->hasActiveSubscription())
+        <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 text-white mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold mb-2">اشتراك نشط - معلم محترف</h3>
+                    <p class="text-green-100">يمكنك استخدام جميع مميزات الذكاء الاصطناعي</p>
+                    @php
+                        $quota = Auth::user()->monthlyQuota;
+                        $limits = Auth::user()->getCurrentQuotaLimits();
+                    @endphp
+                    <p class="text-green-100 text-sm mt-1">
+                        الاختبارات هذا الشهر: {{ $quota->quiz_count ?? 0 }}/{{ $limits['monthly_quiz_limit'] }}
+                    </p>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold">✨</div>
+                    <div class="text-sm text-green-100">Pro</div>
+                </div>
+            </div>
+        </div>
+    @else
+        <div class="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl p-6 text-white mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold mb-2">أطلق قوة الذكاء الاصطناعي</h3>
+                    <p class="text-purple-100">وفر ساعات من الوقت في إنشاء المحتوى التعليمي</p>
+                    @php
+                        $quota = Auth::user()->monthlyQuota;
+                        $limits = Auth::user()->getCurrentQuotaLimits();
+                    @endphp
+                    <p class="text-purple-100 text-sm mt-1">
+                        الاختبارات هذا الشهر: {{ $quota->quiz_count ?? 0 }}/{{ $limits['monthly_quiz_limit'] }}
+                    </p>
+                </div>
+                <a href="{{ route('subscription.upgrade') }}" class="bg-white text-purple-600 font-bold py-3 px-6 rounded-xl hover:bg-gray-50 transition-colors">
+                    اشترك الآن
+                </a>
+            </div>
+        </div>
+    @endif
+@endif
+
 <div class="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">

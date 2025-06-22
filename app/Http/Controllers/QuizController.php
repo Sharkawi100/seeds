@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
+
 class QuizController extends Controller
 {
     protected $claudeService;
@@ -211,7 +212,26 @@ class QuizController extends Controller
     {
         $this->authorizeQuizManagement();
         $this->authorizeQuizOwnership($quiz);
+        //  subscription check
+        if ($request->text_source === 'none' && !Auth::user()->canUseAI()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يتطلب إنشاء اختبار بدون نص اشتراك نشط',
+                'upgrade_required' => true,
+                'redirect' => route('subscription.upgrade')
+            ], 403);
+        }
 
+        // For manual text, check if user wants AI generation
+        if ($request->text_source === 'manual' && !Auth::user()->canUseAI()) {
+            // Skip AI generation, redirect to manual question creation
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حفظ النص. يمكنك الآن إضافة الأسئلة يدوياً',
+                'redirect' => route('quizzes.questions.create', $quiz),
+                'skip_ai' => true
+            ]);
+        }
         $validator = Validator::make($request->all(), [
             'topic' => 'required|string|max:255',
             'question_count' => 'required|integer|min:4|max:30',
@@ -300,11 +320,18 @@ class QuizController extends Controller
 
             // Generate questions based on text source
             if ($request->text_source === 'none') {
-                // Generate complete quiz with passage from scratch
-                Log::info('Generating complete quiz without existing text', [
-                    'quiz_id' => $quiz->id,
-                    'topic' => $request->topic
-                ]);
+                // Add subscription check here:
+                if (!Auth::user()->canUseAI()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'يتطلب توليد الاختبارات بالذكاء الاصطناعي اشتراك نشط',
+                        'upgrade_required' => true
+                    ], 422);
+                }
+
+                // Log AI usage
+                $quota = \App\Models\MonthlyQuota::getOrCreateCurrent(Auth::id());
+                $quota->incrementAiQuizRequests();
 
                 $aiResponse = $this->claudeService->generateJuzoorQuiz(
                     $subjectName,
@@ -441,7 +468,14 @@ class QuizController extends Controller
     public function store(Request $request)
     {
         $this->authorizeQuizManagement();
-
+        // quota check here:
+        if (Auth::user()->hasReachedQuizLimit()) {
+            $limits = Auth::user()->getCurrentQuotaLimits();
+            return redirect()->back()->with(
+                'error',
+                "لقد وصلت للحد الأقصى الشهري ({$limits['monthly_quiz_limit']} اختبار). يرجى الانتظار حتى الشهر القادم أو ترقية الاشتراك."
+            );
+        }
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'subject_id' => 'required|exists:subjects,id',
@@ -488,6 +522,10 @@ class QuizController extends Controller
                     'step' => 'completed',
                 ],
             ]);
+
+            // Increment quota counter
+            $quota = \App\Models\MonthlyQuota::getOrCreateCurrent(Auth::id());
+            $quota->incrementQuizCount();
 
             DB::commit();
 
@@ -935,6 +973,14 @@ class QuizController extends Controller
                 ], 500);
             }
         } else {
+            //  subscription check here:
+            if (!Auth::user()->canUseAI()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يتطلب توليد النص اشتراك نشط',
+                    'upgrade_required' => true
+                ], 403);
+            }
             // Standalone text generation (original method)
             $validated = $request->validate([
                 'subject_id' => 'required|exists:subjects,id',
@@ -956,6 +1002,10 @@ class QuizController extends Controller
                     $validated['text_type'],
                     $validated['length']
                 );
+
+                // Log AI usage
+                $quota = \App\Models\MonthlyQuota::getOrCreateCurrent(Auth::id());
+                $quota->incrementAiTextRequests();
 
                 return response()->json([
                     'success' => true,

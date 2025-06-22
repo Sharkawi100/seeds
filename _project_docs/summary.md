@@ -55,6 +55,54 @@ Each root supports 3 depth levels: **سطحي (Surface)**, **متوسط (Medium)
 
 ---
 
+## 📊 **NEW: Advanced Reports & Analytics System**
+
+### **Comprehensive Teacher Analytics**
+
+#### **Multi-Dimensional Filtering**
+
+-   **Time-based**: Date ranges and period analysis
+-   **Content-based**: Subject, quiz titles, and search capabilities
+-   **Performance-based**: Score ranges and proficiency levels
+-   **Root-focused**: Analysis by dominant learning dimensions
+
+#### **Cross-Quiz Student Tracking**
+
+-   **Individual Progress**: Student performance across multiple quizzes
+-   **Learning Trajectories**: Improvement patterns and growth trends
+-   **Root Development**: Four-dimension skill evolution over time
+-   **Comparative Analysis**: Peer performance benchmarking
+
+#### **Interactive Data Visualization**
+
+-   **4-Roots Radar Charts**: Visual representation of learning balance
+-   **Progress Trends**: Time-series performance analysis
+-   **Heat Maps**: Class performance distribution
+-   **Comparative Dashboards**: Multi-quiz analytics
+
+### **Smart Analytics Features**
+
+#### **Bulk Analysis Tools**
+
+-   **Multi-selection**: Analyze selected quizzes simultaneously
+-   **Aggregated Metrics**: Combined performance calculations
+-   **Trend Identification**: Pattern recognition across selections
+-   **Export Capabilities**: Data extraction for external analysis
+
+#### **Dynamic Grouping Options**
+
+-   **By Quiz**: Traditional quiz-centered view
+-   **By Student**: Cross-quiz individual tracking
+-   **By Date**: Chronological performance analysis
+-   **By Root Performance**: Learning dimension focus
+
+#### **Intelligent Insights**
+
+-   **Performance Trends**: Automatic trend detection
+-   **Best Practices**: High-performing quiz identification
+-   **Student Engagement**: Activity pattern analysis
+-   **Growth Indicators**: Improvement trajectory mapping
+
 ## 🎯 **Key Features**
 
 ### **Quiz Creation**

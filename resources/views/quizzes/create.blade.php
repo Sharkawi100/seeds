@@ -207,56 +207,83 @@
                         </div>
 
                         <div class="text-source-card cursor-pointer p-6 border-2 border-gray-200 rounded-2xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-300"
-                             data-source="none" onclick="setTextSource('none')">
-                            <div class="text-center">
-                                <div class="w-16 h-16 bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18 12M6 6l12 12"></path>
-                                    </svg>
-                                </div>
-                                <h3 class="font-bold text-gray-900 mb-2">بدون نص</h3>
-                                <p class="text-sm text-gray-600">أسئلة مباشرة بدون نص قراءة</p>
-                            </div>
-                        </div>
+     data-source="none" onclick="handleNoTextOption()">
+    <div class="text-center">
+        <div class="w-16 h-16 bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18 12M6 6l12 12"></path>
+            </svg>
+        </div>
+        <h3 class="font-bold text-gray-900 mb-2">بدون نص</h3>
+        <p class="text-sm text-gray-600">أسئلة مباشرة بدون نص قراءة</p>
+        @if(!Auth::user()->canUseAI())
+            <div class="mt-2">
+                <span class="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                    <i class="fas fa-crown mr-1"></i>
+                    يتطلب اشتراك
+                </span>
+            </div>
+        @endif
+    </div>
+</div>
                     </div>
 
                     <!-- AI Text Options -->
-                    <div id="ai-text-options" class="hidden space-y-6">
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-900 mb-3">نوع النص</label>
-                                <select id="text_type" 
-                                        name="text_type"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300">
-                                    <option value="story">📖 قصة</option>
-                                    <option value="article">📰 مقال</option>
-                                    <option value="dialogue">💬 حوار</option>
-                                    <option value="description">📝 نص وصفي</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-900 mb-3">طول النص</label>
-                                <select id="text_length" 
-                                        name="text_length"
-                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300">
-                                    <option value="short">قصير (50-100 كلمة)</option>
-                                    <option value="medium" selected>متوسط (150-250 كلمة)</option>
-                                    <option value="long">طويل (300-500 كلمة)</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <button type="button" 
-                                onclick="generateText()"
-                                id="generate-text-btn"
-                                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-4 rounded-2xl font-semibold text-lg transition-all duration-300 flex items-center justify-center space-x-3 rtl:space-x-reverse shadow-lg hover:shadow-xl">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
-                            </svg>
-                            <span>توليد النص</span>
-                        </button>
-                    </div>
+<div id="ai-text-options" class="hidden space-y-6">
+    @if(Auth::user()->canUseAI())
+        <div class="grid md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 mb-3">نوع النص</label>
+                <select id="text_type" 
+                        name="text_type"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300">
+                    <option value="story">📖 قصة</option>
+                    <option value="article">📰 مقال</option>
+                    <option value="dialogue">💬 حوار</option>
+                    <option value="description">📝 نص وصفي</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-900 mb-3">طول النص</label>
+                <select id="text_length" 
+                        name="text_length"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300">
+                    <option value="short">قصير (50-100 كلمة)</option>
+                    <option value="medium" selected>متوسط (150-250 كلمة)</option>
+                    <option value="long">طويل (300-500 كلمة)</option>
+                </select>
+            </div>
+        </div>
+        
+        <button type="button" 
+                onclick="generateText()"
+                id="generate-text-btn"
+                class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-4 rounded-2xl font-semibold text-lg transition-all duration-300 flex items-center justify-center space-x-3 rtl:space-x-reverse shadow-lg hover:shadow-xl">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+            </svg>
+            <span>توليد النص</span>
+        </button>
+    @else
+        <div class="text-center p-8 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+            <div class="text-4xl mb-4">🤖</div>
+            <h3 class="text-xl font-bold text-purple-900 mb-2">
+                استخدم الذكاء الاصطناعي لتوليد المحتوى
+            </h3>
+            <p class="text-purple-700 mb-4">
+                وفر ساعات من الوقت واترك الذكاء الاصطناعي ينشئ النصوص والأسئلة لك
+            </p>
+            <a href="{{ route('subscription.upgrade') }}" 
+               class="inline-flex items-center px-6 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition-colors">
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                اشترك واستخدم الذكاء الاصطناعي
+            </a>
+        </div>
+    @endif
+</div>
 
                     <!-- Text Editor -->
                     <div id="text-editor-container" class="hidden">
@@ -869,14 +896,35 @@
     }
 
     // Step navigation
-    function nextStep() {
-        if (currentStep < 3) {
-            document.getElementById(`step-${currentStep}`).classList.add('hidden');
-            currentStep++;
-            document.getElementById(`step-${currentStep}`).classList.remove('hidden');
-            updateStepIndicators();
-        }
+function nextStep() {
+    // Special handling for step 2 -> 3 transition
+    if (currentStep === 2) {
+        @if(!Auth::user()->canUseAI())
+            // For non-subscribers with manual text, redirect to manual question creation
+            if (textSource === 'manual') {
+                const educationalText = document.getElementById('educational_text').value.trim();
+                if (!educationalText || educationalText.length < 50) {
+                    showNotification('النص يجب أن يكون 50 حرف على الأقل', 'error');
+                    return;
+                }
+                
+                showNotification('سيتم توجيهك لإضافة الأسئلة يدوياً', 'info');
+                setTimeout(() => {
+                    window.location.href = '{{ url("/quizzes") }}/' + quizId + '/questions/create';
+                }, 2000);
+                return;
+            }
+        @endif
     }
+    
+    // Normal step progression
+    if (currentStep < 3) {
+        document.getElementById(`step-${currentStep}`).classList.add('hidden');
+        currentStep++;
+        document.getElementById(`step-${currentStep}`).classList.remove('hidden');
+        updateStepIndicators();
+    }
+}
 
     function previousStep() {
         if (currentStep > 1) {
@@ -930,33 +978,63 @@
         }
         return true;
     }
-
-    // Text source selection
-    function setTextSource(source) {
-        textSource = source;
-        
-        // Update active card
-        document.querySelectorAll('.text-source-card').forEach(card => {
-            card.classList.toggle('active', card.dataset.source === source);
+// Add this NEW function before setTextSource
+function handleNoTextOption() {
+    @if(!Auth::user()->canUseAI())
+        // Show subscription required modal for non-subscribers
+        Swal.fire({
+            title: 'اشتراك مطلوب',
+            text: 'يتطلب إنشاء اختبار بدون نص اشتراك نشط للوصول لمميزات الذكاء الاصطناعي',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'اشترك الآن',
+            cancelButtonText: 'إلغاء',
+            confirmButtonColor: '#8B5CF6',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '{{ route("subscription.upgrade") }}';
+            }
         });
-        
-        // Show/hide relevant sections
-        const aiOptions = document.getElementById('ai-text-options');
-        const textEditor = document.getElementById('text-editor-container');
-        
-        if (source === 'ai') {
-            aiOptions.classList.remove('hidden');
+    @else
+        // Allow subscribers to use "no text" option
+        setTextSource('none');
+    @endif
+}
+
+    // Modify the existing setTextSource function
+    function setTextSource(source) {
+    textSource = source;
+    
+    // Update active card
+    document.querySelectorAll('.text-source-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.source === source);
+    });
+    
+    // Show/hide relevant sections
+    const aiOptions = document.getElementById('ai-text-options');
+    const textEditor = document.getElementById('text-editor-container');
+    
+    if (source === 'ai') {
+        aiOptions.classList.remove('hidden');
+        @if(Auth::user()->canUseAI())
             textEditor.classList.remove('hidden');
-        } else if (source === 'manual') {
-            aiOptions.classList.add('hidden');
-            textEditor.classList.remove('hidden');
-        } else if (source === 'none') {
-            aiOptions.classList.add('hidden');
-            textEditor.classList.add('hidden');
-            document.getElementById('educational_text').value = '';
-            updateWordCount();
-        }
+        @else
+            textEditor.classList.add('hidden'); // Hide for non-subscribers
+        @endif
+    } else if (source === 'manual') {
+        aiOptions.classList.add('hidden');
+        textEditor.classList.remove('hidden');
+        
+        @if(!Auth::user()->canUseAI())
+            showNotification('ملاحظة: سيتم توجيهك لإضافة الأسئلة يدوياً بعد حفظ النص', 'info');
+        @endif
+    } else if (source === 'none') {
+        aiOptions.classList.add('hidden');
+        textEditor.classList.add('hidden');
+        document.getElementById('educational_text').value = '';
+        updateWordCount();
     }
+}
 
     // Generate text using AI
     async function generateText() {
@@ -1012,7 +1090,25 @@
             showNotification('خطأ: لم يتم العثور على معرف الاختبار', 'error');
             return;
         }
+         // Check 1: Block "no text" for non-subscribers
+    @if(!Auth::user()->canUseAI())
+        if (textSource === 'none') {
+            showNotification('يتطلب إنشاء اختبار بدون نص اشتراك نشط', 'error');
+            setTimeout(() => {
+                window.location.href = '{{ route("subscription.upgrade") }}';
+            }, 2000);
+            return;
+        }
         
+        // Check 2: Redirect manual text users to manual question creation
+        if (textSource === 'manual') {
+            showNotification('سيتم توجيهك لإضافة الأسئلة يدوياً', 'info');
+            setTimeout(() => {
+                window.location.href = '{{ url("/quizzes") }}/' + quizId + '/questions/create';
+            }, 2000);
+            return;
+        }
+    @endif
         if (!validateStep3Extended()) return;
         
         const educationalText = document.getElementById('educational_text').value;
@@ -1237,6 +1333,33 @@
             setTimeout(() => notification.remove(), 300);
         }, 4000);
     }
+    // Handle "No Text" option with subscription check
+function handleNoTextOption() {
+    @if(!Auth::user()->canUseAI())
+        // Show upgrade modal for non-subscribers
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+            <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+                <div class="text-4xl mb-4">🤖</div>
+                <h3 class="text-xl font-bold mb-4">توليد الأسئلة بالذكاء الاصطناعي</h3>
+                <p class="text-gray-600 mb-6">هذه الميزة تتطلب اشتراك نشط لاستخدام الذكاء الاصطناعي</p>
+                <div class="flex gap-3">
+                    <button onclick="this.closest('.fixed').remove()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg">
+                        إلغاء
+                    </button>
+                    <a href="{{ route('subscription.upgrade') }}" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg text-center">
+                        اشترك الآن
+                    </a>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    @else
+        // Allow access for subscribers
+        setTextSource('none');
+    @endif
+}
 </script>
 @endpush
 @endsection

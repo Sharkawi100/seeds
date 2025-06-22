@@ -134,12 +134,17 @@ class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b bord
                                     محلل السجلات
                                     <span class="mr-auto bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full">جديد</span>
                                 </a>
-
+<!-- Subscription Management -->
+<a href="{{ route('admin.subscription-plans.index') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors">
+    <i class="fas fa-credit-card text-purple-500 w-5 ml-3"></i>
+    إدارة الاشتراكات
+</a>
                                 <!-- Settings -->
                                 <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-600 transition-colors">
                                     <i class="fas fa-cog text-gray-500 w-5 ml-3"></i>
                                     إعدادات النظام
                                 </a>
+                                
                             </div>
                         </div>
                         @endif
@@ -248,6 +253,17 @@ class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b bord
                                 <i class="fas fa-cog text-green-500 w-5 ml-3"></i>
                                 إعدادات الحساب
                             </a>
+                            @if(Auth::user()->user_type === 'teacher' || Auth::user()->is_admin)
+    <x-nav-link :href="route('subscription.manage')" :active="request()->routeIs('subscription.*')">
+        @if(Auth::user()->hasActiveSubscription())
+            <span class="w-2 h-2 bg-green-500 rounded-full ml-2"></span>
+            إدارة الاشتراك
+        @else
+            <span class="w-2 h-2 bg-orange-500 rounded-full ml-2"></span>
+            ترقية الحساب
+        @endif
+    </x-nav-link>
+@endif
 
                             <div class="border-t border-gray-200/50"></div>
 

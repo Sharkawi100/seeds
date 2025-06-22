@@ -185,7 +185,19 @@
                                 {{ mb_substr($user->name, 0, 1) }}
                             </div>
                             <div>
-                                <h3 class="text-lg font-bold text-gray-800">{{ $user->name }}</h3>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-lg font-bold text-gray-800">{{ $user->name }}</h3>
+                                    {{-- Add subscription status emoji --}}
+                                    @if($user->user_type === 'teacher')
+                                        @if($user->hasActiveSubscription())
+                                            <span class="text-lg" title="اشتراك نشط">💎</span>
+                                        @elseif($user->subscription_expires_at && $user->subscription_expires_at->isPast())
+                                            <span class="text-lg" title="اشتراك منتهي">⏰</span>
+                                        @else
+                                            <span class="text-lg" title="بدون اشتراك">🎓</span>
+                                        @endif
+                                    @endif
+                                </div>
                                 <p class="text-gray-500">{{ $user->email }}</p>
                                 <div class="flex items-center gap-3 mt-1">
                                     @if($user->google_id)

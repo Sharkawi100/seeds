@@ -556,9 +556,9 @@ class ProfileController extends Controller
     /**
      * Display the user's profile dashboard.
      */
-    public function profileDashboard(Request $request): RedirectResponse
+    public function profileDashboard()
     {
-        return redirect()->route('profile.edit');
+        return view('profile.index');
     }
 
     /**

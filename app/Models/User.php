@@ -76,6 +76,7 @@ class User extends Authenticatable
             'deactivated_at' => 'datetime',
             'login_count' => 'integer',
             'grade_level' => 'integer',
+            'subscription_expires_at' => 'datetime',
         ];
     }
 
@@ -191,8 +192,58 @@ class User extends Authenticatable
     {
         return $query->where('user_type', 'student');
     }
-    /**
-     * Check if this user can be impersonated
-     */
+    // Add to app/Models/User.php
 
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class)->latest();
+    }
+
+    public function monthlyQuota()
+    {
+        $currentYear = now()->year;
+        $currentMonth = now()->month;
+
+        return $this->hasOne(MonthlyQuota::class)
+            ->where('year', $currentYear)
+            ->where('month', $currentMonth);
+    }
+
+    public function hasActiveSubscription(): bool
+    {
+        return $this->subscription_active &&
+            ($this->subscription_expires_at === null ||
+                ($this->subscription_expires_at && $this->subscription_expires_at->isFuture()));
+    }
+
+    public function canUseAI(): bool
+    {
+        return $this->hasActiveSubscription();
+    }
+
+    public function getCurrentQuotaLimits(): array
+    {
+        if (!$this->hasActiveSubscription()) {
+            return [
+                'monthly_quiz_limit' => 5, // Free users get 5 quizzes
+                'monthly_ai_text_limit' => 0,
+                'monthly_ai_quiz_limit' => 0
+            ];
+        }
+
+        $plan = $this->subscription?->subscriptionPlan;
+        return [
+            'monthly_quiz_limit' => $plan?->monthly_quiz_limit ?? 40,
+            'monthly_ai_text_limit' => $plan?->monthly_ai_text_limit ?? 100,
+            'monthly_ai_quiz_limit' => $plan?->monthly_ai_quiz_limit ?? 100
+        ];
+    }
+
+    public function hasReachedQuizLimit(): bool
+    {
+        $quota = $this->monthlyQuota;
+        $limits = $this->getCurrentQuotaLimits();
+
+        return $quota && $quota->quiz_count >= $limits['monthly_quiz_limit'];
+    }
 }

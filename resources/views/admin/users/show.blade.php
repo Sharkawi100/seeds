@@ -165,7 +165,18 @@
                             <i class="fas fa-edit ml-2"></i>
                             تعديل المستخدم
                         </a>
-                        
+                        @if($user->user_type === 'teacher')
+    <a href="{{ route('admin.users.manage-subscription', $user) }}" 
+       class="action-button block w-full {{ $user->hasActiveSubscription() ? 'bg-green-500 hover:bg-green-600' : 'bg-purple-500 hover:bg-purple-600' }} text-white">
+        @if($user->hasActiveSubscription())
+            <span class="text-lg ml-2">💎</span>
+            إدارة الاشتراك
+        @else
+            <span class="text-lg ml-2">⭐</span>
+            منح اشتراك
+        @endif
+    </a>
+@endif
                         @if($user->canBeImpersonated())
                             <a href="{{ route('admin.users.impersonate', $user) }}" 
                                class="action-button block w-full bg-purple-500 hover:bg-purple-600 text-white"

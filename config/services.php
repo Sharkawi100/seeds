@@ -58,5 +58,12 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URL', '/auth/google/callback'),
     ],
+    'lemonsqueezy' => [
+        'api_key' => env('LEMONSQUEEZY_API_KEY'),
+        'store_id' => env('LEMONSQUEEZY_STORE_ID'),
+        'variant_id_pro' => env('LEMONSQUEEZY_VARIANT_ID_PRO'),
+        'variant_id_premium' => env('LEMONSQUEEZY_VARIANT_ID_PREMIUM'),
+        'signing_secret' => env('LEMONSQUEEZY_SIGNING_SECRET'),
+    ],
 
 ];

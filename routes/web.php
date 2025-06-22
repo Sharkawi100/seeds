@@ -247,6 +247,14 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
     Route::get('users/{user}/impersonate', [AdminUserController::class, 'impersonate'])->name('users.impersonate');
     Route::get('users-export', [AdminUserController::class, 'export'])->name('users.export');
 
+    // Subscription Plans Management
+    Route::resource('subscription-plans', App\Http\Controllers\Admin\SubscriptionPlanController::class);
+    Route::patch('subscription-plans/{subscriptionPlan}/toggle', [App\Http\Controllers\Admin\SubscriptionPlanController::class, 'toggle'])->name('subscription-plans.toggle');
+    Route::get('subscription-plans-users', [App\Http\Controllers\Admin\SubscriptionPlanController::class, 'users'])->name('subscription-plans.users');
+    Route::get('users/{user}/manage-subscription', [App\Http\Controllers\Admin\SubscriptionPlanController::class, 'manageUserSubscription'])->name('users.manage-subscription');
+    Route::put('users/{user}/update-subscription', [App\Http\Controllers\Admin\SubscriptionPlanController::class, 'updateUserSubscription'])->name('subscription-plans.update-user');
+
+
     // AI Management
     Route::prefix('ai')->name('ai.')->controller(AiManagementController::class)->group(function () {
         Route::get('/', 'index')->name('index');
@@ -293,4 +301,20 @@ Route::middleware(['auth:sanctum'])->prefix('api')->name('api.')->group(function
 
 Route::fallback(function () {
     abort(404);
+});
+
+// Subscription routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/subscription/upgrade', [App\Http\Controllers\SubscriptionController::class, 'upgrade'])->name('subscription.upgrade');
+    Route::post('/subscription/checkout', [App\Http\Controllers\SubscriptionController::class, 'createCheckout'])->name('subscription.checkout');
+    Route::get('/subscription/success', [App\Http\Controllers\SubscriptionController::class, 'success'])->name('subscription.success');
+    Route::get('/subscription/manage', [App\Http\Controllers\SubscriptionController::class, 'manage'])->name('subscription.manage');
+});
+
+// Webhook (no auth needed)
+Route::post('/webhooks/lemonsqueezy', [App\Http\Controllers\SubscriptionController::class, 'webhook'])->name('subscription.webhook');
+
+// AI features (require subscription)
+Route::middleware(['auth', 'subscription'])->group(function () {
+    Route::post('/quiz/generate-text', [App\Http\Controllers\QuizController::class, 'generateText'])->name('quiz.generate-text');
 });
