@@ -240,10 +240,14 @@
                                 @foreach($recentQuizzes as $quiz)
                                     <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
                                         <div>
-                                            <h4 class="font-semibold">{{ $quiz->title }}</h4>
-                                            <p class="text-sm text-gray-600">
-                                                {{ $quiz->subject }} - الصف {{ $quiz->grade_level }}
-                                                <span class="mr-2">• {{ $quiz->questions->count() }} سؤال</span>
+                                            <h4 class="font-semibold">
+                                                <a href="{{ route('quizzes.show', $quiz) }}" 
+                                                   class="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                                                   target="_blank">
+                                                    {{ $quiz->title }}
+                                                </a>
+                                            </h4>                                            <p class="text-sm text-gray-600">
+                                                {{ $quiz->subject->name ?? 'غير محدد' }} - الصف {{ $quiz->grade_level }}                                                <span class="mr-2">• {{ $quiz->questions->count() }} سؤال</span>
                                             </p>
                                         </div>
                                         <div class="text-left">

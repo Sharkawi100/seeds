@@ -93,7 +93,7 @@ class UserController extends Controller
     public function show(User $user)
     {
         $user->loadCount(['quizzes', 'results']);
-        $recentQuizzes = $user->quizzes()->latest()->take(5)->get();
+        $recentQuizzes = $user->quizzes()->with('subject')->latest()->take(5)->get();
         $recentResults = $user->results()->with('quiz')->latest()->take(10)->get();
 
         // Get login history from sessions table if available
