@@ -895,12 +895,12 @@
         }
     }
 
-    // Step navigation
+  // Step navigation
 function nextStep() {
     // Special handling for step 2 -> 3 transition
     if (currentStep === 2) {
         @if(!Auth::user()->canUseAI())
-            // For non-subscribers with manual text, redirect to manual question creation
+            // For non-subscribers with manual text, SAVE FIRST then redirect
             if (textSource === 'manual') {
                 const educationalText = document.getElementById('educational_text').value.trim();
                 if (!educationalText || educationalText.length < 50) {
@@ -908,21 +908,62 @@ function nextStep() {
                     return;
                 }
                 
-                showNotification('سيتم توجيهك لإضافة الأسئلة يدوياً', 'info');
-                setTimeout(() => {
-                    window.location.href = '{{ url("/quizzes") }}/' + quizId + '/questions/create';
-                }, 2000);
+                // ✅ SAVE THE TEXT FIRST before redirecting
+                saveManualTextThenRedirect(educationalText);
                 return;
             }
         @endif
     }
     
-    // Normal step progression
+    // Normal step progression for other cases
     if (currentStep < 3) {
         document.getElementById(`step-${currentStep}`).classList.add('hidden');
         currentStep++;
         document.getElementById(`step-${currentStep}`).classList.remove('hidden');
         updateStepIndicators();
+    }
+}
+// Save manual text then redirect to question creation
+async function saveManualTextThenRedirect(educationalText) {
+    if (!quizId) {
+        showNotification('خطأ: لم يتم العثور على معرف الاختبار', 'error');
+        return;
+    }
+    
+    try {
+        showLoadingModal('جاري حفظ النص', 'يتم حفظ النص التعليمي...');
+        
+        const response = await fetch(`{{ url('/quizzes') }}/${quizId}/save-manual-text`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                educational_text: educationalText,
+                topic: document.getElementById('topic').value
+            })
+        });
+        
+        const data = await response.json();
+        
+        hideLoadingModal();
+        
+        if (data.success) {
+            showNotification('تم حفظ النص بنجاح. سيتم توجيهك لإضافة الأسئلة', 'success');
+            setTimeout(() => {
+                window.location.href = `{{ url('/quizzes') }}/${quizId}/questions/create`;
+            }, 2000);
+        } else {
+            showNotification(data.message || 'فشل حفظ النص', 'error');
+        }
+        
+    } catch (error) {
+        hideLoadingModal();
+        console.error('Error saving manual text:', error);
+        showNotification('حدث خطأ أثناء حفظ النص', 'error');
     }
 }
 

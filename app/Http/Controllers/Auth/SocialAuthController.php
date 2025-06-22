@@ -85,7 +85,13 @@ class SocialAuthController extends Controller
                 default => 'dashboard'
             };
 
-            return redirect()->intended(route($route));
+            // Add this before the redirect
+            $intendedUrl = session()->pull('url.intended');
+            Log::info('Intended URL: ' . $intendedUrl);
+            Log::info('Target route: ' . $route);
+
+            // Then use direct redirect
+            return redirect()->route($route);
 
         } catch (\Exception $e) {
             Log::error('Social login failed: ' . $e->getMessage());

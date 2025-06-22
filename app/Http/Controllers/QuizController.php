@@ -80,6 +80,20 @@ class QuizController extends Controller
     {
         $this->authorizeQuizManagement();
 
+        // ✅ Cleanup old incomplete quizzes for current user
+        $deletedCount = Quiz::where('user_id', Auth::id())
+            ->where('created_at', '<', now()->subHours(6)) // Older than 6 hours
+            ->whereDoesntHave('questions') // No questions added
+            ->delete();
+
+        // Log cleanup activity
+        if ($deletedCount > 0) {
+            Log::info('Cleaned up incomplete quizzes', [
+                'user_id' => Auth::id(),
+                'deleted_count' => $deletedCount
+            ]);
+        }
+
         $subjects = Subject::active()->ordered()->get();
         return view('quizzes.create', compact('subjects'));
     }
@@ -210,10 +224,26 @@ class QuizController extends Controller
      */
     public function generateQuestions(Request $request, Quiz $quiz)
     {
+        // 🔍 DEBUG: Comprehensive logging
+        Log::info('generateQuestions method called', [
+            'quiz_id' => $quiz->id,
+            'quiz_title' => $quiz->title,
+            'request_data' => $request->all(),
+            'text_source' => $request->text_source,
+            'has_educational_text' => !empty($request->educational_text),
+            'educational_text_length' => strlen($request->educational_text ?? ''),
+            'educational_text_preview' => substr($request->educational_text ?? '', 0, 100),
+            'user_id' => Auth::id(),
+            'user_can_use_ai' => Auth::user()->canUseAI(),
+            'current_passage_data' => $quiz->passage_data
+        ]);
+
         $this->authorizeQuizManagement();
         $this->authorizeQuizOwnership($quiz);
-        //  subscription check
+
+        // Handle subscription checks for AI features
         if ($request->text_source === 'none' && !Auth::user()->canUseAI()) {
+            Log::info('Subscription required for no-text generation', ['user_id' => Auth::id()]);
             return response()->json([
                 'success' => false,
                 'message' => 'يتطلب إنشاء اختبار بدون نص اشتراك نشط',
@@ -222,16 +252,62 @@ class QuizController extends Controller
             ], 403);
         }
 
-        // For manual text, check if user wants AI generation
+        // Handle manual text for non-subscribers
         if ($request->text_source === 'manual' && !Auth::user()->canUseAI()) {
-            // Skip AI generation, redirect to manual question creation
+            Log::info('Manual text processing for non-subscriber', [
+                'quiz_id' => $quiz->id,
+                'has_text' => !empty($request->educational_text),
+                'text_length' => strlen($request->educational_text ?? ''),
+                'topic' => $request->topic
+            ]);
+
+            // Save manual text to quiz passage_data
+            $passageData = [
+                'passage' => $request->educational_text ?? '',
+                'passage_title' => $request->topic ?? 'نص القراءة',
+                'saved_at' => now()->toISOString(),
+                'text_source' => 'manual'
+            ];
+
+            try {
+                $quiz->update(['passage_data' => $passageData]);
+                Log::info('Manual text saved successfully', [
+                    'quiz_id' => $quiz->id,
+                    'passage_data' => $passageData
+                ]);
+
+                // Verify the save worked
+                $quiz->refresh();
+                $savedData = $quiz->passage_data;
+                Log::info('Verification of saved data', [
+                    'quiz_id' => $quiz->id,
+                    'saved_passage_data' => $savedData,
+                    'save_successful' => !empty($savedData['passage'])
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to save manual text', [
+                    'quiz_id' => $quiz->id,
+                    'error' => $e->getMessage(),
+                    'passage_data' => $passageData
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم حفظ النص. يمكنك الآن إضافة الأسئلة يدوياً',
                 'redirect' => route('quizzes.questions.create', $quiz),
-                'skip_ai' => true
+                'skip_ai' => true,
+                'saved_text_length' => strlen($request->educational_text ?? ''),
+                'debug_info' => [
+                    'text_saved' => true,
+                    'quiz_id' => $quiz->id,
+                    'passage_data' => $passageData
+                ]
             ]);
         }
+
+        // Validation for AI-powered generation
         $validator = Validator::make($request->all(), [
             'topic' => 'required|string|max:255',
             'question_count' => 'required|integer|min:4|max:30',
@@ -239,7 +315,6 @@ class QuizController extends Controller
             'text_source' => 'required|in:ai,manual,none',
             'roots' => 'required|array',
             'roots.*' => 'integer|min:0|max:20',
-
             // Quiz Configuration Settings
             'time_limit' => 'nullable|integer|min:1|max:180',
             'passing_score' => 'required|integer|min:0|max:100',
@@ -250,172 +325,239 @@ class QuizController extends Controller
         ]);
 
         if ($validator->fails()) {
+            Log::error('Validation failed in generateQuestions', [
+                'errors' => $validator->errors(),
+                'request_data' => $request->all()
+            ]);
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
+                'message' => 'بيانات غير صحيحة'
             ], 422);
         }
 
         try {
-            // Validate that root distribution matches question count
+            // Validate root distribution matches question count
             $totalRootQuestions = array_sum($request->roots);
             if ($totalRootQuestions != $request->question_count) {
                 throw new \Exception('مجموع توزيع الأسئلة على الجذور لا يتطابق مع العدد الإجمالي');
             }
 
-            // Get subject name
+            // Check AI subscription for AI features
+            if (($request->text_source === 'ai' || $request->text_source === 'none') && !Auth::user()->canUseAI()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يتطلب توليد الاختبارات بالذكاء الاصطناعي اشتراك نشط',
+                    'upgrade_required' => true
+                ], 403);
+            }
+
+            // Get subject information
             $subject = Subject::find($quiz->subject_id);
             $subjectName = $subject ? $subject->name : 'عام';
 
-            // CRITICAL: Use the exact text from Step 2
-            $educationalText = $request->educational_text;
-
-            // Prepare roots structure for AI - preserve exact count
-            $rootsForAI = [];
-            $totalRequested = array_sum($request->roots);
-
-            foreach ($request->roots as $rootKey => $count) {
-                if ($count > 0) {
-                    // Distribute more evenly and preserve exact count
-                    if ($count <= 2) {
-                        // For small counts, put everything in level 1
-                        $rootsForAI[$rootKey] = [
-                            '1' => $count,
-                            '2' => 0,
-                            '3' => 0
-                        ];
-                    } else {
-                        // For larger counts, distribute more carefully
-                        $level1 = floor($count * 0.4);
-                        $level2 = floor($count * 0.4);
-                        $level3 = $count - $level1 - $level2; // Remainder goes to level 3
-
-                        $rootsForAI[$rootKey] = [
-                            '1' => $level1,
-                            '2' => $level2,
-                            '3' => $level3
-                        ];
-                    }
-                }
-            }
-
-            // Calculate actual total after transformation
-            $transformedTotal = array_sum(array_map(function ($root) {
-                return array_sum($root);
-            }, $rootsForAI));
-
-            // Log the transformation for debugging
-            Log::info('Roots transformation', [
-                'original_roots' => $request->roots,
-                'transformed_roots' => $rootsForAI,
-                'total_requested' => $totalRequested,
-                'total_transformed' => $transformedTotal
-            ]);
-
-            Log::info('Generating questions from existing text', [
-                'quiz_id' => $quiz->id,
-                'text_length' => strlen($educationalText),
-                'text_preview' => substr($educationalText, 0, 100)
-            ]);
-
-            // Generate questions based on text source
-            if ($request->text_source === 'none') {
-                // Add subscription check here:
-                if (!Auth::user()->canUseAI()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'يتطلب توليد الاختبارات بالذكاء الاصطناعي اشتراك نشط',
-                        'upgrade_required' => true
-                    ], 422);
-                }
-
-                // Log AI usage
-                $quota = \App\Models\MonthlyQuota::getOrCreateCurrent(Auth::id());
-                $quota->incrementAiQuizRequests();
-
-                $aiResponse = $this->claudeService->generateJuzoorQuiz(
-                    $subjectName,
-                    $quiz->grade_level,
-                    $request->topic,
-                    $rootsForAI,
-                    true, // include passage
-                    $request->topic // passage topic
-                );
-
-                $questions = $aiResponse['questions'] ?? [];
-            } else {
-                // Generate questions from existing text
-                Log::info('Generating questions from existing text', [
-                    'quiz_id' => $quiz->id,
+            // Prepare educational text based on source
+            $educationalText = '';
+            if ($request->text_source === 'manual' || $request->text_source === 'ai') {
+                $educationalText = $request->educational_text ?? '';
+                Log::info('Educational text prepared', [
+                    'text_source' => $request->text_source,
                     'text_length' => strlen($educationalText),
                     'text_preview' => substr($educationalText, 0, 100)
                 ]);
-
-                $questions = $this->claudeService->generateQuestionsFromText(
-                    $educationalText,
-                    $subjectName,
-                    $quiz->grade_level,
-                    $rootsForAI
-                );
-
-                // Structure response for existing text
-                $aiResponse = [
-                    'questions' => $questions,
-                    'passage' => $educationalText,
-                    'passage_title' => $request->topic
-                ];
             }
 
-            // Clear existing questions
-            $quiz->questions()->delete();
+            // Prepare roots structure for AI
+            $rootsForAI = $this->prepareRootsForAI($request->roots);
+            $totalRequested = array_sum($request->roots);
 
-            // Structure response
-            $aiResponse = [
-                'questions' => $questions,
-                'passage' => $educationalText,
-                'passage_title' => $request->topic
-            ];
+            Log::info('Roots transformation completed', [
+                'original_roots' => $request->roots,
+                'transformed_roots' => $rootsForAI,
+                'total_requested' => $totalRequested,
+                'total_transformed' => array_sum(array_map('array_sum', $rootsForAI))
+            ]);
+
+            // Generate questions based on text source
+            $aiResponse = $this->generateQuestionsBasedOnSource(
+                $request->text_source,
+                $educationalText,
+                $subjectName,
+                $quiz->grade_level,
+                $request->topic,
+                $rootsForAI
+            );
+
+            // Clear existing questions before saving new ones
+            $quiz->questions()->delete();
+            Log::info('Existing questions cleared', ['quiz_id' => $quiz->id]);
 
             // Save questions to database
             $questionsCount = $this->parseAndSaveQuestions($quiz, $aiResponse);
 
-            // Update quiz with configuration settings
-            $settings = $quiz->settings ?? [];
-            $settings['step'] = '3b';
-            $settings['question_count'] = $request->question_count;
-            $settings['roots_distribution'] = $request->roots;
-            $settings['questions_generated'] = true;
-            $settings['final_educational_text'] = $educationalText;
+            // Update quiz settings and configuration
+            $this->updateQuizConfiguration($quiz, $request, $educationalText);
 
-            $quiz->update([
-                'settings' => $settings,
-                'time_limit' => $request->time_limit,
-                'passing_score' => $request->passing_score ?? 60,
-                'shuffle_questions' => $request->shuffle_questions ?? false,
-                'shuffle_answers' => $request->shuffle_answers ?? false,
-                'show_results' => $request->show_results ?? true,
-                'is_active' => $request->activate_quiz ?? false, // Auto-activate if requested
+            Log::info('Questions generated successfully', [
+                'quiz_id' => $quiz->id,
+                'questions_count' => $questionsCount,
+                'text_source' => $request->text_source,
+                'quiz_activated' => $request->activate_quiz ?? false
             ]);
 
             return response()->json([
                 'success' => true,
-                'questions' => $questions,
+                'questions' => $aiResponse['questions'] ?? [],
                 'questions_count' => $questionsCount,
                 'quiz_activated' => $request->activate_quiz ?? false,
+                'passage_saved' => !empty($aiResponse['passage']),
                 'message' => 'تم إنشاء الأسئلة وحفظ الإعدادات بنجاح'
             ]);
 
         } catch (\Exception $e) {
             Log::error('Question generation failed', [
                 'error' => $e->getMessage(),
-                'quiz_id' => $quiz->id
+                'trace' => $e->getTraceAsString(),
+                'quiz_id' => $quiz->id,
+                'request_data' => $request->all()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'حدث خطأ أثناء إنشاء الأسئلة: ' . $e->getMessage()
+                'message' => 'حدث خطأ أثناء إنشاء الأسئلة: ' . $e->getMessage(),
+                'debug_info' => [
+                    'quiz_id' => $quiz->id,
+                    'text_source' => $request->text_source,
+                    'error_type' => get_class($e)
+                ]
             ], 500);
         }
+    }
+
+    /**
+     * Prepare roots structure for AI generation
+     */
+    private function prepareRootsForAI(array $roots): array
+    {
+        $rootsForAI = [];
+
+        foreach ($roots as $rootKey => $count) {
+            if ($count > 0) {
+                if ($count <= 2) {
+                    // For small counts, put everything in level 1
+                    $rootsForAI[$rootKey] = [
+                        '1' => $count,
+                        '2' => 0,
+                        '3' => 0
+                    ];
+                } else {
+                    // For larger counts, distribute across levels
+                    $level1 = floor($count * 0.4);
+                    $level2 = floor($count * 0.4);
+                    $level3 = $count - $level1 - $level2; // Remainder goes to level 3
+
+                    $rootsForAI[$rootKey] = [
+                        '1' => $level1,
+                        '2' => $level2,
+                        '3' => $level3
+                    ];
+                }
+            }
+        }
+
+        return $rootsForAI;
+    }
+
+    /**
+     * Generate questions based on text source
+     */
+    private function generateQuestionsBasedOnSource(
+        string $textSource,
+        string $educationalText,
+        string $subjectName,
+        int $gradeLevel,
+        string $topic,
+        array $rootsForAI
+    ): array {
+
+        if ($textSource === 'none') {
+            // Generate complete quiz with passage from scratch
+            Log::info('Generating complete quiz without existing text');
+
+            // Log AI usage
+            $quota = \App\Models\MonthlyQuota::getOrCreateCurrent(Auth::id());
+            $quota->incrementAiQuizRequests();
+
+            return $this->claudeService->generateJuzoorQuiz(
+                $subjectName,
+                $gradeLevel,
+                $topic,
+                $rootsForAI,
+                true, // include passage
+                $topic // passage topic
+            );
+
+        } else {
+            // Generate questions from existing text (manual or AI-generated)
+            Log::info('Generating questions from existing text', [
+                'text_length' => strlen($educationalText),
+                'text_source' => $textSource
+            ]);
+
+            if (empty($educationalText)) {
+                throw new \Exception('النص التعليمي مطلوب لتوليد الأسئلة');
+            }
+
+            // Log AI usage for question generation
+            $quota = \App\Models\MonthlyQuota::getOrCreateCurrent(Auth::id());
+            $quota->incrementAiQuizRequests();
+
+            $questions = $this->claudeService->generateQuestionsFromText(
+                $educationalText,
+                $subjectName,
+                $gradeLevel,
+                $rootsForAI
+            );
+
+            return [
+                'questions' => $questions,
+                'passage' => $educationalText,
+                'passage_title' => $topic
+            ];
+        }
+    }
+
+    /**
+     * Update quiz configuration and settings
+     */
+    private function updateQuizConfiguration(Quiz $quiz, Request $request, string $educationalText): void
+    {
+        $settings = $quiz->settings ?? [];
+        $settings['step'] = '3b';
+        $settings['question_count'] = $request->question_count;
+        $settings['roots_distribution'] = $request->roots;
+        $settings['questions_generated'] = true;
+        $settings['generation_completed_at'] = now()->toISOString();
+
+        if (!empty($educationalText)) {
+            $settings['final_educational_text'] = $educationalText;
+        }
+
+        $quiz->update([
+            'settings' => $settings,
+            'time_limit' => $request->time_limit,
+            'passing_score' => $request->passing_score ?? 60,
+            'shuffle_questions' => $request->shuffle_questions ?? false,
+            'shuffle_answers' => $request->shuffle_answers ?? false,
+            'show_results' => $request->show_results ?? true,
+            'is_active' => $request->activate_quiz ?? false,
+        ]);
+
+        Log::info('Quiz configuration updated', [
+            'quiz_id' => $quiz->id,
+            'settings' => $settings,
+            'is_active' => $request->activate_quiz ?? false
+        ]);
     }
 
     /**
@@ -1128,5 +1270,49 @@ class QuizController extends Controller
         }
 
         return redirect()->route('results.quiz', $quiz);
+    }
+    public function saveManualText(Request $request, Quiz $quiz)
+    {
+        Log::info('saveManualText called', [
+            'quiz_id' => $quiz->id,
+            'request_data' => $request->all()
+        ]);
+
+        $validated = $request->validate([
+            'educational_text' => 'required|string|min:50',
+            'topic' => 'required|string',
+        ]);
+
+        try {
+            $quiz->update([
+                'passage_data' => [
+                    'passage' => $validated['educational_text'],
+                    'passage_title' => $validated['topic'],
+                    'saved_at' => now()->toISOString(),
+                    'text_source' => 'manual'
+                ]
+            ]);
+
+            Log::info('Manual text saved successfully', [
+                'quiz_id' => $quiz->id,
+                'text_length' => strlen($validated['educational_text'])
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حفظ النص بنجاح'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to save manual text', [
+                'quiz_id' => $quiz->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل حفظ النص'
+            ], 500);
+        }
     }
 }

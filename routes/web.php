@@ -14,6 +14,8 @@ use App\Http\Controllers\Admin\QuizController as AdminQuizController;
 use App\Http\Controllers\Admin\LogAnalyzerController;
 use App\Http\Middleware\IsAdmin;
 use Illuminate\Support\Facades\Route;
+use App\Models\Quiz;
+use App\Models\User;
 
 /*
 |--------------------------------------------------------------------------
@@ -171,6 +173,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{quiz}/duplicate', [QuizController::class, 'duplicate'])->name('duplicate');
         Route::patch('/{quiz}/toggle-status', [QuizController::class, 'toggleStatus'])->name('toggle-status');
         Route::get('/{quiz}/results', [QuizController::class, 'results'])->name('results');
+
     });
 
     // AI Text Generation (Global)
@@ -261,6 +264,17 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
         Route::post('/generate', 'generate')->name('generate');
         Route::post('/quiz/{quiz}/report', 'generateReport')->name('generateReport');
     });
+    // In routes/web.php (admin section)
+    Route::get('/admin/quiz-cleanup-stats', function () {
+        $incompleteQuizzes = Quiz::whereDoesntHave('questions')->count();
+        $oldIncompleteQuizzes = Quiz::where('created_at', '<', now()->subHours(6))
+            ->whereDoesntHave('questions')->count();
+
+        return response()->json([
+            'incomplete_quizzes_total' => $incompleteQuizzes,
+            'ready_for_cleanup' => $oldIncompleteQuizzes
+        ]);
+    });
 
     // Log Analyzer
     Route::prefix('logs')->name('logs.')->controller(LogAnalyzerController::class)->group(function () {
@@ -280,6 +294,8 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
 Route::middleware(['auth'])->group(function () {
     Route::get('/admin/stop-impersonation', [App\Http\Controllers\Admin\UserController::class, 'stopImpersonation'])
         ->name('admin.stop-impersonation');
+    Route::post('/quizzes/{quiz}/save-manual-text', [QuizController::class, 'saveManualText'])->name('quizzes.save-manual-text');
+
 });
 
 /*
@@ -317,4 +333,14 @@ Route::post('/webhooks/lemonsqueezy', [App\Http\Controllers\SubscriptionControll
 // AI features (require subscription)
 Route::middleware(['auth', 'subscription'])->group(function () {
     Route::post('/quiz/generate-text', [App\Http\Controllers\QuizController::class, 'generateText'])->name('quiz.generate-text');
+});
+// Add this to routes/web.php temporarily
+Route::get('/debug-quiz/{quiz}', function (Quiz $quiz) {
+    return response()->json([
+        'quiz_id' => $quiz->id,
+        'title' => $quiz->title,
+        'passage_data' => $quiz->passage_data,
+        'settings' => $quiz->settings,
+        'questions_count' => $quiz->questions->count()
+    ]);
 });
