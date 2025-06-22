@@ -555,11 +555,22 @@ function togglePassageEdit() {
             tinymce.get('passage-editor').remove();
         }
     } else {
-        // Switch to edit mode
-        view.classList.add('hidden');
-        edit.classList.remove('hidden');
-        initializeTinyMCE();
-    }
+    // Switch to edit mode
+    view.classList.add('hidden');
+    edit.classList.remove('hidden');
+    initializeTinyMCE();
+    
+    // Add form submission handler AFTER TinyMCE is initialized
+    setTimeout(() => {
+        const passageForm = document.getElementById('passage-edit');
+        if (passageForm) {
+            // Remove any existing listeners first
+            passageForm.removeEventListener('submit', handlePassageSubmit);
+            // Add the new listener
+            passageForm.addEventListener('submit', handlePassageSubmit);
+        }
+    }, 500);
+}
 }
 
 // Select all functionality
@@ -621,5 +632,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Any additional initialization can go here
     console.log('Questions management page loaded');
 });
+
+function handlePassageSubmit(e) {
+    if (tinymce.get('passage-editor')) {
+        tinymce.triggerSave();
+    }
+}
 </script>
 @endpush

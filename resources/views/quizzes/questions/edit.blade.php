@@ -844,5 +844,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+document.querySelector('form').addEventListener('submit', function(e) {
+    tinymce.triggerSave();
+});
 </script>
 @endpush
