@@ -38,4 +38,24 @@ class Subscription extends Model
     {
         return $this->status === 'active' && $this->current_period_end->isFuture();
     }
+    /**
+     * Boot method to add model event listeners
+     */
+    protected static function booted()
+    {
+        // Auto-sync when subscription is created
+        static::created(function ($subscription) {
+            $subscription->user->syncSubscriptionData();
+        });
+
+        // Auto-sync when subscription is updated
+        static::updated(function ($subscription) {
+            $subscription->user->syncSubscriptionData();
+        });
+
+        // Auto-sync when subscription is deleted
+        static::deleted(function ($subscription) {
+            $subscription->user->syncSubscriptionData();
+        });
+    }
 }

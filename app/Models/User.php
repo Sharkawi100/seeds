@@ -47,6 +47,12 @@ class User extends Authenticatable
         'deactivated_at',
         'deactivation_reason',
         'deactivated_by',
+        // Add subscription fields
+        'subscription_active',
+        'subscription_expires_at',
+        'subscription_plan',
+        'subscription_status',
+        'lemon_squeezy_customer_id',
     ];
 
     /**
@@ -245,5 +251,30 @@ class User extends Authenticatable
         $limits = $this->getCurrentQuotaLimits();
 
         return $quota && $quota->quiz_count >= $limits['monthly_quiz_limit'];
+    }
+    /**
+     * Sync subscription data between users and subscriptions tables
+     */
+    public function syncSubscriptionData()
+    {
+        $subscription = $this->subscription()->where('status', 'active')->first();
+
+        if ($subscription) {
+            $this->update([
+                'subscription_active' => true,
+                'subscription_expires_at' => $subscription->current_period_end,
+                'subscription_plan' => $subscription->plan_name,
+                'subscription_status' => $subscription->status,
+            ]);
+        } else {
+            $this->update([
+                'subscription_active' => false,
+                'subscription_expires_at' => null,
+                'subscription_plan' => null,
+                'subscription_status' => null,
+            ]);
+        }
+
+        return $this;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\MonthlyQuota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -126,12 +127,7 @@ class LemonSqueezyService
         $plan = SubscriptionPlan::find($planId);
 
         if ($user) {
-            $user->update([
-                'subscription_active' => true,
-                'subscription_expires_at' => $subscriptionData['attributes']['renews_at'],
-                'lemon_squeezy_customer_id' => $subscriptionData['attributes']['customer_id']
-            ]);
-
+            // Create subscription record
             Subscription::create([
                 'user_id' => $user->id,
                 'lemon_squeezy_subscription_id' => $subscriptionData['id'],
@@ -142,6 +138,22 @@ class LemonSqueezyService
                 'current_period_start' => $subscriptionData['attributes']['created_at'],
                 'current_period_end' => $subscriptionData['attributes']['renews_at'],
             ]);
+
+            // Auto-sync both tables using our new method
+            $user->syncSubscriptionData();
+
+            // Create monthly quota
+            MonthlyQuota::firstOrCreate([
+                'user_id' => $user->id,
+                'year' => now()->year,
+                'month' => now()->month,
+            ], [
+                'quiz_count' => 0,
+                'ai_text_requests' => 0,
+                'ai_quiz_requests' => 0,
+            ]);
+
+            Log::info('Subscription created and synced', ['user_id' => $userId]);
         }
     }
 
@@ -150,15 +162,16 @@ class LemonSqueezyService
         $subscription = Subscription::where('lemon_squeezy_subscription_id', $subscriptionData['id'])->first();
 
         if ($subscription) {
+            // Update subscription record
             $subscription->update([
                 'status' => $subscriptionData['attributes']['status'],
                 'current_period_end' => $subscriptionData['attributes']['renews_at'],
             ]);
 
-            $subscription->user->update([
-                'subscription_active' => $subscriptionData['attributes']['status'] === 'active',
-                'subscription_expires_at' => $subscriptionData['attributes']['renews_at'],
-            ]);
+            // Auto-sync user table
+            $subscription->user->syncSubscriptionData();
+
+            Log::info('Subscription updated and synced', ['user_id' => $subscription->user_id]);
         }
     }
 

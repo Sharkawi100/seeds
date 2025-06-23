@@ -193,6 +193,8 @@ class SubscriptionPlanController extends Controller
                 $user->update([
                     'subscription_active' => false,
                     'subscription_expires_at' => null,
+                    'subscription_plan' => null,
+                    'subscription_status' => null,
                 ]);
 
                 // Deactivate existing subscription record
@@ -206,13 +208,7 @@ class SubscriptionPlanController extends Controller
 
             $plan = SubscriptionPlan::find($validated['plan_id']);
 
-            // Update user subscription status FIRST
-            $user->update([
-                'subscription_active' => true,
-                'subscription_expires_at' => $validated['expires_at'],
-            ]);
-
-            // Create or update subscription record
+            // Prepare subscription data
             $subscriptionData = [
                 'user_id' => $user->id,
                 'lemon_squeezy_subscription_id' => 'admin_' . $user->id . '_' . time(),
@@ -224,11 +220,49 @@ class SubscriptionPlanController extends Controller
                 'current_period_end' => $validated['expires_at'],
             ];
 
+            // Create or update subscription record FIRST
             if ($user->subscription) {
                 $user->subscription->update($subscriptionData);
             } else {
-                Subscription::create($subscriptionData);
+                \App\Models\Subscription::create($subscriptionData);
             }
+
+            // Then sync user table with subscription data
+            try {
+                $user->update([
+                    'subscription_active' => true,
+                    'subscription_expires_at' => $validated['expires_at'],
+                    'subscription_plan' => $plan->name,
+                    'subscription_status' => 'active',
+                ]);
+                \Log::info('User table updated successfully', ['user_id' => $user->id]);
+
+                // Add this - check if update actually worked
+                $user->refresh();
+                \Log::info('User state after update', [
+                    'user_id' => $user->id,
+                    'subscription_active' => $user->subscription_active,
+                    'subscription_expires_at' => $user->subscription_expires_at
+                ]);
+
+            } catch (\Exception $e) {
+                \Log::error('User table update failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+                throw $e;
+            }
+
+            // Add this right before \DB::commit()
+            \Log::info('About to commit transaction', ['user_id' => $user->id]);
+
+            // Create monthly quota if it doesn't exist
+            \App\Models\MonthlyQuota::firstOrCreate([
+                'user_id' => $user->id,
+                'year' => now()->year,
+                'month' => now()->month,
+            ], [
+                'quiz_count' => 0,
+                'ai_text_requests' => 0,
+                'ai_quiz_requests' => 0,
+            ]);
 
             \DB::commit();
             return redirect()->back()->with('success', 'تم تحديث اشتراك المستخدم بنجاح');
