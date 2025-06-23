@@ -68,17 +68,27 @@
                         @csrf
                         <div class="grid md:grid-cols-2 gap-6">
                             <!-- Quiz Title -->
-                            <div class="md:col-span-2">
-                                <label for="title" class="block text-sm font-semibold text-gray-900 mb-3">
-                                    عنوان الاختبار <span class="text-red-500">*</span>
-                                </label>
-                                <div class="relative">
-                                    <input type="text" 
-                                           id="title" 
-                                           name="title" 
-                                           required
-                                           class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 bg-white/50 backdrop-blur-sm"
-                                           placeholder="مثال: اختبار الفهم القرائي - الفصل الأول">
+                            <!-- Quiz Title -->
+<div class="md:col-span-2">
+    <label for="title" class="block text-sm font-semibold text-gray-900 mb-3">
+        اسم الاختبار <span class="text-red-500">*</span>
+        <span class="relative group">
+            <svg class="inline-block w-4 h-4 ml-1 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+            </svg>
+            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                الاسم الذي سيراه الطلاب في قائمة الاختبارات
+                <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+            </div>
+        </span>
+    </label>
+    <div class="relative">
+        <input type="text" 
+               id="title" 
+               name="title" 
+               required
+               class="w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 bg-white/50 backdrop-blur-sm"
+               placeholder="مثال: اختبار نهاية الوحدة الأولى - الفصل الأول 2025">
                                     <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -136,7 +146,16 @@
                             <!-- Topic -->
                             <div class="md:col-span-2">
                                 <label for="topic" class="block text-sm font-semibold text-gray-900 mb-3">
-                                    موضوع الاختبار <span class="text-red-500">*</span>
+                                    موضوع الأسئلة <span class="text-red-500">*</span>
+                                    <span class="relative group">
+                                        <svg class="inline-block w-4 h-4 ml-1 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                                            الموضوع الذي سيستخدمه الذكاء الاصطناعي لإنشاء الأسئلة (مثال: الصداقة، الطبيعة، الرياضة)
+                                            <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                                        </div>
+                                    </span>
                                 </label>
                                 <div class="relative">
                                     <input type="text" 
