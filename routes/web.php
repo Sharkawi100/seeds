@@ -31,6 +31,8 @@ Route::get('/juzoor-model/growth', fn() => view('juzoor-growth'))->name('juzoor.
 Route::get('/question-guide', fn() => view('question-guide'))->name('question.guide');
 Route::get('/for-teachers', fn() => view('for-teachers'))->name('for.teachers');
 Route::get('/for-students', fn() => view('for-students'))->name('for.students');
+Route::get('/plans', [App\Http\Controllers\SubscriptionController::class, 'publicPlans'])->name('plans');
+
 
 // Language Switcher
 Route::get('/lang/{locale}', function ($locale) {

@@ -22,6 +22,11 @@ class SubscriptionController extends Controller
         return view('subscription.upgrade', compact('plans'));
     }
 
+    public function publicPlans()
+    {
+        $plans = SubscriptionPlan::where('is_active', true)->get();
+        return view('plans', compact('plans'));
+    }
     public function createCheckout(Request $request)
     {
         $request->validate(['plan_id' => 'required|exists:subscription_plans,id']);
@@ -52,4 +57,5 @@ class SubscriptionController extends Controller
     {
         return $this->lemonSqueezy->handleWebhook($request);
     }
+
 }
