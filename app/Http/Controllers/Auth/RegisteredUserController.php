@@ -35,9 +35,9 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'user_type' => ['required', 'in:student,teacher'], // Add this
+            'user_type' => ['required', 'in:student,teacher'],
             'school_name' => ['nullable', 'required_if:user_type,teacher', 'string', 'max:255'],
-            'grade_level' => ['nullable', 'required_if:user_type,student', 'integer', 'min:1', 'max:9'],
+            'grade_level' => ['nullable', 'required_if:user_type,student', 'integer', 'min:1', 'max:12'], // ← Changed this line
         ]);
 
         $user = User::create([

@@ -44,7 +44,7 @@ class TeacherRegisterController extends Controller
             'school_name' => $request->school_name,
             'subjects_taught' => $request->subjects_taught,
             'experience_years' => $request->experience_years,
-            'is_approved' => false, // Require admin approval
+            'is_approved' => true,
             'teacher_data' => json_encode([
                 'registration_date' => now(),
                 'registration_ip' => $request->ip(),
@@ -54,7 +54,7 @@ class TeacherRegisterController extends Controller
         event(new Registered($user));
         Auth::login($user);
 
-        // Redirect to pending approval page
-        return redirect()->route('teacher.pending-approval');
+        // Redirect to dashboard like students
+        return redirect()->route('dashboard');
     }
 }

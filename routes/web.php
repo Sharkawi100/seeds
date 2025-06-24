@@ -93,13 +93,16 @@ Route::post('/quiz/{quiz}/guest-start', [QuizController::class, 'guestStart'])->
 
 Route::middleware('guest')->group(function () {
     // Role selection pages
-    Route::get('/register', fn() => view('auth.role-selection', ['action' => 'register']))->name('register');
-    Route::get('/login', fn() => view('auth.role-selection', ['action' => 'login']))->name('login');
-
+    Route::get('/register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
+    Route::get('/login', fn() => view('auth.login'))->name('login');
+    Route::post('/login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'store']);
     // Teacher Authentication
     Route::prefix('teacher')->name('teacher.')->group(function () {
         Route::get('/login', fn() => view('auth.teacher.login'))->name('login');
-        Route::get('/register', fn() => view('auth.teacher.register'))->name('register');
+        Route::post('/login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'store']);
+        Route::get('/register', [App\Http\Controllers\Auth\Teacher\TeacherRegisterController::class, 'showRegistrationForm'])->name('register');
+        Route::post('/register', [App\Http\Controllers\Auth\Teacher\TeacherRegisterController::class, 'register']);
         Route::get('/pending-approval', fn() => view('auth.teacher.pending-approval'))->name('pending-approval');
     });
 
@@ -108,7 +111,8 @@ Route::middleware('guest')->group(function () {
         Route::get('/login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'showLoginForm'])->name('login');
         Route::post('/login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'login']);
         Route::post('/pin-login', [App\Http\Controllers\Auth\Student\StudentLoginController::class, 'pinLogin'])->name('pin-login');
-        Route::get('/register', fn() => view('auth.student.register'))->name('register');
+        Route::get('/register', [App\Http\Controllers\Auth\Student\StudentRegisterController::class, 'showRegistrationForm'])->name('register');
+        Route::post('/register', [App\Http\Controllers\Auth\Student\StudentRegisterController::class, 'register']);
     });
 });
 
