@@ -291,15 +291,21 @@
                         <p class="text-gray-600 text-sm">نموذج تعليمي مبتكر لتنمية جميع جوانب التعلم</p>
                     </div>
                     
-                    <div class="flex gap-6">
-                        <a href="{{ route('juzoor.model') }}" class="text-gray-600 hover:text-purple-600 transition">
-                            <i class="fas fa-book ml-2"></i>عن النموذج
+                    <div class="flex flex-wrap gap-6">
+                        <a href="{{ route('juzoor.model') }}" class="text-gray-600 hover:text-amber-700 transition-colors">
+                            <i class="fas fa-seedling ml-2"></i>نموذج جُذور
                         </a>
-                        <a href="#" class="text-gray-600 hover:text-purple-600 transition">
+                        <a href="{{ route('contact.show') }}" class="text-gray-600 hover:text-amber-700 transition-colors">
                             <i class="fas fa-envelope ml-2"></i>تواصل معنا
                         </a>
-                        <a href="#" class="text-gray-600 hover:text-purple-600 transition">
-                            <i class="fas fa-question-circle ml-2"></i>مساعدة
+                        <a href="{{ route('about') }}" class="text-gray-600 hover:text-amber-700 transition-colors">
+                            <i class="fas fa-info-circle ml-2"></i>عن المنصة
+                        </a>
+                        <a href="{{ route('plans') }}" class="text-gray-600 hover:text-amber-700 transition-colors">
+                            <i class="fas fa-credit-card ml-2"></i>الخطط والأسعار
+                        </a>
+                        <a href="{{ route('for.teachers') }}" class="text-gray-600 hover:text-amber-700 transition-colors">
+                            <i class="fas fa-chalkboard-teacher ml-2"></i>للمعلمين
                         </a>
                     </div>
                 </div>

@@ -34,32 +34,15 @@ Route::get('/for-students', fn() => view('for-students'))->name('for.students');
 Route::get('/plans', [App\Http\Controllers\SubscriptionController::class, 'publicPlans'])->name('plans');
 
 
-// Language Switcher
-Route::get('/lang/{locale}', function ($locale) {
-    if (in_array($locale, ['ar', 'he', 'en'])) {
-        session(['locale' => $locale]);
-    }
-    return redirect()->back();
-})->name('lang.switch');
+// // Language Switcher
+// Route::get('/lang/{locale}', function ($locale) {
+//     if (in_array($locale, ['ar', 'he', 'en'])) {
+//         session(['locale' => $locale]);
+//     }
+//     return redirect()->back();
+// })->name('lang.switch');
 
-// Contact Form
-Route::prefix('contact')->name('contact.')->group(function () {
-    Route::get('/', function () {
-        if (view()->exists('contact.show')) {
-            return view('contact.show');
-        }
-        return view('welcome');
-    })->name('show');
-    Route::post('/', function () {
-        request()->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email',
-            'message' => 'required|string'
-        ]);
-        session()->flash('success', 'تم إرسال رسالتك بنجاح');
-        return redirect()->route('contact.show');
-    })->name('submit');
-});
+
 
 // Public Quiz Access (unified approach)
 Route::prefix('quiz')->name('quiz.')->group(function () {
@@ -168,6 +151,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Basic Quiz CRUD
     Route::resource('quizzes', QuizController::class);
+    // NEW: Bulk operations for quizzes
+    Route::delete('/quizzes/bulk-delete', [QuizController::class, 'bulkDelete'])->name('quizzes.bulk-delete');
+
+    // NEW: Delete empty quizzes
+    Route::delete('/quizzes/delete-empty', [QuizController::class, 'deleteEmptyQuizzes'])->name('quizzes.delete-empty');
 
     // Quiz Creation Wizard Routes
     Route::prefix('quizzes')->name('quizzes.')->group(function () {
@@ -288,8 +276,45 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->name('admin.')->gr
         Route::post('/clear', 'clearLogs')->name('clear');
         Route::get('/download', 'downloadLogs')->name('download');
     });
-});
+    // Contact Messages
+    Route::get('/contact-messages', function () {
+        $messages = \App\Models\ContactMessage::orderBy('created_at', 'desc')->get();
+        return view('admin.contact.index', compact('messages'));
+    })->name('contact.index');
 
+    Route::patch('/contact-messages/{message}/read', function (\App\Models\ContactMessage $message) {
+        $message->update(['is_read' => true]);
+        return back();
+    })->name('contact.mark-read');
+
+});
+// Contact Form
+Route::prefix('contact')->name('contact.')->group(function () {
+    Route::get('/', function () {
+        return view('contact.show');
+    })->name('show');
+
+    Route::post('/', function () {
+        request()->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email',
+            'category_id' => 'required|integer|exists:contact_categories,id',
+            'subject' => 'nullable|string|max:255',
+            'message' => 'required|string|min:10'
+        ]);
+
+        \App\Models\ContactMessage::create([
+            'name' => request('name'),
+            'email' => request('email'),
+            'category_id' => request('category_id'),
+            'subject' => request('subject'),
+            'message' => request('message')
+        ]);
+
+        session()->flash('success', 'تم إرسال رسالتك بنجاح');
+        return redirect()->route('contact.show');
+    })->name('submit');
+});
 /*
 |--------------------------------------------------------------------------
 | Special Routes

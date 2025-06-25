@@ -72,7 +72,7 @@ class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b bord
                                 إنجازاتي
                             </x-nav-link>
                         @endif
-
+                        
                         <!-- Admin Menu Dropdown -->
                         @if(Auth::user()->is_admin)
                         <div class="relative" x-data="{ open: false }">
@@ -134,6 +134,11 @@ class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b bord
                                     محلل السجلات
                                     <span class="mr-auto bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full">جديد</span>
                                 </a>
+                                <!-- Contact Messages -->
+<a href="{{ route('admin.contact.index') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors">
+    <i class="fas fa-envelope text-orange-500 w-5 ml-3"></i>
+    رسائل التواصل
+</a>
 <!-- Subscription Management -->
 <a href="{{ route('admin.subscription-plans.index') }}" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors">
     <i class="fas fa-credit-card text-purple-500 w-5 ml-3"></i>
@@ -366,6 +371,7 @@ class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b bord
                         إنجازاتي
                     </x-responsive-nav-link>
                 @endif
+                
 
                 <!-- Admin Menu for Mobile -->
                 @if(Auth::user()->is_admin)
@@ -393,6 +399,10 @@ class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b bord
                             <span class="mr-auto bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full">جديد</span>
                         </x-responsive-nav-link>
                     </div>
+                    <x-responsive-nav-link :href="route('admin.contact.index')">
+                        <i class="fas fa-envelope ml-2"></i>
+                        رسائل التواصل
+                    </x-responsive-nav-link>
                 @endif
 
                 <!-- Profile & Settings -->
