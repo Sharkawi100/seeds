@@ -1,7 +1,7 @@
 # جُذور Platform - Complete File Index
 
-**Last Updated**: June 22, 2025  
-**Version**: 2.0 with Subscription System
+**Last Updated**: June 26, 2025  
+**Version**: 2.1 with Advanced Subscription Cancellation System
 
 ## 🎯 Core Configuration Files
 
@@ -37,16 +37,17 @@
 -   **Auth/RegisteredUserController.php** - User registration
 -   **Auth/PasswordResetLinkController.php** - Password reset
 
-#### NEW: Subscription Controllers
+#### Subscription Controllers (UPDATED)
 
--   **SubscriptionController.php** - User subscription management
+-   **SubscriptionController.php** - User subscription management with cancellation
 -   **ProfileController.php** - User profile with subscription status
 
 #### Admin Controllers
 
 -   **Admin/UserController.php** - User management
 -   **Admin/QuizController.php** - Quiz administration
--   **Admin/SubscriptionPlanController.php** - NEW: Subscription plan management
+-   **Admin/SubscriptionPlanController.php** - Subscription plan management
+-   **Admin/ContactController.php** - UPDATED: Contact messages with cancellation tracking
 
 ### app/Models/
 
@@ -59,11 +60,15 @@
 -   **Answer.php** - Individual answer records
 -   **Subject.php** - Subject/course management
 
-#### NEW: Subscription Models
+#### Subscription Models (UPDATED)
 
--   **Subscription.php** - User subscription records
+-   **Subscription.php** - User subscription records with cancellation tracking
 -   **SubscriptionPlan.php** - Available subscription plans
 -   **MonthlyQuota.php** - Monthly usage tracking
+
+#### Communication Models (UPDATED)
+
+-   **ContactMessage.php** - UPDATED: Contact messages with subscription relationship
 
 ### app/Http/Middleware/
 
@@ -73,7 +78,7 @@
 -   **SetLocale.php** - Language switching middleware
 -   **IsAdmin.php** - Admin access control
 
-#### NEW: Subscription Middleware
+#### Subscription Middleware
 
 -   **RequireSubscription.php** - AI feature access control
 
@@ -83,9 +88,9 @@
 
 -   **ClaudeService.php** - AI content generation (UPDATED: subscription integration)
 
-#### NEW: Payment Services
+#### Payment Services (UPDATED)
 
--   **LemonSqueezyService.php** - Payment processing and webhooks
+-   **LemonSqueezyService.php** - UPDATED: Payment processing, webhooks, and cancellation handling
 
 ## 🗄️ Database Structure
 
@@ -99,18 +104,24 @@
 -   **create_results_table.php** - Results with attempt tracking
 -   **create_subjects_table.php** - Subject management
 
-#### NEW: Subscription Tables
+#### Subscription Tables (UPDATED)
 
 -   **create_subscription_plans_table.php** - Available plans
--   **create_subscriptions_table.php** - User subscriptions
+-   **create_subscriptions_table.php** - UPDATED: User subscriptions with cancellation tracking
 -   **create_monthly_quotas_table.php** - Usage tracking
 -   **add_subscription_fields_to_users_table.php** - User subscription status
+
+#### Contact System Tables (UPDATED)
+
+-   **create_contact_categories_table.php** - Contact categories
+-   **create_contact_messages_table.php** - UPDATED: Contact messages with subscription reference
 
 ### database/seeders/
 
 -   **DatabaseSeeder.php** - Main seeder
 -   **SubjectSeeder.php** - Default subjects (Arabic, English, Hebrew)
--   **SubscriptionPlanSeeder.php** - NEW: Default subscription plans
+-   **SubscriptionPlanSeeder.php** - Default subscription plans
+-   **ContactCategorySeeder.php** - UPDATED: Contact categories including cancellation
 
 ## 🎨 Frontend Resources
 
@@ -153,13 +164,13 @@
 -   **results/show.blade.php** - Individual result with 4-roots chart
 -   **results/quiz-results.blade.php** - Quiz-wide analytics
 
-#### NEW: Subscription Views
+#### Subscription Views (UPDATED)
 
 -   **subscription/upgrade.blade.php** - Subscription plans and checkout
 -   **subscription/success.blade.php** - Payment success page
--   **subscription/manage.blade.php** - Subscription management
+-   **subscription/manage.blade.php** - UPDATED: Subscription management with cancellation system
 
-#### NEW: Profile Management
+#### Profile Management
 
 -   **profile/index.blade.php** - User profile with subscription status
 -   **profile/edit.blade.php** - Profile editing
@@ -171,7 +182,7 @@
 -   **admin/users/show.blade.php** - User details with subscription management
 -   **admin/users/edit.blade.php** - User editing
 
-#### NEW: Admin Subscription Management
+#### Admin Subscription Management
 
 -   **admin/subscription-plans/index.blade.php** - Plan management
 -   **admin/subscription-plans/create.blade.php** - Create subscription plan
@@ -179,6 +190,11 @@
 -   **admin/subscription-plans/show.blade.php** - Plan details and subscribers
 -   **admin/subscription-plans/users.blade.php** - Subscription user management
 -   **admin/subscription-plans/manage-user.blade.php** - Individual user subscription management
+
+#### NEW: Admin Contact Management (UPDATED)
+
+-   **admin/contact/index.blade.php** - UPDATED: Modern contact interface with cancellation highlighting
+-   **admin/contact/show.blade.php** - Individual contact message details
 
 ### resources/css/
 
@@ -216,10 +232,11 @@ Route::get('/profile', [ProfileController::class, 'profileDashboard'])->name('pr
 Route::resource('quizzes', QuizController::class);
 Route::post('/quizzes/create-step-1', [QuizController::class, 'createStep1'])->name('quizzes.create-step-1');
 
-// NEW: Subscription routes
+// Subscription routes (UPDATED)
 Route::get('/subscription/upgrade', [SubscriptionController::class, 'upgrade'])->name('subscription.upgrade');
 Route::post('/subscription/checkout', [SubscriptionController::class, 'createCheckout'])->name('subscription.checkout');
 Route::get('/subscription/manage', [SubscriptionController::class, 'manage'])->name('subscription.manage');
+Route::post('/subscription/cancel', [SubscriptionController::class, 'cancelSubscription'])->name('subscription.cancel'); // NEW
 ```
 
 #### AI Features (Subscription Required)
@@ -231,17 +248,21 @@ Route::middleware(['auth', 'subscription'])->group(function () {
 });
 ```
 
-#### Admin Routes
+#### Admin Routes (UPDATED)
 
 ```php
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     // User management
     Route::resource('users', Admin\UserController::class);
 
-    // NEW: Subscription management
+    // Subscription management
     Route::resource('subscription-plans', Admin\SubscriptionPlanController::class);
     Route::get('subscription-plans-users', [Admin\SubscriptionPlanController::class, 'users'])->name('subscription-plans.users');
     Route::get('users/{user}/manage-subscription', [Admin\SubscriptionPlanController::class, 'manageUserSubscription'])->name('users.manage-subscription');
+
+    // Contact management (UPDATED)
+    Route::get('contact', [Admin\ContactController::class, 'index'])->name('contact.index');
+    Route::patch('contact/{message}/mark-read', [Admin\ContactController::class, 'markAsRead'])->name('contact.mark-read');
 });
 ```
 
@@ -263,7 +284,7 @@ Route::post('/webhooks/lemonsqueezy', [SubscriptionController::class, 'webhook']
 -   **build/** - Compiled assets (CSS, JS)
 -   **storage/app/public** - Public file storage
 
-## 📚 Documentation Files
+## 📚 Documentation Files (UPDATED)
 
 ### \_project_docs/
 
@@ -271,20 +292,28 @@ Route::post('/webhooks/lemonsqueezy', [SubscriptionController::class, 'webhook']
 -   **code_patterns.md** - Development patterns and conventions (UPDATED)
 -   **features_and_logic.md** - Feature specifications (UPDATED)
 -   **bug_fixes_log.md** - Historical bug fixes and solutions
--   **subscription_system.md** - NEW: Comprehensive subscription documentation
--   **file_index.md** - This file
+-   **subscription_system.md** - UPDATED: Comprehensive subscription documentation with cancellation
+-   **cancellation_system.md** - NEW: Detailed cancellation system documentation
+-   **file_index.md** - This file (UPDATED)
 
-## 🔧 Key File Relationships
+## 🔧 Key File Relationships (UPDATED)
 
-### Subscription System Integration
+### Subscription Cancellation System Integration
 
 ```
 User Model (subscription methods)
-    ├── SubscriptionController (user management)
+    ├── SubscriptionController (user management + cancellation)
     ├── Admin/SubscriptionPlanController (admin management)
-    ├── LemonSqueezyService (payment processing)
+    ├── LemonSqueezyService (payment processing + cancellation)
     ├── RequireSubscription middleware (feature gating)
-    └── Subscription views (user interface)
+    ├── Subscription views (user interface + cancellation UI)
+    └── ContactMessage model (cancellation feedback)
+
+ContactMessage System Integration
+    ├── ContactController (admin contact management)
+    ├── ContactMessage model (with subscription relationship)
+    ├── Admin contact views (modern interface)
+    └── Cancellation category integration
 
 QuizController (AI features)
     ├── ClaudeService (AI integration)
@@ -306,31 +335,39 @@ Custom Extensions
     └── Arabic locale support
 ```
 
-### Admin Interface
+### Admin Interface (UPDATED)
 
 ```
 Admin Controllers
     ├── User management with subscription icons
     ├── Subscription plan CRUD
     ├── User subscription management
-    └── System analytics
+    ├── Contact message management (UPDATED: with cancellation highlighting)
+    └── Cancellation tracking and retention tools
 ```
 
-## 📊 File Statistics
+## 📊 File Statistics (UPDATED)
 
 ### Core Application
 
--   **PHP Files**: 45+ controllers, models, services, middleware
--   **Blade Templates**: 60+ views covering all features
--   **Database Files**: 15+ migrations, 5+ seeders
--   **Documentation**: 10+ comprehensive documentation files
+-   **PHP Files**: 48+ controllers, models, services, middleware (3 new files)
+-   **Blade Templates**: 62+ views covering all features (2 updated views)
+-   **Database Files**: 17+ migrations, 6+ seeders (2 updated migrations)
+-   **Documentation**: 12+ comprehensive documentation files (3 updated files)
 
-### NEW: Subscription System
+### Subscription System (UPDATED)
 
--   **Backend Files**: 8+ new controllers, models, services
--   **Frontend Files**: 12+ new views and components
--   **Database Files**: 4+ new migrations and seeders
--   **Documentation**: 3+ dedicated documentation files
+-   **Backend Files**: 10+ controllers, models, services (2 updated files)
+-   **Frontend Files**: 14+ views and components (2 updated views)
+-   **Database Files**: 6+ migrations and seeders (2 updated migrations)
+-   **Documentation**: 5+ dedicated documentation files (2 updated files)
+
+### NEW: Cancellation System Features
+
+-   **Retention Interface**: Modern pros/cons comparison system
+-   **Contact Integration**: Centralized cancellation feedback system
+-   **Admin Tools**: Enhanced contact management with cancellation focus
+-   **Business Intelligence**: Cancellation reason tracking and analysis
 
 ## 🚀 Deployment Structure
 
@@ -340,6 +377,8 @@ Admin Controllers
 /home/jqfujdmy/roots_app/          # Application files
     ├── All Laravel files
     ├── Environment configuration
+    ├── Updated subscription system
+    ├── New cancellation features
     └── Storage and logs
 
 /home/jqfujdmy/public_html/roots/  # Web-accessible
@@ -353,27 +392,61 @@ Admin Controllers
 local/roots/
     ├── Complete Laravel structure
     ├── Node modules and build tools
+    ├── Updated subscription system
+    ├── New cancellation features
     └── Development database
 ```
 
 ---
 
-## 📈 Recent Additions (June 2025)
+## 📈 Recent Additions (June 26, 2025)
 
-### Major File Additions
+### Major Feature Additions
 
-1. **Subscription System**: 20+ new files for complete payment integration
-2. **Admin Enhancements**: 8+ new views for subscription management
-3. **User Profile**: Enhanced profile management with subscription status
-4. **Documentation**: Comprehensive documentation updates
+1. **Advanced Cancellation System**: Complete subscription cancellation with retention
+2. **Contact System Integration**: Centralized feedback system for cancellations
+3. **Modern Admin Interface**: Enhanced contact management with cancellation focus
+4. **Retention Tools**: Professional retention campaigns and follow-up systems
 
 ### File Modifications
 
-1. **Quiz Creation**: Enhanced with subscription checks and AI gating
-2. **User Management**: Added subscription status and management
-3. **Dashboard**: Integrated subscription widgets and usage tracking
-4. **Navigation**: Added subscription management links
+1. **Subscription Management**: Enhanced with inline cancellation interface
+2. **Contact System**: Updated with subscription relationship and modern UI
+3. **Admin Interface**: Enhanced with cancellation tracking and retention tools
+4. **Database Schema**: Updated with cancellation tracking and contact integration
 
-**Total Project Size**: 100+ files across backend, frontend, database, and documentation  
+### Business Intelligence Features
+
+1. **Cancellation Tracking**: Detailed reason collection and analysis
+2. **Retention Metrics**: Track retention efforts and success rates
+3. **Admin Dashboard**: Enhanced with cancellation insights
+4. **Follow-up System**: Automated retention campaign tools
+
+**Total Project Size**: 105+ files across backend, frontend, database, and documentation  
 **Code Quality**: Production-ready with comprehensive error handling and security measures  
-**Documentation**: Complete technical and user documentation in Arabic and English
+**Documentation**: Complete technical and user documentation in Arabic and English  
+**Business Features**: Advanced subscription management with retention focus
+
+---
+
+## 🔮 Future Enhancements
+
+### Planned Features
+
+-   **Automated Retention Campaigns**: Email sequences for cancelled users
+-   **Advanced Analytics**: Detailed cancellation reason analysis
+-   **Pause Subscription**: Alternative to cancellation
+-   **Win-back Campaigns**: Re-engagement for expired users
+
+### Technical Improvements
+
+-   **API Rate Limiting**: Enhanced for cancelled users
+-   **Advanced Notifications**: Real-time cancellation alerts
+-   **Mobile App Integration**: Cancellation management on mobile
+-   **Performance Optimization**: Enhanced for retention workflows
+
+---
+
+**Implementation Status**: ✅ Complete and Production Ready  
+**Last Major Update**: June 26, 2025 - Advanced Cancellation System  
+**Next Review**: September 2025

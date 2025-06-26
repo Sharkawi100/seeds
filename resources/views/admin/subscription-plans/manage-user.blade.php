@@ -2,179 +2,296 @@
 
 @section('content')
 <div class="container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto">
-        <div class="flex items-center mb-8">
-            <a href="{{ route('admin.users.show', $user) }}" 
-               class="text-gray-600 hover:text-gray-800 ml-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </a>
-            <h1 class="text-3xl font-bold text-gray-900">إدارة اشتراك: {{ $user->name }}</h1>
-        </div>
+    <h1 class="text-3xl font-bold mb-8">إدارة الاشتراك</h1>
+    
+    <!-- Subscription Status -->
+    <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+        @if($user->hasActiveSubscription() && $subscription)
+            @if($subscription->isCancelled())
+                <!-- Cancelled but still active -->
+                <div class="flex items-center justify-between p-6 bg-yellow-50 rounded-xl border border-yellow-200">
+                    <div>
+                        <h3 class="font-bold text-yellow-900">{{ $subscription->plan_name ?? 'اشتراك ملغي' }}</h3>
+                        <p class="text-yellow-700">تم إلغاء الاشتراك في: {{ $subscription->cancelled_at->format('Y/m/d H:i') }}</p>
+                        <p class="text-sm text-yellow-600"><strong>الخدمة متاحة حتى:</strong> {{ $subscription->current_period_end->format('Y/m/d H:i') }}</p>
+                        <p class="text-sm text-yellow-600 font-medium">{{ $subscription->daysRemaining() }} يوم متبقي</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl text-yellow-600 mb-2">⚠️</div>
+                        <p class="text-yellow-700 font-medium">ملغي</p>
+                    </div>
+                </div>
+            @else
+                <!-- Active subscription -->
+                <div class="flex items-center justify-between p-6 bg-green-50 rounded-xl border border-green-200">
+                    <div>
+                        <h3 class="font-bold text-green-900">{{ $subscription->plan_name ?? 'اشتراك نشط' }}</h3>
+                        <p class="text-green-700">الحالة: {{ $subscription->status ?? 'نشط' }}</p>
+                        <p class="text-sm text-green-600"><strong>تاريخ البدء:</strong> {{ $subscription->current_period_start->format('Y/m/d') }}</p>
+                        <p class="text-sm text-green-600"><strong>تاريخ الانتهاء:</strong> {{ $subscription->current_period_end->format('Y/m/d H:i') }}</p>
+                        <p class="text-sm text-green-600 font-medium">{{ $subscription->daysRemaining() }} يوم متبقي</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl text-green-600 mb-2">✅</div>
+                        <p class="text-green-700 font-medium">نشط</p>
+                    </div>
+                </div>
 
-        <!-- Current Status -->
-        <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
-            <h2 class="text-xl font-bold text-gray-900 mb-6">الحالة الحالية</h2>
-            
-            <div class="flex items-center justify-between p-6 {{ $user->hasActiveSubscription() ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }} rounded-xl">
-                <div>
-                    <div class="flex items-center gap-2 mb-2">
-                        @if($user->hasActiveSubscription())
-                            <span class="text-2xl">💎</span>
-                            <h3 class="font-bold text-green-900">اشتراك نشط</h3>
-                        @else
-                            <span class="text-2xl">🎓</span>
-                            <h3 class="font-bold text-gray-900">بدون اشتراك</h3>
-                        @endif
+                <!-- Benefits Reminder -->
+                <div class="mt-6 p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200">
+                    <h3 class="font-bold text-purple-900 mb-4">🎯 مميزات اشتراكك الحالي</h3>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-green-500">✓</span>
+                            <span class="text-sm text-gray-700">توليد نصوص تعليمية بالذكاء الاصطناعي</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-green-500">✓</span>
+                            <span class="text-sm text-gray-700">إنشاء أسئلة تلقائياً من النصوص</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-green-500">✓</span>
+                            <span class="text-sm text-gray-700">تحليل الجُذور الأربعة للطلاب</span>
+                        </div>
                     </div>
-                    
-                    @if($currentSubscription)
-                        <p class="text-sm text-gray-600">الخطة: {{ $currentSubscription->plan_name }}</p>
-                        <p class="text-sm text-gray-600">ينتهي في: {{ $user->subscription_expires_at?->format('Y/m/d H:i') }}</p>
-                    @else
-                        <p class="text-sm text-gray-600">لم يشترك المستخدم في أي خطة</p>
-                    @endif
                 </div>
-                
-                <div class="text-center">
-                    @if($user->hasActiveSubscription())
-                        <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-2xl">✓</div>
-                    @else
-                        <div class="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center text-white text-2xl">✗</div>
-                    @endif
-                </div>
-            </div>
-        </div>
 
-        <!-- Usage Stats -->
-        @if($user->hasActiveSubscription())
-            <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
-                <h2 class="text-xl font-bold text-gray-900 mb-6">إحصائيات الاستخدام الشهري</h2>
-                
-                @php
-                    $quota = $user->monthlyQuota;
-                    $limits = $user->getCurrentQuotaLimits();
-                @endphp
-                
-                <div class="grid md:grid-cols-3 gap-4">
-                    <div class="bg-blue-50 p-4 rounded-xl text-center">
-                        <div class="text-2xl font-bold text-blue-600">{{ $quota->quiz_count ?? 0 }}</div>
-                        <div class="text-sm text-blue-600">من {{ $limits['monthly_quiz_limit'] }} اختبار</div>
-                    </div>
-                    
-                    <div class="bg-purple-50 p-4 rounded-xl text-center">
-                        <div class="text-2xl font-bold text-purple-600">{{ $quota->ai_text_requests ?? 0 }}</div>
-                        <div class="text-sm text-purple-600">من {{ $limits['monthly_ai_text_limit'] }} نص</div>
-                    </div>
-                    
-                    <div class="bg-green-50 p-4 rounded-xl text-center">
-                        <div class="text-2xl font-bold text-green-600">{{ $quota->ai_quiz_requests ?? 0 }}</div>
-                        <div class="text-sm text-green-600">من {{ $limits['monthly_ai_quiz_limit'] }} سؤال</div>
+                <!-- Cancellation Section -->
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                    <div class="flex items-start gap-4">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-gray-900 mb-2">هل تفكر في إلغاء الاشتراك؟</h3>
+                            <p class="text-gray-600 text-sm mb-4">
+                                ستفقد إمكانية استخدام الذكاء الاصطناعي نهائياً. الخدمة ستبقى متاحة حتى {{ $subscription->current_period_end->format('Y/m/d') }} فقط.
+                            </p>
+                        </div>
+                        <button onclick="showCancelModal()" 
+                                class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            إلغاء الاشتراك
+                        </button>
                     </div>
                 </div>
+            @endif
+        @else
+            <div class="text-center p-8 bg-gray-50 rounded-xl">
+                <div class="text-4xl mb-4">⭐</div>
+                <h3 class="text-xl font-bold mb-2">ترقية إلى معلم محترف</h3>
+                <p class="text-gray-600 mb-6">احصل على مميزات الذكاء الاصطناعي</p>
+                <a href="{{ route('subscription.upgrade') }}" 
+                   class="inline-flex items-center px-8 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700">
+                    اشترك الآن
+                </a>
             </div>
         @endif
+    </div>
 
-        <!-- Management Form -->
-        <div class="bg-white rounded-2xl shadow-lg p-8">
-            <h2 class="text-xl font-bold text-gray-900 mb-6">إدارة الاشتراك</h2>
+    <!-- Usage Stats -->
+    @if($user->hasActiveSubscription())
+    <div class="bg-white rounded-2xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-6">إحصائيات الاستخدام الشهري</h2>
+        @php
+            $quota = $user->monthlyQuota;
+            $limits = $user->getCurrentQuotaLimits();
+        @endphp
+        
+        <div class="grid md:grid-cols-3 gap-6">
+            <div class="bg-blue-50 p-6 rounded-xl">
+                <h3 class="font-bold text-blue-900 mb-2">الاختبارات</h3>
+                <div class="text-2xl font-bold text-blue-600">
+                    {{ $quota->quiz_count ?? 0 }} / {{ $limits['monthly_quiz_limit'] }}
+                </div>
+                <div class="text-xs text-blue-600 mt-1">
+                    {{ round((($quota->quiz_count ?? 0) / $limits['monthly_quiz_limit']) * 100) }}% مستخدم
+                </div>
+            </div>
             
-            <form action="{{ route('admin.subscription-plans.update-user', $user->id) }}" method="POST">
-                @csrf
-                @method('PUT')
-                
-                <div class="mb-6">
-                    <label class="block text-sm font-bold text-gray-700 mb-3">نوع الإجراء</label>
-                    <div class="space-y-3">
-                        @if($user->hasActiveSubscription())
-                            <label class="flex items-center p-4 border border-yellow-200 rounded-xl cursor-pointer hover:bg-yellow-50">
-                                <input type="radio" name="action" value="update" class="ml-3" checked>
-                                <div>
-                                    <div class="font-medium text-yellow-800">تحديث الاشتراك</div>
-                                    <div class="text-sm text-yellow-600">تغيير الخطة أو تاريخ الانتهاء</div>
-                                </div>
-                            </label>
-                            
-                            <label class="flex items-center p-4 border border-red-200 rounded-xl cursor-pointer hover:bg-red-50">
-                                <input type="radio" name="action" value="revoke" class="ml-3">
-                                <div>
-                                    <div class="font-medium text-red-800">إلغاء الاشتراك</div>
-                                    <div class="text-sm text-red-600">إيقاف الاشتراك نهائياً</div>
-                                </div>
-                            </label>
-                        @else
-                            <label class="flex items-center p-4 border border-green-200 rounded-xl cursor-pointer hover:bg-green-50">
-                                <input type="radio" name="action" value="grant" class="ml-3" checked>
-                                <div>
-                                    <div class="font-medium text-green-800">منح اشتراك</div>
-                                    <div class="text-sm text-green-600">تفعيل اشتراك للمستخدم</div>
-                                </div>
-                            </label>
-                        @endif
+            <div class="bg-purple-50 p-6 rounded-xl">
+                <h3 class="font-bold text-purple-900 mb-2">توليد النصوص</h3>
+                <div class="text-2xl font-bold text-purple-600">
+                    {{ $quota->ai_text_requests ?? 0 }} / {{ $limits['monthly_ai_text_limit'] }}
+                </div>
+                <div class="text-xs text-purple-600 mt-1">
+                    وفرت {{ ($quota->ai_text_requests ?? 0) * 10 }} دقيقة من وقتك
+                </div>
+            </div>
+            
+            <div class="bg-green-50 p-6 rounded-xl">
+                <h3 class="font-bold text-green-900 mb-2">توليد الأسئلة</h3>
+                <div class="text-2xl font-bold text-green-600">
+                    {{ $quota->ai_quiz_requests ?? 0 }} / {{ $limits['monthly_ai_quiz_limit'] }}
+                </div>
+                <div class="text-xs text-green-600 mt-1">
+                    وفرت {{ ($quota->ai_quiz_requests ?? 0) * 15 }} دقيقة من وقتك
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+
+<!-- Enhanced Cancellation Modal with Side-by-Side Pros/Cons -->
+@if($user->hasActiveSubscription() && $subscription && !$subscription->isCancelled())
+<div id="cancelModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">انتظر! فكر مرة أخرى قبل الإلغاء</h3>
+            
+            <!-- Pros vs Cons Cards - Side by Side -->
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                <!-- Cons Card (What you'll lose) -->
+                <div class="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+                    <div class="text-center mb-4">
+                        <div class="text-4xl mb-2">💔</div>
+                        <h4 class="font-bold text-red-800 text-lg">ماذا ستفقد عند الإلغاء</h4>
                     </div>
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 text-xl">✗</span>
+                            <span class="text-sm text-red-700">لن تتمكن من توليد نصوص تعليمية بالذكاء الاصطناعي</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 text-xl">✗</span>
+                            <span class="text-sm text-red-700">لن تتمكن من إنشاء أسئلة تلقائياً</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 text-xl">✗</span>
+                            @php
+                                $quota = $user->monthlyQuota;
+                                $timeSaved = ($quota->ai_text_requests ?? 0) * 10 + ($quota->ai_quiz_requests ?? 0) * 15;
+                            @endphp
+                            <span class="text-sm text-red-700">ستفقد <strong>{{ $timeSaved }} دقيقة</strong> وفرتها هذا الشهر</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 text-xl">✗</span>
+                            <span class="text-sm text-red-700">ستعود لإنشاء الاختبارات يدوياً (يستغرق ساعات)</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 text-xl">✗</span>
+                            <span class="text-sm text-red-700">ستفقد التحديثات والمميزات الجديدة</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-red-500 text-xl">✗</span>
+                            <span class="text-sm text-red-700">طلابك سيفقدون التجربة التفاعلية المتطورة</span>
+                        </li>
+                    </ul>
                 </div>
 
-                <!-- Plan Selection -->
-                <div class="mb-6" id="plan-selection">
-                    <label class="block text-sm font-bold text-gray-700 mb-3">اختيار الخطة</label>
-                    <select name="plan_id" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500">
-                        @foreach($plans as $plan)
-                            <option value="{{ $plan->id }}" {{ $currentSubscription?->plan_id == $plan->id ? 'selected' : '' }}>
-                                {{ $plan->name }} - ${{ $plan->price_monthly }}/شهر 
-                                ({{ $plan->monthly_quiz_limit }} اختبار، {{ $plan->monthly_ai_text_limit }} نص)
-                            </option>
-                        @endforeach
-                    </select>
+                <!-- Pros Card (What you can do instead) -->
+                <div class="bg-green-50 border-2 border-green-200 rounded-xl p-6">
+                    <div class="text-center mb-4">
+                        <div class="text-4xl mb-2">💡</div>
+                        <h4 class="font-bold text-green-800 text-lg">اقتراحات أفضل من الإلغاء</h4>
+                    </div>
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-sm text-green-700">تواصل معنا لحل أي مشكلة تقنية مجاناً</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-sm text-green-700">استمتع بالمميزات الجديدة التي نضيفها شهرياً</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-sm text-green-700">وفر <strong>15$</strong> شهرياً مقابل توفير ساعات من وقتك</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-sm text-green-700">كن من المعلمين الرائدين في استخدام التكنولوجيا</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-sm text-green-700">امنح طلابك تجربة تعليمية متقدمة ومميزة</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <span class="text-green-500 text-xl">✓</span>
+                            <span class="text-sm text-green-700">استمر في الاستفادة من تحليل الجُذور الأربعة</span>
+                        </li>
+                    </ul>
                 </div>
+            </div>
 
-                <!-- Expiration Date -->
-                <div class="mb-6" id="expiration-date">
-                    <label class="block text-sm font-bold text-gray-700 mb-3">تاريخ انتهاء الاشتراك</label>
-                    <input type="datetime-local" 
-                           name="expires_at" 
-                           value="{{ $user->subscription_expires_at?->format('Y-m-d\TH:i') ?? now()->addMonth()->format('Y-m-d\TH:i') }}"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500">
+            <!-- Alternative Solutions -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 class="font-bold text-blue-800 mb-3 flex items-center gap-2">
+                    <span>🤝</span>
+                    <span>بدلاً من الإلغاء، جرب هذه الحلول:</span>
+                </h4>
+                <div class="grid md:grid-cols-2 gap-3 text-sm text-blue-700">
+                    <div>• راسلنا عبر الدعم لمساعدتك</div>
+                    <div>• اطلب تدريباً مجانياً على المميزات</div>
+                    <div>• شارك ملاحظاتك لتحسين الخدمة</div>
+                    <div>• جرب ميزة واحدة كل يوم لمدة أسبوع</div>
                 </div>
+            </div>
 
-                <div class="flex justify-end gap-4">
-                    <a href="{{ route('admin.users.show', $user) }}" 
-                       class="px-6 py-3 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-colors">
-                        إلغاء
-                    </a>
-                    <button type="submit" 
-                            class="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors">
-                        حفظ التغييرات
-                    </button>
+            <!-- Still want to cancel section -->
+            <div class="border-t pt-6">
+                <div class="text-center mb-4">
+                    <p class="text-gray-600 font-medium">إذا كنت مصر على الإلغاء، ساعدنا في التحسين:</p>
                 </div>
-            </form>
+                
+                <form action="{{ route('subscription.cancel') }}" method="POST">
+                    @csrf
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">سبب الإلغاء (مطلوب):</label>
+                        <textarea name="cancellation_reason" 
+                                  rows="3" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                                  placeholder="مثال: مكلف، لا أحتاجه، مشاكل تقنية، غير راضي عن الخدمة، لا أفهم كيفية الاستخدام..."
+                                  required></textarea>
+                    </div>
+
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                        <div class="flex items-start gap-3 text-sm text-yellow-800">
+                            <div class="text-yellow-600 text-xl">⚠️</div>
+                            <div>
+                                <strong>تذكير أخير:</strong> الخدمة ستبقى متاحة حتى {{ $subscription->current_period_end->format('Y/m/d H:i') }} ولن يتم استرداد المبلغ. يمكنك إعادة الاشتراك في أي وقت.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button type="button" 
+                                onclick="hideCancelModal()"
+                                class="flex-1 bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 transition-colors">
+                            أريد البقاء مشترك 💚
+                        </button>
+                        <button type="submit" 
+                                class="flex-1 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition-colors">
+                            إلغاء نهائي 💔
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const actionRadios = document.querySelectorAll('input[name="action"]');
-    const planSelection = document.getElementById('plan-selection');
-    const expirationDate = document.getElementById('expiration-date');
-    
-    function toggleFields() {
-        const selectedAction = document.querySelector('input[name="action"]:checked').value;
-        
-        if (selectedAction === 'revoke') {
-            planSelection.style.display = 'none';
-            expirationDate.style.display = 'none';
-        } else {
-            planSelection.style.display = 'block';
-            expirationDate.style.display = 'block';
-        }
+function showCancelModal() {
+    document.getElementById('cancelModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent body scroll
+}
+
+function hideCancelModal() {
+    document.getElementById('cancelModal').classList.add('hidden');
+    document.body.style.overflow = 'auto'; // Restore body scroll
+}
+
+// Close modal when clicking outside
+document.getElementById('cancelModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideCancelModal();
     }
-    
-    actionRadios.forEach(radio => {
-        radio.addEventListener('change', toggleFields);
-    });
-    
-    toggleFields(); // Initial state
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !document.getElementById('cancelModal').classList.contains('hidden')) {
+        hideCancelModal();
+    }
 });
 </script>
+@endif
 @endsection

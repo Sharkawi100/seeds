@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+
 class LemonSqueezyService
 {
     protected $apiKey;
@@ -182,6 +183,76 @@ class LemonSqueezyService
         if ($subscription) {
             $subscription->update(['status' => 'cancelled']);
             $subscription->user->update(['subscription_active' => false]);
+        }
+    }
+    /**
+     * Cancel a subscription via LemonSqueezy API (or locally for admin subscriptions)
+     */
+    public function cancelSubscription(Subscription $subscription)
+    {
+        try {
+            // Check if this is an admin-created subscription
+            if (str_starts_with($subscription->lemon_squeezy_subscription_id, 'admin_')) {
+                // Admin-created subscription - cancel locally only
+                $subscription->update([
+                    'cancelled_at' => now(),
+                    'status' => 'cancelled'
+                ]);
+
+                Log::info('Admin subscription cancelled locally', [
+                    'subscription_id' => $subscription->id,
+                    'lemon_squeezy_id' => $subscription->lemon_squeezy_subscription_id,
+                    'user_id' => $subscription->user_id
+                ]);
+
+                return true;
+            }
+
+            // Real LemonSqueezy subscription - make API call
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . config('services.lemonsqueezy.api_key'),
+                'Accept' => 'application/vnd.api+json',
+                'Content-Type' => 'application/vnd.api+json',
+            ])->patch("https://api.lemonsqueezy.com/v1/subscriptions/{$subscription->lemon_squeezy_subscription_id}", [
+                        'data' => [
+                            'type' => 'subscriptions',
+                            'id' => $subscription->lemon_squeezy_subscription_id,
+                            'attributes' => [
+                                'cancelled' => true
+                            ]
+                        ]
+                    ]);
+
+            if ($response->successful()) {
+                // Update local subscription record
+                $subscription->update([
+                    'cancelled_at' => now(),
+                ]);
+
+                Log::info('LemonSqueezy subscription cancelled successfully', [
+                    'subscription_id' => $subscription->id,
+                    'lemon_squeezy_id' => $subscription->lemon_squeezy_subscription_id,
+                    'user_id' => $subscription->user_id
+                ]);
+
+                return true;
+            }
+
+            Log::error('Failed to cancel subscription via LemonSqueezy', [
+                'subscription_id' => $subscription->id,
+                'status' => $response->status(),
+                'response' => $response->body()
+            ]);
+
+            return false;
+
+        } catch (\Exception $e) {
+            Log::error('Exception during subscription cancellation', [
+                'subscription_id' => $subscription->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return false;
         }
     }
 }

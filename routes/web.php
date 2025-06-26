@@ -33,6 +33,9 @@ Route::get('/for-teachers', fn() => view('for-teachers'))->name('for.teachers');
 Route::get('/for-students', fn() => view('for-students'))->name('for.students');
 Route::get('/plans', [App\Http\Controllers\SubscriptionController::class, 'publicPlans'])->name('plans');
 
+Route::get('/juzoor-model-interactive', function () {
+    return view('juzoor-model-interactive');
+})->name('juzoor.model.interactive');
 
 // // Language Switcher
 // Route::get('/lang/{locale}', function ($locale) {
@@ -356,6 +359,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/subscription/checkout', [App\Http\Controllers\SubscriptionController::class, 'createCheckout'])->name('subscription.checkout');
     Route::get('/subscription/success', [App\Http\Controllers\SubscriptionController::class, 'success'])->name('subscription.success');
     Route::get('/subscription/manage', [App\Http\Controllers\SubscriptionController::class, 'manage'])->name('subscription.manage');
+    Route::post('/subscription/cancel', [App\Http\Controllers\SubscriptionController::class, 'cancelSubscription'])->name('subscription.cancel');
 });
 
 // Webhook (no auth needed)
