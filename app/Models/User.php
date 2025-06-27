@@ -12,7 +12,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
@@ -205,6 +205,14 @@ class User extends Authenticatable
         return $this->hasOne(Subscription::class)->latest();
     }
 
+    /**
+     * Send the email verification notification.
+     */
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new \App\Notifications\CustomVerifyEmail);
+    }
+
     public function monthlyQuota()
     {
         $currentYear = now()->year;
@@ -277,4 +285,5 @@ class User extends Authenticatable
 
         return $this;
     }
+
 }
