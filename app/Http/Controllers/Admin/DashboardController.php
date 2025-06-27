@@ -29,6 +29,12 @@ class DashboardController extends Controller
                 'growth_rates' => $this->getGrowthRates(),
             ];
         });
+        $subscription_stats = [
+            'active_subscriptions' => 0,
+            'total_revenue' => 0,
+            'cancelled_this_month' => 0,
+            'new_this_month' => 0,
+        ];
 
         return view('admin.dashboard', $data);
     }
