@@ -299,16 +299,27 @@
                                             @endif
                                             
                                             @if(!$quiz->has_submissions)
-                                            <a href="{{ route('quizzes.edit', $quiz) }}" 
-                                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                <span class="flex items-center gap-2">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                                    </svg>
-                                                    تعديل
-                                                </span>
-                                            </a>
-                                            @endif
+<a href="{{ route('quizzes.edit', $quiz) }}" 
+   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+    <span class="flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+        </svg>
+        تعديل
+    </span>
+</a>
+@endif
+
+<!-- Duplicate Option - Always Available -->
+<button onclick="duplicateQuiz({{ $quiz->id }}, '{{ addslashes($quiz->title) }}')" 
+        class="block w-full text-left px-4 py-2 text-sm {{ $quiz->has_submissions ? 'text-blue-700 hover:bg-blue-50' : 'text-gray-700 hover:bg-gray-50' }} transition-colors">
+    <span class="flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+        </svg>
+        {{ $quiz->has_submissions ? 'نسخ للتعديل' : 'نسخ الاختبار' }}
+    </span>
+</button>
                                             
                                             <button onclick="copyQuizPin('{{ $quiz->pin }}')" 
                                                     class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
@@ -945,7 +956,26 @@ function showNotification(message) {
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
-
+// Duplicate quiz function
+function duplicateQuiz(quizId, quizTitle) {
+    if (confirm(`هل تريد نسخ الاختبار "${quizTitle}"؟\n\nسيتم إنشاء نسخة جديدة بعنوان "${quizTitle} (نسخة)" ورمز دخول جديد.`)) {
+        // Create form dynamically
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url('/') }}/quizzes/${quizId}/duplicate`;
+        
+        // Add CSRF token
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+        
+        // Submit form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
 // Add initial animation to quiz cards
 function animateQuizCards() {
     const quizCards = document.querySelectorAll('.quiz-card');
