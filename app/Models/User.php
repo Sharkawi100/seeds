@@ -47,12 +47,20 @@ class User extends Authenticatable implements MustVerifyEmail
         'deactivated_at',
         'deactivation_reason',
         'deactivated_by',
-        // Add subscription fields
+        // Subscription fields
         'subscription_active',
         'subscription_expires_at',
         'subscription_plan',
         'subscription_status',
         'lemon_squeezy_customer_id',
+        // Profile fields (these were missing!)
+        'phone',
+        'birth_date',
+        'bio',
+        'favorite_subject',
+        'preferences',
+        'privacy_settings',
+        'achievements',
     ];
 
     /**
