@@ -404,3 +404,425 @@ $aiResponse = $this->claudeService->generateJuzoorQuiz(
 
 -   ✅ Quiz generation WITH educational text (`text_source: manual/ai`)
 -   ✅ Quiz generation WITHOUT educational text (`text_source: none`)
+
+# Troubleshooting Guide - جُذور Platform
+
+Last Updated: June 28, 2025
+
+---
+
+## 🔥 Critical Issues & Quick Fixes
+
+### 1. Passage Editing Not Saving (Form Submission Issues)
+
+**Symptoms:**
+
+-   Teacher edits passage text with formatting
+-   Form appears to submit successfully
+-   Changes don't persist after page refresh
+-   No error messages displayed
+
+**Quick Diagnosis:**
+
+```sql
+-- Check if passage data exists
+SELECT id, quiz_id, passage, passage_title
+FROM questions
+WHERE quiz_id = YOUR_QUIZ_ID
+ORDER BY id LIMIT 1;
+```
+
+**Root Causes & Solutions:**
+
+#### A) Validation Rule Mismatch (Most Common)
+
+```php
+// ❌ PROBLEM: Form sends 'subject' but validation expects 'subject_id'
+<input type="hidden" name="subject" value="{{ $quiz->subject }}">
+
+// ✅ SOLUTION: Match form fields to validation rules
+<input type="hidden" name="subject_id" value="{{ $quiz->subject_id }}">
+```
+
+#### B) Missing Validation Fields
+
+```php
+// ❌ PROBLEM: Missing passage fields in validation
+$validated = $request->validate([
+    'title' => 'required|string|max:255',
+    'subject_id' => 'required|exists:subjects,id',
+    // Missing: passage fields!
+]);
+
+// ✅ SOLUTION: Add passage validation
+$validated = $request->validate([
+    'title' => 'required|string|max:255',
+    'subject_id' => 'required|exists:subjects,id',
+    'passage' => 'nullable|string',
+    'passage_title' => 'nullable|string|max:255',
+]);
+```
+
+#### C) Controller Route Confusion
+
+-   **Individual Question Edit**: `QuestionController@update` - needs passage handling
+-   **Questions Index Edit**: `QuizController@update` - already has passage handling
+-   **Solution**: Ensure both controllers handle passage data properly
+
+**Debugging Steps:**
+
+1. Check browser Network tab for failed validation
+2. Look for 422 validation errors in response
+3. Compare form field names with controller validation rules
+4. Test both editing methods (individual vs. bulk)
+
+---
+
+### 2. Quiz Access Issues (404 vs. Inactive)
+
+**Symptoms:**
+
+-   Students get 404 error when accessing quiz
+-   Quiz appears active in teacher dashboard
+-   URL is correct but shows "Not Found"
+
+**Quick Diagnosis:**
+
+```sql
+-- Check quiz status
+SELECT id, title, is_active, expires_at, pin
+FROM quizzes
+WHERE id = YOUR_QUIZ_ID;
+```
+
+**Solutions:**
+
+#### A) Quiz Deactivated (Most Common)
+
+```php
+// ❌ PROBLEM: Using abort(404) for inactive quizzes
+if (!$quiz->is_active) {
+    abort(404, 'Quiz not available');
+}
+
+// ✅ SOLUTION: User-friendly message
+if (!$quiz->is_active) {
+    return view('quiz.inactive', [
+        'quiz' => $quiz,
+        'message' => 'هذا الاختبار غير مفعل حالياً',
+        'description' => 'يرجى التواصل مع معلمك...'
+    ]);
+}
+```
+
+#### B) Quiz Expired
+
+```php
+// Check expiration
+if ($quiz->expires_at && $quiz->expires_at->isPast()) {
+    return view('quiz.expired', compact('quiz'));
+}
+```
+
+---
+
+## 🔧 Common Development Issues
+
+### 3. AI Quiz Generation Failures
+
+**Symptoms:**
+
+-   422 validation errors during quiz creation
+-   "Educational text required" for text_source: 'none'
+-   Generated question count doesn't match requested
+
+**Root Causes & Solutions:**
+
+#### A) Text Source Validation Issues
+
+```php
+// ❌ PROBLEM: Always requiring educational_text
+'educational_text' => 'required|string|min:50',
+
+// ✅ SOLUTION: Conditional validation
+'educational_text' => 'nullable|required_unless:text_source,none|string|min:50',
+```
+
+#### B) Question Count Mismatch
+
+```php
+// ❌ PROBLEM: Variable shadowing in prompt building
+foreach ($roots as $root) {
+    $totalQuestions += ...; // Overwrites parameter!
+}
+
+// ✅ SOLUTION: Use different variable names
+foreach ($roots as $root) {
+    $questionCount += ...;
+}
+```
+
+**Debugging Steps:**
+
+```php
+// 1. Check validation rules
+Log::info('Validation data:', $request->all());
+
+// 2. Verify roots transformation
+Log::info('Roots transformation:', [
+    'total_requested' => $totalRequested,
+    'total_transformed' => $transformedTotal
+]);
+
+// 3. Check AI service parameters
+Log::info('AI service call:', [
+    'total_questions_param' => $totalRequested
+]);
+```
+
+---
+
+### 4. Form Validation & Data Issues
+
+**Common Form Problems:**
+
+#### A) Missing CSRF Token
+
+```blade
+{{-- ❌ PROBLEM: Missing CSRF --}}
+<form method="POST">
+
+{{-- ✅ SOLUTION: Always include CSRF --}}
+<form method="POST">
+    @csrf
+    @method('PUT')
+</form>
+```
+
+#### B) Incorrect Method Spoofing
+
+```blade
+{{-- ❌ PROBLEM: Wrong HTTP method --}}
+<form method="POST" action="{{ route('quiz.update', $quiz) }}">
+
+{{-- ✅ SOLUTION: Use method spoofing --}}
+<form method="POST" action="{{ route('quiz.update', $quiz) }}">
+    @method('PUT')
+</form>
+```
+
+#### C) JavaScript Form Handling
+
+```javascript
+// ❌ PROBLEM: TinyMCE content not submitted
+form.submit();
+
+// ✅ SOLUTION: Trigger TinyMCE save first
+tinymce.triggerSave();
+form.submit();
+```
+
+---
+
+## 📊 Database Issues
+
+### 5. Database Connection & Query Problems
+
+**Connection Issues:**
+
+```bash
+# Check database connection
+php artisan tinker
+DB::connection()->getPdo();
+```
+
+**Query Debugging:**
+
+```php
+// Enable query logging
+DB::enableQueryLog();
+// Your code here
+dd(DB::getQueryLog());
+```
+
+**Common SQL Issues:**
+
+```sql
+-- Check table structure
+DESCRIBE questions;
+DESCRIBE quizzes;
+
+-- Check data integrity
+SELECT COUNT(*) FROM questions WHERE quiz_id = ?;
+SELECT COUNT(*) FROM quizzes WHERE user_id = ?;
+```
+
+---
+
+## 🎯 Performance Issues
+
+### 6. Slow Page Load & Query Optimization
+
+**N+1 Query Problem:**
+
+```php
+// ❌ PROBLEM: N+1 queries
+foreach ($quizzes as $quiz) {
+    echo $quiz->questions->count(); // Separate query each time
+}
+
+// ✅ SOLUTION: Eager loading
+$quizzes = Quiz::with('questions')->get();
+```
+
+**Memory Issues:**
+
+```php
+// ❌ PROBLEM: Loading all data at once
+$results = Result::all();
+
+// ✅ SOLUTION: Use pagination or chunking
+$results = Result::paginate(50);
+// or
+Result::chunk(100, function($results) {
+    // Process batch
+});
+```
+
+---
+
+## 🔍 Debugging Tools & Commands
+
+### Essential Laravel Commands
+
+```bash
+# Clear all caches
+php artisan optimize:clear
+
+# Check route list
+php artisan route:list | grep quiz
+
+# View logs in real-time
+tail -f storage/logs/laravel.log
+
+# Database migrations status
+php artisan migrate:status
+
+# Test queue jobs
+php artisan queue:work --once
+```
+
+### Browser Debugging
+
+```javascript
+// Check for JavaScript errors
+console.log("Form data:", new FormData(form));
+
+// Check AJAX responses
+fetch("/api/endpoint")
+    .then((r) => r.json())
+    .then(console.log);
+
+// TinyMCE debugging
+tinymce.get("editor-id").getContent();
+```
+
+### SQL Debugging Queries
+
+```sql
+-- Check for recent errors
+SELECT * FROM failed_jobs ORDER BY failed_at DESC LIMIT 5;
+
+-- Analyze quiz usage
+SELECT
+    u.name,
+    COUNT(q.id) as quiz_count,
+    COUNT(r.id) as result_count
+FROM users u
+LEFT JOIN quizzes q ON u.id = q.user_id
+LEFT JOIN results r ON q.id = r.quiz_id
+GROUP BY u.id;
+
+-- Find problematic quizzes
+SELECT q.id, q.title, COUNT(questions.id) as question_count
+FROM quizzes q
+LEFT JOIN questions ON q.id = questions.quiz_id
+GROUP BY q.id
+HAVING question_count = 0;
+```
+
+---
+
+## 🚨 Emergency Fixes
+
+### Quick Hotfixes for Production
+
+#### 1. Disable Problematic Feature
+
+```php
+// In controller method
+if (config('app.env') === 'production') {
+    return redirect()->back()->with('info', 'Feature temporarily disabled');
+}
+```
+
+#### 2. Bypass Validation Temporarily
+
+```php
+// Add to validation rules as fallback
+'field_name' => 'sometimes|nullable|string',
+```
+
+#### 3. Database Rollback
+
+```bash
+# Rollback last migration
+php artisan migrate:rollback --step=1
+
+# Check migration status
+php artisan migrate:status
+```
+
+---
+
+## 📞 Getting Help
+
+### When to Escalate
+
+1. **Data Loss Issues**: Any reports of lost quiz content
+2. **Authentication Problems**: Users can't log in or access their content
+3. **Payment Issues**: Subscription or billing problems
+4. **Performance Issues**: Site loading slower than 3 seconds
+5. **Security Concerns**: Any suspicious activity or potential vulnerabilities
+
+### Information to Collect
+
+1. **User Information**: User ID, email, role
+2. **Error Details**: Full error message, stack trace
+3. **Browser Information**: Version, console errors
+4. **Steps to Reproduce**: Exact sequence that caused the issue
+5. **Environment**: Production vs. staging vs. development
+
+### Log Files to Check
+
+-   `storage/logs/laravel.log` - Application errors
+-   Web server error logs - Server-level issues
+-   Database slow query logs - Performance issues
+-   Browser console - Frontend errors
+
+---
+
+## ✅ Recent Fixes Summary (June 2025)
+
+1. ✅ **Passage editing validation mismatch** - Fixed form field naming
+2. ✅ **Inactive quiz UX** - Replaced 404 with user-friendly message
+3. ✅ **Quiz generation without text** - Fixed conditional validation logic
+4. ✅ **Question count preservation** - Resolved variable shadowing
+5. ✅ **TinyMCE content saving** - Enhanced form submission handling
+
+**Always test both scenarios when applicable:**
+
+-   With/without educational text for quiz generation
+-   Individual vs. bulk question editing
+-   Authenticated vs. guest user access
+-   Different user roles (teacher vs. student vs. admin)
