@@ -1,577 +1,763 @@
 @extends('layouts.app')
 
-@push('styles')
-<!-- Tailwind CSS Fallback -->
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-<!-- Google Font -->
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
-<!-- TinyMCE -->
-<script src="https://cdn.tiny.cloud/1/cmtwmtmif3u7ducaiqvogvq1wvc280ugtxjzo2ffaymjmuxg/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-<style>
-    /* Root color definitions */
-    :root {
-        --jawhar-color: #dc2626;
-        --zihn-color: #2563eb;
-        --waslat-color: #ea580c;
-        --roaya-color: #7c3aed;
-    }
-    
-    /* Force Tailwind styles to load properly */
-    body {
-        font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-    }
-    
-    /* Modern card with colored left accent */
-    .question-edit-card {
-        position: relative;
-        background: #ffffff;
-        border-radius: 0.75rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        overflow: hidden;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .question-edit-card::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 5px;
-        transition: width 0.3s ease;
-    }
-    
-    .question-edit-card:hover::before {
-        width: 8px;
-    }
-    
-    .question-edit-card:hover {
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        border-color: #d1d5db;
-    }
-    
-    /* Root-specific accents */
-    .question-edit-card.jawhar::before { background-color: var(--jawhar-color); }
-    .question-edit-card.zihn::before { background-color: var(--zihn-color); }
-    .question-edit-card.waslat::before { background-color: var(--waslat-color); }
-    .question-edit-card.roaya::before { background-color: var(--roaya-color); }
-    
-    /* Number badge modern style */
-    .number-badge {
-        width: 3rem;
-        height: 3rem;
-        background: #ffffff;
-        border: 3px solid;
-        border-radius: 0.75rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1.125rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        flex-shrink: 0;
-    }
-    
-    .number-badge.jawhar { 
-        border-color: var(--jawhar-color); 
-        color: var(--jawhar-color);
-    }
-    .number-badge.zihn { 
-        border-color: var(--zihn-color); 
-        color: var(--zihn-color);
-    }
-    .number-badge.waslat { 
-        border-color: var(--waslat-color); 
-        color: var(--waslat-color);
-    }
-    .number-badge.roaya { 
-        border-color: var(--roaya-color); 
-        color: var(--roaya-color);
-    }
-    
-    /* Modern form inputs */
-    .modern-input {
-        width: 100%;
-        padding: 0.75rem 1rem;
-        border: 2px solid #e5e7eb;
-        border-radius: 0.5rem;
-        font-size: 1rem;
-        transition: all 0.2s ease;
-        background-color: #ffffff;
-        color: #111827;
-    }
-    
-    .modern-input:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .modern-textarea {
-        width: 100%;
-        padding: 0.75rem 1rem;
-        border: 2px solid #e5e7eb;
-        border-radius: 0.5rem;
-        font-size: 1rem;
-        transition: all 0.2s ease;
-        background-color: #ffffff;
-        color: #111827;
-        resize: vertical;
-        min-height: 80px;
-    }
-    
-    .modern-textarea:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .modern-select {
-        width: 100%;
-        padding: 0.75rem 2.5rem 0.75rem 1rem;
-        border: 2px solid #e5e7eb;
-        border-radius: 0.5rem;
-        font-size: 1rem;
-        transition: all 0.2s ease;
-        background-color: #ffffff;
-        color: #111827;
-        appearance: none;
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right 0.75rem center;
-        background-size: 1.25rem;
-    }
-    
-    .modern-select:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    /* Option input styling */
-    .option-input {
-        flex: 1;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-        transition: all 0.2s ease;
-        background-color: #f9fafb;
-        color: #111827;
-    }
-    
-    .option-input:focus {
-        outline: none;
-        border-color: #3b82f6;
-        background-color: #ffffff;
-    }
-    
-    /* Option letter badge */
-    .option-letter {
-        width: 2rem;
-        height: 2rem;
-        background: #e5e7eb;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.875rem;
-        color: #4b5563;
-        flex-shrink: 0;
-    }
-    
-    /* Success animation */
-    @keyframes checkmark {
-        0% { transform: scale(0) rotate(45deg); opacity: 0; }
-        50% { transform: scale(1.2) rotate(45deg); opacity: 1; }
-        100% { transform: scale(1) rotate(45deg); opacity: 1; }
-    }
-    
-    .success-checkmark {
-        animation: checkmark 0.6s ease-out;
-    }
-    
-    /* Loading spinner */
-    .spinner {
-        border: 3px solid #f3f4f6;
-        border-top: 3px solid #3b82f6;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    /* Sticky header */
-    .sticky-header {
-        position: sticky;
-        top: 0;
-        z-index: 40;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-    }
-    
-    /* Root selector button */
-    .root-selector {
-        padding: 0.5rem 1rem;
-        border: 2px solid;
-        border-radius: 0.5rem;
-        background: white;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-    
-    .root-selector.jawhar {
-        border-color: #fee2e2;
-        color: var(--jawhar-color);
-    }
-    .root-selector.jawhar.active {
-        background-color: #fee2e2;
-        border-color: var(--jawhar-color);
-    }
-    
-    .root-selector.zihn {
-        border-color: #dbeafe;
-        color: var(--zihn-color);
-    }
-    .root-selector.zihn.active {
-        background-color: #dbeafe;
-        border-color: var(--zihn-color);
-    }
-    
-    .root-selector.waslat {
-        border-color: #fed7aa;
-        color: var(--waslat-color);
-    }
-    .root-selector.waslat.active {
-        background-color: #fed7aa;
-        border-color: var(--waslat-color);
-    }
-    
-    .root-selector.roaya {
-        border-color: #e9d5ff;
-        color: var(--roaya-color);
-    }
-    .root-selector.roaya.active {
-        background-color: #e9d5ff;
-        border-color: var(--roaya-color);
-    }
-</style>
-@endpush
+@section('title', 'تعديل جماعي للأسئلة - ' . $quiz->title)
 
 @section('content')
-<div class="min-h-screen bg-gray-50">
-    <!-- Sticky Header -->
-    <div class="sticky-header bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <a href="{{ route('quizzes.questions.index', $quiz) }}" 
-                           class="text-gray-500 hover:text-gray-700 transition-all hover:scale-110">
-                            <i class="fas fa-arrow-right text-xl"></i>
-                        </a>
-                        <div>
-                            <h1 class="text-2xl font-bold text-gray-900">تعديل جميع الأسئلة</h1>
-                            <p class="text-sm text-gray-600 mt-1">{{ $quiz->title }}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-3">
-                        <button type="button" 
-                                onclick="saveAllQuestions()"
-                                class="px-6 py-2.5 rounded-lg font-medium transition-all transform hover:scale-105 shadow-md hover:shadow-lg flex items-center gap-2"
-                                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-                            <i class="fas fa-save"></i>
-                            حفظ جميع التغييرات
-                        </button>
-                        
-                        <a href="{{ route('quizzes.questions.index', $quiz) }}" 
-                           class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2.5 rounded-lg font-medium transition-all">
-                            إلغاء
-                        </a>
-                    </div>
+<div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4">
+        
+        <!-- Breadcrumb -->
+        <nav class="mb-6" aria-label="مسار التنقل">
+            <ol class="flex items-center gap-3 text-sm">
+                <li>
+                    <a href="{{ route('quizzes.index') }}" class="text-gray-500 hover:text-purple-600 transition-colors">
+                        <i class="fas fa-home" aria-hidden="true"></i>
+                        <span class="sr-only">الرئيسية</span>
+                    </a>
+                </li>
+                <li class="text-gray-400">/</li>
+                <li>
+                    <a href="{{ route('quizzes.show', $quiz) }}" class="text-gray-500 hover:text-purple-600 transition-colors">
+                        {{ $quiz->title }}
+                    </a>
+                </li>
+                <li class="text-gray-400">/</li>
+                <li>
+                    <a href="{{ route('quizzes.questions.index', $quiz) }}" class="text-gray-500 hover:text-purple-600 transition-colors">
+                        الأسئلة
+                    </a>
+                </li>
+                <li class="text-gray-400">/</li>
+                <li class="text-gray-700 font-medium">تعديل جماعي</li>
+            </ol>
+        </nav>
+
+       <!-- Header -->
+<div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+    <div class="bg-gradient-to-r from-orange-600 to-red-600 p-6">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-3xl font-bold mb-2" style="color: #1b1f23;">تعديل جماعي للأسئلة</h1>
+                <p style="color: #2d3a2f; font-weight: 500;">
+                    {{ $quiz->title }} - {{ $quiz->subject_name ?? 'اختبار عام' }} - الصف {{ $quiz->grade_level }}
+                </p>
+            </div>
+            <div class="text-right">
+                <div class="bg-white/20 rounded-lg px-4 py-2">
+                    <span class="text-sm font-medium" style="color: #2c3e50;">عدد الأسئلة</span>
+                    <div class="text-2xl font-bold" style="color: #004225;">{{ $quiz->questions->count() }}</div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Alert Messages -->
+        @if(session('success'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-2" aria-hidden="true"></i>
+                <span>{{ session('success') }}</span>
+            </div>
+        </div>
+        @endif
+
+        @if(session('error'))
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-2" aria-hidden="true"></i>
+                <span>{{ session('error') }}</span>
+            </div>
+        </div>
+        @endif
+
+        @if($errors->any())
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
+            <div class="flex items-center mb-2">
+                <i class="fas fa-exclamation-triangle mr-2" aria-hidden="true"></i>
+                <span class="font-medium">يرجى إصلاح الأخطاء التالية:</span>
+            </div>
+            <ul class="list-disc list-inside space-y-1">
+                @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
+
         <!-- Instructions Card -->
-        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-            <i class="fas fa-info-circle text-blue-600 text-xl mt-0.5"></i>
-            <div>
-                <h3 class="font-semibold text-blue-900 mb-1">تعليمات التعديل الجماعي</h3>
-                <p class="text-sm text-blue-800">يمكنك تعديل جميع الأسئلة في وقت واحد. التغييرات لن تُحفظ حتى تضغط على زر "حفظ جميع التغييرات".</p>
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-info-circle text-blue-600 text-xl mt-0.5" aria-hidden="true"></i>
+                <div>
+                    <h3 class="font-bold text-blue-900 mb-2">تعليمات التعديل الجماعي</h3>
+                    <div class="text-sm text-blue-800 space-y-1">
+                        <p>• يمكنك تعديل جميع أسئلة الاختبار في صفحة واحدة</p>
+                        <p>• التغييرات لن تُحفظ حتى تضغط على زر "حفظ جميع التغييرات"</p>
+                        <p>• تأكد من تحديد الإجابة الصحيحة لكل سؤال</p>
+                        <p>• استخدم أزرار التوسيط/الطي لسهولة التنقل</p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <form id="bulk-edit-form" action="{{ route('quizzes.questions.bulk-update', $quiz) }}" method="POST">
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-xl shadow-lg p-4 mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    <button type="button" onclick="expandAllQuestions()" 
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors text-sm">
+                        <i class="fas fa-expand-alt mr-2" aria-hidden="true"></i>
+                        توسيع الكل
+                    </button>
+                    <button type="button" onclick="collapseAllQuestions()" 
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors text-sm">
+                        <i class="fas fa-compress-alt mr-2" aria-hidden="true"></i>
+                        طي الكل
+                    </button>
+                    <button type="button" onclick="validateAllQuestions()" 
+                            class="inline-flex items-center px-4 py-2 border border-blue-300 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors text-sm">
+                        <i class="fas fa-check-double mr-2" aria-hidden="true"></i>
+                        فحص جميع الأسئلة
+                    </button>
+                </div>
+                <div class="text-sm text-gray-500">
+                    <span id="validation-status">جاهز للتعديل</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Form -->
+        <form action="{{ route('quizzes.questions.bulk-update', $quiz) }}" method="POST" id="bulk-edit-form" novalidate>
             @csrf
             @method('PUT')
             
-            <div class="space-y-6">
+            <div class="space-y-6 mb-8">
                 @foreach($quiz->questions as $index => $question)
-                <div class="question-edit-card {{ $question->root_type }} p-6" data-question-index="{{ $index }}">
+                <div class="question-edit-card bg-white rounded-2xl shadow-lg overflow-hidden" data-question-index="{{ $index }}">
+                    <!-- Hidden fields -->
                     <input type="hidden" name="questions[{{ $index }}][id]" value="{{ $question->id }}">
+                    <input type="hidden" name="questions[{{ $index }}][correct_answer]" id="correct_answer_{{ $index }}" value="{{ old("questions.{$index}.correct_answer", $question->correct_answer) }}">
                     
-                    <div class="flex items-start gap-4">
-                        <!-- Question Number -->
-                        <div class="number-badge {{ $question->root_type }}">
-                            {{ $index + 1 }}
+                    <!-- Question Header -->
+                    <div class="question-header bg-gradient-to-r from-gray-100 to-gray-200 px-6 py-4 border-b cursor-pointer" onclick="toggleQuestion({{ $index }})">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="question-number w-10 h-10 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white flex items-center justify-center font-bold">
+                                    {{ $index + 1 }}
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-900">السؤال {{ $index + 1 }}</h3>
+                                    <div class="flex items-center gap-4 text-sm">
+                                        <span class="root-badge root-{{ $question->root_type }}">
+                                            @switch($question->root_type)
+                                                @case('jawhar')
+                                                    🎯 جَوهر
+                                                    @break
+                                                @case('zihn')
+                                                    🧠 ذِهن
+                                                    @break
+                                                @case('waslat')
+                                                    🔗 وَصلات
+                                                    @break
+                                                @case('roaya')
+                                                    👁️ رُؤية
+                                                    @break
+                                            @endswitch
+                                        </span>
+                                        <span class="depth-badge depth-{{ $question->depth_level }}">
+                                            مستوى {{ $question->depth_level }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="validation-icon hidden text-green-600" id="valid_{{ $index }}">
+                                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                                </span>
+                                <span class="validation-icon hidden text-red-600" id="invalid_{{ $index }}">
+                                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                </span>
+                                <i class="fas fa-chevron-down transition-transform duration-200" id="chevron_{{ $index }}" aria-hidden="true"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Question Content -->
+                    <div class="question-content p-6 space-y-6" id="content_{{ $index }}">
+                        
+                        <!-- Question Text -->
+                        <div class="animate-fade-in">
+                            <label for="question_{{ $index }}" class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <i class="fas fa-question-circle text-orange-600" aria-hidden="true"></i>
+                                نص السؤال *
+                            </label>
+                            <textarea name="questions[{{ $index }}][question]" 
+                                      id="question_{{ $index }}"
+                                      class="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors resize-none"
+                                      rows="3"
+                                      placeholder="اكتب نص السؤال هنا..."
+                                      required
+                                      maxlength="1000">{{ old("questions.{$index}.question", $question->question) }}</textarea>
+                            @error("questions.{$index}.question")
+                            <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                {{ $message }}
+                            </p>
+                            @enderror
+                            <div class="mt-1 text-right">
+                                <span class="char-counter text-sm text-gray-500" data-target="question_{{ $index }}">0 / 1000 حرف</span>
+                            </div>
                         </div>
                         
-                        <!-- Question Content -->
-                        <div class="flex-1 space-y-4">
-                            <!-- Question Text -->
+                        <!-- Root Type and Depth Level -->
+                        <div class="grid md:grid-cols-2 gap-6">
+                            
+                            <!-- Root Type -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">نص السؤال</label>
-                                <textarea name="questions[{{ $index }}][question]" 
-                                          class="modern-textarea"
-                                          rows="3" 
-                                          required>{{ $question->question }}</textarea>
+                                <label for="root_type_{{ $index }}" class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    <i class="fas fa-sitemap text-orange-600" aria-hidden="true"></i>
+                                    نوع الجذر *
+                                </label>
+                                <select name="questions[{{ $index }}][root_type]" 
+                                        id="root_type_{{ $index }}"
+                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                                        required>
+                                    <option value="">اختر نوع الجذر</option>
+                                    <option value="jawhar" {{ old("questions.{$index}.root_type", $question->root_type) == 'jawhar' ? 'selected' : '' }}>
+                                        🎯 جَوهر - الماهية (ما هو؟)
+                                    </option>
+                                    <option value="zihn" {{ old("questions.{$index}.root_type", $question->root_type) == 'zihn' ? 'selected' : '' }}>
+                                        🧠 ذِهن - التحليل (كيف يعمل؟)
+                                    </option>
+                                    <option value="waslat" {{ old("questions.{$index}.root_type", $question->root_type) == 'waslat' ? 'selected' : '' }}>
+                                        🔗 وَصلات - الربط (كيف يرتبط؟)
+                                    </option>
+                                    <option value="roaya" {{ old("questions.{$index}.root_type", $question->root_type) == 'roaya' ? 'selected' : '' }}>
+                                        👁️ رُؤية - التطبيق (كيف نستخدمه؟)
+                                    </option>
+                                </select>
+                                @error("questions.{$index}.root_type")
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                    {{ $message }}
+                                </p>
+                                @enderror
                             </div>
                             
-                            <!-- Root Type and Depth Level -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- Root Type -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">نوع الجذر</label>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        @php
-                                            $roots = [
-                                                'jawhar' => ['name' => 'جَوهر', 'icon' => '🎯'],
-                                                'zihn' => ['name' => 'ذِهن', 'icon' => '🧠'],
-                                                'waslat' => ['name' => 'وَصلات', 'icon' => '🔗'],
-                                                'roaya' => ['name' => 'رُؤية', 'icon' => '👁️']
-                                            ];
-                                        @endphp
-                                        @foreach($roots as $rootKey => $root)
-                                        <label class="cursor-pointer">
+                            <!-- Depth Level -->
+                            <div>
+                                <label for="depth_level_{{ $index }}" class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    <i class="fas fa-layer-group text-orange-600" aria-hidden="true"></i>
+                                    مستوى العمق *
+                                </label>
+                                <select name="questions[{{ $index }}][depth_level]" 
+                                        id="depth_level_{{ $index }}"
+                                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                                        required>
+                                    <option value="">اختر مستوى العمق</option>
+                                    <option value="1" {{ old("questions.{$index}.depth_level", $question->depth_level) == '1' ? 'selected' : '' }}>
+                                        🟢 مستوى 1 - سطحي (فهم مباشر)
+                                    </option>
+                                    <option value="2" {{ old("questions.{$index}.depth_level", $question->depth_level) == '2' ? 'selected' : '' }}>
+                                        🟡 مستوى 2 - متوسط (تحليل وربط)
+                                    </option>
+                                    <option value="3" {{ old("questions.{$index}.depth_level", $question->depth_level) == '3' ? 'selected' : '' }}>
+                                        🔴 مستوى 3 - عميق (تقييم وابتكار)
+                                    </option>
+                                </select>
+                                @error("questions.{$index}.depth_level")
+                                <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                    {{ $message }}
+                                </p>
+                                @enderror
+                            </div>
+                        </div>
+                        
+                        <!-- Answer Options -->
+                        <div>
+                            <label class="block text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                <i class="fas fa-list-ul text-orange-600" aria-hidden="true"></i>
+                                خيارات الإجابة *
+                            </label>
+                            
+                            <div class="space-y-4">
+                                @php
+                                    $currentOptions = old("questions.{$index}.options", $question->options ?? []);
+                                    $currentCorrectAnswer = old("questions.{$index}.correct_answer", $question->correct_answer);
+                                    $labels = ['أ', 'ب', 'ج', 'د'];
+                                @endphp
+                                
+                                @for($i = 0; $i < 4; $i++)
+                                <div class="option-row border-2 border-gray-200 rounded-xl p-4 transition-colors hover:border-orange-300 {{ isset($currentOptions[$i]) && $currentOptions[$i] === $currentCorrectAnswer ? 'correct-answer' : '' }}" data-question="{{ $index }}" data-option="{{ $i }}">
+                                    <div class="flex items-center gap-4">
+                                        <div class="flex-shrink-0">
                                             <input type="radio" 
-                                                   name="questions[{{ $index }}][root_type]" 
-                                                   value="{{ $rootKey }}"
-                                                   {{ $question->root_type == $rootKey ? 'checked' : '' }}
-                                                   class="sr-only"
-                                                   onchange="updateQuestionCard({{ $index }}, '{{ $rootKey }}')">
-                                            <div class="root-selector {{ $rootKey }} {{ $question->root_type == $rootKey ? 'active' : '' }}">
-                                                <span>{{ $root['icon'] }}</span>
-                                                <span>{{ $root['name'] }}</span>
-                                            </div>
-                                        </label>
-                                        @endforeach
-                                    </div>
-                                </div>
-                                
-                                <!-- Depth Level -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">مستوى العمق</label>
-                                    <select name="questions[{{ $index }}][depth_level]" 
-                                            class="modern-select">
-                                        <option value="1" {{ $question->depth_level == 1 ? 'selected' : '' }}>🟡 المستوى 1 - سطحي</option>
-                                        <option value="2" {{ $question->depth_level == 2 ? 'selected' : '' }}>🟠 المستوى 2 - متوسط</option>
-                                        <option value="3" {{ $question->depth_level == 3 ? 'selected' : '' }}>🟢 المستوى 3 - عميق</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <!-- Answer Options -->
-                            <div>
-                                <div class="flex items-center justify-between mb-3">
-                                    <label class="text-sm font-medium text-gray-700">خيارات الإجابة</label>
-                                    <span class="text-xs text-gray-500">حدد الإجابة الصحيحة بالنقر على الدائرة</span>
-                                </div>
-                                
-                                <div class="space-y-2">
-                                    @foreach($question->options as $optIndex => $option)
-                                    <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all">
-                                        <input type="radio" 
-                                               name="questions[{{ $index }}][correct_answer]" 
-                                               value="{{ $option }}"
-                                               {{ $question->correct_answer == $option ? 'checked' : '' }}
-                                               class="w-4 h-4 text-green-600 focus:ring-green-500 cursor-pointer"
-                                               id="correct-{{ $index }}-{{ $optIndex }}">
-                                        
-                                        <label for="correct-{{ $index }}-{{ $optIndex }}" class="flex items-center gap-3 flex-1 cursor-pointer">
-                                            <span class="option-letter">
-                                                {{ ['أ', 'ب', 'ج', 'د', 'هـ', 'و'][$optIndex] ?? $optIndex + 1 }}
-                                            </span>
+                                                   name="questions[{{ $index }}][correct_answer_selector]" 
+                                                   value="{{ $i }}" 
+                                                   id="correct_{{ $index }}_{{ $i }}"
+                                                   class="w-5 h-5 text-orange-600 focus:ring-orange-500"
+                                                   {{ isset($currentOptions[$i]) && $currentOptions[$i] === $currentCorrectAnswer ? 'checked' : '' }}>
+                                            <label for="correct_{{ $index }}_{{ $i }}" class="mr-3 text-lg font-bold text-gray-700 cursor-pointer">{{ $labels[$i] }})</label>
+                                        </div>
+                                        <div class="flex-1">
                                             <input type="text" 
                                                    name="questions[{{ $index }}][options][]" 
-                                                   value="{{ $option }}"
-                                                   class="option-input"
-                                                   placeholder="خيار {{ $optIndex + 1 }}"
-                                                   required>
-                                        </label>
+                                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                                                   placeholder="الخيار {{ $labels[$i] }}"
+                                                   required
+                                                   maxlength="500"
+                                                   value="{{ $currentOptions[$i] ?? '' }}">
+                                        </div>
                                     </div>
-                                    @endforeach
                                 </div>
+                                @endfor
                             </div>
+                            
+                            @error("questions.{$index}.options")
+                            <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                {{ $message }}
+                            </p>
+                            @enderror
+                            
+                            @error("questions.{$index}.correct_answer")
+                            <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                {{ $message }}
+                            </p>
+                            @enderror
+                        </div>
+                        
+                        <!-- Explanation (Optional) -->
+                        <div>
+                            <label for="explanation_{{ $index }}" class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <i class="fas fa-lightbulb text-orange-600" aria-hidden="true"></i>
+                                شرح الإجابة (اختياري)
+                            </label>
+                            <textarea name="questions[{{ $index }}][explanation]" 
+                                      id="explanation_{{ $index }}"
+                                      class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors resize-none"
+                                      rows="2"
+                                      placeholder="اكتب شرحاً للإجابة الصحيحة (اختياري)"
+                                      maxlength="1000">{{ old("questions.{$index}.explanation", $question->explanation) }}</textarea>
+                            @error("questions.{$index}.explanation")
+                            <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                {{ $message }}
+                            </p>
+                            @enderror
                         </div>
                     </div>
                 </div>
                 @endforeach
             </div>
+            
+            <!-- Form Actions -->
+            <div class="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex flex-col sm:flex-row justify-between gap-4 shadow-lg rounded-t-xl">
+                <div class="flex gap-3">
+                    <a href="{{ route('quizzes.questions.index', $quiz) }}" 
+                       class="inline-flex items-center px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium">
+                        <i class="fas fa-arrow-right mr-2" aria-hidden="true"></i>
+                        العودة للأسئلة
+                    </a>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="button" 
+                            onclick="resetAllQuestions()"
+                            class="inline-flex items-center px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium">
+                        <i class="fas fa-undo mr-2" aria-hidden="true"></i>
+                        استعادة الأصل
+                    </button>
+                    
+                    <button type="submit" 
+        id="submit-btn"
+        class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all transform hover:scale-105 font-bold shadow-lg">
+    <i class="fas fa-save mr-2" aria-hidden="true"></i>
+    <span id="submit-text" style="color: #006400;">حفظ جميع التغييرات</span>
+    <i class="fas fa-spinner fa-spin mr-2 hidden" id="submit-spinner" aria-hidden="true"></i>
+</button>
+
+                </div>
+            </div>
         </form>
     </div>
 </div>
 
-<!-- Success Modal -->
-<div id="success-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-xl p-8 max-w-sm mx-4 text-center transform scale-0 transition-transform" id="success-modal-content">
-        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="fas fa-check text-green-600 text-3xl success-checkmark"></i>
-        </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-2">تم الحفظ بنجاح!</h3>
-        <p class="text-gray-600 mb-4">تم حفظ جميع التغييرات بنجاح</p>
-        <button onclick="closeSuccessModal()" 
-                class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-all">
-            حسناً
-        </button>
-    </div>
-</div>
-
-<!-- Loading Overlay -->
-<div id="loading-overlay" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-xl p-6 flex items-center gap-4">
-        <div class="spinner"></div>
-        <span class="text-gray-700 font-medium">جاري حفظ التغييرات...</span>
-    </div>
-</div>
-@endsection
-
-@push('scripts')
-<script>
-// Update question card root type dynamically
-function updateQuestionCard(index, rootType) {
-    const card = document.querySelector(`[data-question-index="${index}"]`);
-    const badge = card.querySelector('.number-badge');
-    const selectors = card.querySelectorAll('.root-selector');
-    
-    // Remove all root classes
-    ['jawhar', 'zihn', 'waslat', 'roaya'].forEach(root => {
-        card.classList.remove(root);
-        badge.classList.remove(root);
-    });
-    
-    // Add new root class
-    card.classList.add(rootType);
-    badge.classList.add(rootType);
-    
-    // Update selector states
-    selectors.forEach(selector => {
-        selector.classList.remove('active');
-        if (selector.parentElement.querySelector(`input[value="${rootType}"]`)) {
-            selector.classList.add('active');
-        }
-    });
-}
-
-// Save all questions
-async function saveAllQuestions() {
-    const form = document.getElementById('bulk-edit-form');
-    const formData = new FormData(form);
-    
-    // Show loading
-    document.getElementById('loading-overlay').classList.remove('hidden');
-    
-    try {
-        const response = await fetch(form.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            }
-        });
-        
-        if (response.ok) {
-            // Hide loading
-            document.getElementById('loading-overlay').classList.add('hidden');
-            
-            // Show success modal
-            const modal = document.getElementById('success-modal');
-            const modalContent = document.getElementById('success-modal-content');
-            modal.classList.remove('hidden');
-            
-            setTimeout(() => {
-                modalContent.style.transform = 'scale(1)';
-            }, 10);
-            
-            // Redirect after 2 seconds
-            setTimeout(() => {
-                window.location.href = '{{ route("quizzes.questions.index", $quiz) }}';
-            }, 2000);
-        } else {
-            throw new Error('Failed to save');
-        }
-    } catch (error) {
-        document.getElementById('loading-overlay').classList.add('hidden');
-        alert('حدث خطأ أثناء الحفظ. يرجى المحاولة مرة أخرى.');
+@push('styles')
+<style>
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-// Close success modal
-function closeSuccessModal() {
-    const modal = document.getElementById('success-modal');
-    const modalContent = document.getElementById('success-modal-content');
-    
-    modalContent.style.transform = 'scale(0)';
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
+.animate-fade-in {
+    animation: fade-in 0.6s ease-out forwards;
 }
 
-// Auto-resize textareas
+.option-row.correct-answer {
+    border-color: #ea580c;
+    background-color: #fff7ed;
+}
+
+.option-row.correct-answer input[type="text"] {
+    border-color: #ea580c;
+    background-color: #ffedd5;
+}
+
+.question-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.question-content.expanded {
+    max-height: 2000px;
+}
+
+.root-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.root-jawhar { background-color: #d1fae5; color: #065f46; }
+.root-zihn { background-color: #dbeafe; color: #1e40af; }
+.root-waslat { background-color: #e9d5ff; color: #7c2d12; }
+.root-roaya { background-color: #fed7aa; color: #9a3412; }
+
+.depth-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.depth-1 { background-color: #d1fae5; color: #065f46; }
+.depth-2 { background-color: #fef3c7; color: #92400e; }
+.depth-3 { background-color: #fecaca; color: #991b1b; }
+
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.validation-passed {
+    border-color: #10b981 !important;
+    background-color: #ecfdf5 !important;
+}
+
+.validation-failed {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+</style>
+@endpush
+
+@push('scripts')
+<script>
+// Store original data for reset functionality
+const originalData = [
+    @foreach($quiz->questions as $index => $question)
+    {
+        id: {{ $question->id }},
+        question: @json($question->question),
+        options: @json($question->options ?? []),
+        correct_answer: @json($question->correct_answer),
+        root_type: @json($question->root_type),
+        depth_level: {{ $question->depth_level }},
+        explanation: @json($question->explanation)
+    }@if(!$loop->last),@endif
+    @endforeach
+];
+
 document.addEventListener('DOMContentLoaded', function() {
-    const textareas = document.querySelectorAll('.modern-textarea');
+    // Initialize character counters
+    initializeCharCounters();
     
-    textareas.forEach(textarea => {
-        // Initial resize
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
+    // Initialize correct answer handlers
+    initializeCorrectAnswerHandlers();
+    
+    // Initialize form submission
+    initializeFormSubmission();
+    
+    // Expand first question by default
+    toggleQuestion(0);
+});
+
+function initializeCharCounters() {
+    document.querySelectorAll('.char-counter').forEach(counter => {
+        const targetId = counter.getAttribute('data-target');
+        const target = document.getElementById(targetId);
         
-        // Resize on input
-        textarea.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
+        if (target) {
+            function updateCounter() {
+                const length = target.value.length;
+                counter.textContent = `${length} / 1000 حرف`;
+                
+                if (length > 900) {
+                    counter.classList.add('text-red-600');
+                    counter.classList.remove('text-yellow-600');
+                } else if (length > 700) {
+                    counter.classList.add('text-yellow-600');
+                    counter.classList.remove('text-red-600');
+                } else {
+                    counter.classList.remove('text-red-600', 'text-yellow-600');
+                }
+            }
+            
+            target.addEventListener('input', updateCounter);
+            updateCounter();
+        }
+    });
+}
+
+function initializeCorrectAnswerHandlers() {
+    // Handle correct answer selection for each question
+    document.querySelectorAll('input[type="radio"][name*="correct_answer_selector"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const matches = this.name.match(/questions\[(\d+)\]\[correct_answer_selector\]/);
+            if (matches) {
+                const questionIndex = matches[1];
+                updateCorrectAnswer(questionIndex);
+            }
         });
     });
     
-    // Add keyboard shortcut for save (Ctrl+S)
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-            e.preventDefault();
-            saveAllQuestions();
-        }
-    });
-});
-
-// Add input validation feedback
-document.querySelectorAll('.modern-input, .modern-textarea, .option-input').forEach(input => {
-    input.addEventListener('blur', function() {
-        if (this.value.trim() === '' && this.hasAttribute('required')) {
-            this.style.borderColor = '#ef4444';
-        } else {
-            this.style.borderColor = '#e5e7eb';
-        }
+    // Handle option text changes
+    document.querySelectorAll('input[name*="[options][]"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const optionRow = this.closest('.option-row');
+            if (optionRow) {
+                const questionIndex = optionRow.getAttribute('data-question');
+                const optionIndex = optionRow.getAttribute('data-option');
+                const correspondingRadio = document.querySelector(`input[name="questions[${questionIndex}][correct_answer_selector]"][value="${optionIndex}"]`);
+                
+                if (correspondingRadio && correspondingRadio.checked) {
+                    document.getElementById(`correct_answer_${questionIndex}`).value = this.value.trim();
+                }
+            }
+        });
     });
     
-    input.addEventListener('focus', function() {
-        this.style.borderColor = '#3b82f6';
+    // Initialize correct answers on page load
+    for (let i = 0; i < originalData.length; i++) {
+        updateCorrectAnswer(i);
+    }
+}
+
+function updateCorrectAnswer(questionIndex) {
+    const optionRows = document.querySelectorAll(`.option-row[data-question="${questionIndex}"]`);
+    const correctAnswerHidden = document.getElementById(`correct_answer_${questionIndex}`);
+    
+    // Remove all correct-answer classes
+    optionRows.forEach(row => row.classList.remove('correct-answer'));
+    
+    // Find which radio is checked
+    const checkedRadio = document.querySelector(`input[name="questions[${questionIndex}][correct_answer_selector]"]:checked`);
+    if (checkedRadio) {
+        const optionIndex = parseInt(checkedRadio.value);
+        const optionInput = document.querySelector(`input[name="questions[${questionIndex}][options][]"]:nth-of-type(${optionIndex + 1})`);
+        
+        if (optionInput && optionInput.value.trim()) {
+            correctAnswerHidden.value = optionInput.value.trim();
+            // Add visual indicator
+            optionRows[optionIndex].classList.add('correct-answer');
+        }
+    }
+}
+
+function initializeFormSubmission() {
+    const form = document.getElementById('bulk-edit-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const submitText = document.getElementById('submit-text');
+    const submitSpinner = document.getElementById('submit-spinner');
+    
+    form.addEventListener('submit', function(e) {
+        // Validate all questions
+        let isValid = true;
+        
+        for (let i = 0; i < originalData.length; i++) {
+            const correctAnswer = document.getElementById(`correct_answer_${i}`).value.trim();
+            if (!correctAnswer) {
+                isValid = false;
+                alert(`يرجى تحديد الإجابة الصحيحة للسؤال رقم ${i + 1}`);
+                scrollToQuestion(i);
+                break;
+            }
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        submitText.textContent = 'جاري الحفظ...';
+        submitSpinner.classList.remove('hidden');
+        
+        // Optional: Add a timeout to re-enable the button if something goes wrong
+        setTimeout(() => {
+            if (submitBtn.disabled) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                submitText.textContent = 'حفظ جميع التغييرات';
+                submitSpinner.classList.add('hidden');
+            }
+        }, 30000); // 30 seconds for bulk operations
     });
-});
+}
+
+// Question expand/collapse functions
+function toggleQuestion(index) {
+    const content = document.getElementById(`content_${index}`);
+    const chevron = document.getElementById(`chevron_${index}`);
+    
+    if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        chevron.style.transform = 'rotate(0deg)';
+    } else {
+        content.classList.add('expanded');
+        chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+function expandAllQuestions() {
+    for (let i = 0; i < originalData.length; i++) {
+        const content = document.getElementById(`content_${i}`);
+        const chevron = document.getElementById(`chevron_${i}`);
+        content.classList.add('expanded');
+        chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+function collapseAllQuestions() {
+    for (let i = 0; i < originalData.length; i++) {
+        const content = document.getElementById(`content_${i}`);
+        const chevron = document.getElementById(`chevron_${i}`);
+        content.classList.remove('expanded');
+        chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+function scrollToQuestion(index) {
+    const questionCard = document.querySelector(`[data-question-index="${index}"]`);
+    if (questionCard) {
+        questionCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Expand the question if collapsed
+        const content = document.getElementById(`content_${index}`);
+        if (!content.classList.contains('expanded')) {
+            toggleQuestion(index);
+        }
+    }
+}
+
+// Validation functions
+function validateAllQuestions() {
+    let validCount = 0;
+    let invalidCount = 0;
+    
+    for (let i = 0; i < originalData.length; i++) {
+        const isValid = validateQuestion(i);
+        if (isValid) {
+            validCount++;
+            document.getElementById(`valid_${i}`).classList.remove('hidden');
+            document.getElementById(`invalid_${i}`).classList.add('hidden');
+        } else {
+            invalidCount++;
+            document.getElementById(`valid_${i}`).classList.add('hidden');
+            document.getElementById(`invalid_${i}`).classList.remove('hidden');
+        }
+    }
+    
+    const statusElement = document.getElementById('validation-status');
+    if (invalidCount === 0) {
+        statusElement.textContent = `جميع الأسئلة صحيحة (${validCount} سؤال)`;
+        statusElement.className = 'text-sm text-green-600 font-medium';
+    } else {
+        statusElement.textContent = `${invalidCount} سؤال يحتاج إصلاح من أصل ${validCount + invalidCount}`;
+        statusElement.className = 'text-sm text-red-600 font-medium';
+    }
+}
+
+function validateQuestion(index) {
+    const question = document.getElementById(`question_${index}`).value.trim();
+    const correctAnswer = document.getElementById(`correct_answer_${index}`).value.trim();
+    const rootType = document.getElementById(`root_type_${index}`).value;
+    const depthLevel = document.getElementById(`depth_level_${index}`).value;
+    
+    // Check if all required fields are filled
+    if (!question || !correctAnswer || !rootType || !depthLevel) {
+        return false;
+    }
+    
+    // Check if all options are filled
+    const options = document.querySelectorAll(`input[name="questions[${index}][options][]"]`);
+    for (let option of options) {
+        if (!option.value.trim()) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Reset function
+function resetAllQuestions() {
+    if (confirm('هل أنت متأكد من استعادة جميع الأسئلة للقيم الأصلية؟ ستفقد جميع التعديلات.')) {
+        for (let i = 0; i < originalData.length; i++) {
+            const data = originalData[i];
+            
+            // Reset form fields
+            document.getElementById(`question_${i}`).value = data.question;
+            document.getElementById(`root_type_${i}`).value = data.root_type;
+            document.getElementById(`depth_level_${i}`).value = data.depth_level;
+            document.getElementById(`explanation_${i}`).value = data.explanation || '';
+            
+            // Reset options
+            const optionInputs = document.querySelectorAll(`input[name="questions[${i}][options][]"]`);
+            optionInputs.forEach((input, optionIndex) => {
+                input.value = data.options[optionIndex] || '';
+            });
+            
+            // Reset correct answer
+            document.getElementById(`correct_answer_${i}`).value = data.correct_answer;
+            
+            // Find and check the correct radio button
+            const correctIndex = data.options.findIndex(option => option === data.correct_answer);
+            if (correctIndex !== -1) {
+                const radio = document.querySelector(`input[name="questions[${i}][correct_answer_selector]"][value="${correctIndex}"]`);
+                if (radio) radio.checked = true;
+            }
+            
+            // Update visual indicators
+            updateCorrectAnswer(i);
+        }
+        
+        // Update character counters
+        initializeCharCounters();
+        
+        // Clear validation indicators
+        document.querySelectorAll('.validation-icon').forEach(icon => {
+            icon.classList.add('hidden');
+        });
+        
+        document.getElementById('validation-status').textContent = 'تم استعادة جميع القيم الأصلية';
+        document.getElementById('validation-status').className = 'text-sm text-blue-600 font-medium';
+    }
+}
 </script>
 @endpush
+@endsection

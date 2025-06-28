@@ -1,17 +1,18 @@
 @extends('layouts.app')
 
-@section('title', 'إضافة أسئلة جديدة - ' . $quiz->title)
+@section('title', 'إضافة سؤال جديد - ' . $quiz->title)
 
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 py-8">
     <div class="max-w-6xl mx-auto px-4">
         
         <!-- Breadcrumb -->
-        <nav class="mb-6">
+        <nav class="mb-6" aria-label="مسار التنقل">
             <ol class="flex items-center gap-3 text-sm">
                 <li>
                     <a href="{{ route('quizzes.index') }}" class="text-gray-500 hover:text-purple-600 transition-colors">
-                        <i class="fas fa-home"></i>
+                        <i class="fas fa-home" aria-hidden="true"></i>
+                        <span class="sr-only">الرئيسية</span>
                     </a>
                 </li>
                 <li class="text-gray-400">/</li>
@@ -21,17 +22,23 @@
                     </a>
                 </li>
                 <li class="text-gray-400">/</li>
-                <li class="text-gray-700 font-medium">إضافة أسئلة</li>
+                <li>
+                    <a href="{{ route('quizzes.questions.index', $quiz) }}" class="text-gray-500 hover:text-purple-600 transition-colors">
+                        الأسئلة
+                    </a>
+                </li>
+                <li class="text-gray-400">/</li>
+                <li class="text-gray-700 font-medium">إضافة سؤال</li>
             </ol>
         </nav>
 
         <!-- Header -->
         <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
             <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between flex-wrap gap-4">
                     <div>
-                        <h1 class="text-3xl font-bold mb-2">إضافة أسئلة جديدة</h1>
-                        <p class="text-blue-100">{{ $quiz->title }} - {{ $quiz->subject_name }} - الصف {{ $quiz->grade_level }}</p>
+                        <h1 class="text-3xl font-bold mb-2">إضافة سؤال جديد</h1>
+                        <p class="text-blue-100">{{ $quiz->title }} - {{ $quiz->subject_name ?? 'اختبار عام' }} - الصف {{ $quiz->grade_level }}</p>
                     </div>
                     <div class="text-right">
                         <div class="bg-white/20 rounded-lg px-4 py-2">
@@ -43,688 +50,532 @@
             </div>
         </div>
 
-        <form action="{{ route('quizzes.questions.store', $quiz) }}" method="POST" id="questions-form">
+        <!-- Alert Messages -->
+        @if(session('success'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6" role="alert">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-2" aria-hidden="true"></i>
+                <span>{{ session('success') }}</span>
+            </div>
+        </div>
+        @endif
+
+        @if(session('error'))
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-2" aria-hidden="true"></i>
+                <span>{{ session('error') }}</span>
+            </div>
+        </div>
+        @endif
+
+        @if($errors->any())
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
+            <div class="flex items-center mb-2">
+                <i class="fas fa-exclamation-triangle mr-2" aria-hidden="true"></i>
+                <span class="font-medium">يرجى إصلاح الأخطاء التالية:</span>
+            </div>
+            <ul class="list-disc list-inside space-y-1">
+                @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+        @endif
+
+        <!-- Main Form -->
+        <form action="{{ route('quizzes.questions.store', $quiz) }}" method="POST" id="question-form" novalidate>
             @csrf
             
-            <!-- Educational Passage Section -->
-            <div class="bg-white rounded-2xl shadow-lg mb-8 overflow-hidden">
-                <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                        📖 النص التعليمي (اختياري)
-                    </h2>
-                    <p class="text-blue-100 text-sm mt-1">يمكنك إضافة نص أو مقال ليقرأه الطلاب قبل الإجابة على الأسئلة</p>
-                </div>
-                
-                <div class="p-6">
-                    <!-- Check if quiz has saved passage data -->
-                    @php
-                        $savedPassage = null;
-                        $savedPassageTitle = null;
-                        
-                        // Try to get from passage_data JSON field first
-                        if ($quiz->passage_data) {
-                            $passageData = is_string($quiz->passage_data) 
-                                ? json_decode($quiz->passage_data, true) 
-                                : $quiz->passage_data;
-                            $savedPassage = $passageData['passage'] ?? null;
-                            $savedPassageTitle = $passageData['passage_title'] ?? null;
-                        }
-                        
-                        // Fallback to first question's passage
-                        if (!$savedPassage) {
-                            $firstQuestion = $quiz->questions->where('passage', '!=', null)->first();
-                            if ($firstQuestion) {
-                                $savedPassage = $firstQuestion->passage;
-                                $savedPassageTitle = $firstQuestion->passage_title;
-                            }
-                        }
-                    @endphp
-                
-                    @if($savedPassage)
-                        <!-- Saved Passage Display -->
-                        <div class="bg-green-50 border border-green-200 rounded-lg mb-6">
-                            <!-- Header with expand/collapse -->
-                            <div class="flex items-center justify-between p-4 border-b border-green-200">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                                        <i class="fas fa-check text-white text-sm"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="font-bold text-green-800">النص التعليمي محفوظ</h3>
-                                        @if($savedPassageTitle)
-                                            <p class="text-green-600 text-sm">{{ $savedPassageTitle }}</p>
-                                        @endif
-                                    </div>
-                                </div>
-                                <button type="button" 
-                                        onclick="togglePassageContent()" 
-                                        id="toggle-passage-btn"
-                                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm transition flex items-center gap-2">
-                                    <i class="fas fa-eye" id="toggle-icon"></i>
-                                    <span id="toggle-text">عرض النص</span>
-                                </button>
-                            </div>
-                            
-                            <!-- Expandable Content -->
-                            <div id="passage-content" class="hidden">
-                                <div class="p-6 bg-white m-4 rounded border">
-                                    <div class="prose prose-lg max-w-none" dir="rtl" style="font-family: 'Tajawal', 'Cairo', Arial, sans-serif;">
-                                        {!! $savedPassage !!}
-                                    </div>
-                                    
-                                    <!-- Reading Info -->
-                                    <div class="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-600 flex justify-between">
-                                        <span id="passage-word-count" class="flex items-center gap-2">
-                                            <i class="fas fa-align-left text-green-600"></i>
-                                            <span class="font-medium">... كلمة</span>
-                                        </span>
-                                        <span id="passage-reading-time" class="flex items-center gap-2">
-                                            <i class="fas fa-clock text-green-600"></i>
-                                            <span class="font-medium">... دقيقة قراءة</span>
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Edit Mode (hidden by default) -->
-                        <div id="passage-edit" class="hidden">
-                    @else
-                        <!-- New passage entry -->
-                        <div id="passage-edit">
-                    @endif
-                    
-                        <div class="bg-white border border-gray-200 rounded-lg p-6">
-                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                <i class="fas fa-book-open text-blue-600"></i>
-                                إضافة النص التعليمي
-                            </h3>
-                            
-                            <div class="grid md:grid-cols-4 gap-4 mb-4">
-                                <div class="md:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">عنوان النص</label>
-                                    <input type="text" 
-                                           name="passage_title" 
-                                           value="{{ old('passage_title', $savedPassageTitle) }}"
-                                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                           placeholder="مثال: قصة الأسد والفأر">
-                                    @error('passage_title')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                                
-                                <div class="md:col-span-3">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">النص التعليمي</label>
-                                    <textarea name="passage" 
-                                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
-                                              rows="6"
-                                              placeholder="اكتب النص التعليمي هنا..."
-                                              onkeyup="updateWordCount()">{{ old('passage', $savedPassage) }}</textarea>
-                                    <div class="flex justify-between items-center mt-2">
-                                        <small class="text-gray-500">سيظهر هذا النص للطلاب قبل الأسئلة</small>
-                                        <small id="word-count" class="text-sm text-gray-500">0 كلمة</small>
-                                    </div>
-                                    @error('passage')
-                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                            </div>
-                            
-                
-                        </div>
-                        
-                    </div> <!-- Close passage-edit div -->
-                </div>
-                
-                <script>
-                // Toggle passage content visibility
-                function togglePassageContent() {
-                    const content = document.getElementById('passage-content');
-                    const icon = document.getElementById('toggle-icon');
-                    const text = document.getElementById('toggle-text');
-                    
-                    if (content.classList.contains('hidden')) {
-                        content.classList.remove('hidden');
-                        icon.className = 'fas fa-eye-slash';
-                        text.textContent = 'إخفاء النص';
-                        
-                        // Calculate reading stats when content is shown
-                        calculatePassageStats();
-                    } else {
-                        content.classList.add('hidden');
-                        icon.className = 'fas fa-eye';
-                        text.textContent = 'عرض النص';
-                    }
-                }
-                
-                // Calculate passage reading statistics
-                function calculatePassageStats() {
-                    const proseContent = document.querySelector('#passage-content .prose');
-                    const wordCountElement = document.getElementById('passage-word-count');
-                    const readingTimeElement = document.getElementById('passage-reading-time');
-                    
-                    if (proseContent && wordCountElement && readingTimeElement) {
-                        // Get text content without HTML tags
-                        const textContent = proseContent.textContent || proseContent.innerText || '';
-                        
-                        // Count words (Arabic and English)
-                        const words = textContent.trim().split(/\s+/).filter(word => word.length > 0);
-                        const wordCount = words.length;
-                        
-                        // Calculate reading time (Arabic reading speed: ~150-180 WPM)
-                        const readingSpeed = 165; // words per minute
-                        const readingTimeMinutes = Math.ceil(wordCount / readingSpeed);
-                        
-                        // Update display with icons and better formatting
-                        wordCountElement.innerHTML = `
-                            <i class="fas fa-align-left text-green-600"></i>
-                            <span class="font-medium">${wordCount} كلمة</span>
-                        `;
-                        
-                        readingTimeElement.innerHTML = `
-                            <i class="fas fa-clock text-green-600"></i>
-                            <span class="font-medium">${readingTimeMinutes} ${readingTimeMinutes === 1 ? 'دقيقة' : 'دقائق'} قراءة</span>
-                        `;
-                        
-                        // Add difficulty indicator based on text length
-                        const difficultyBadge = getDifficultyBadge(wordCount);
-                        if (difficultyBadge && !document.querySelector('.difficulty-badge')) {
-                            const statsContainer = wordCountElement.parentElement;
-                            statsContainer.insertAdjacentHTML('beforeend', `
-                                <span class="difficulty-badge text-xs px-2 py-1 rounded-full ${difficultyBadge.class}">
-                                    ${difficultyBadge.text}
-                                </span>
-                            `);
-                        }
-                    }
-                }
-                
-                // Get difficulty badge based on word count
-                function getDifficultyBadge(wordCount) {
-                    if (wordCount < 50) {
-                        return {
-                            class: 'bg-green-100 text-green-800',
-                            text: 'نص قصير'
-                        };
-                    } else if (wordCount < 150) {
-                        return {
-                            class: 'bg-blue-100 text-blue-800',
-                            text: 'نص متوسط'
-                        };
-                    } else if (wordCount < 300) {
-                        return {
-                            class: 'bg-orange-100 text-orange-800',
-                            text: 'نص طويل'
-                        };
-                    } else {
-                        return {
-                            class: 'bg-red-100 text-red-800',
-                            text: 'نص مفصل'
-                        };
-                    }
-                }
-                
-                // Update word count for textarea
-                function updateWordCount() {
-                    const textarea = document.querySelector('textarea[name="passage"]');
-                    const wordCountElement = document.getElementById('word-count');
-                    
-                    if (textarea && wordCountElement) {
-                        const text = textarea.value.trim();
-                        const words = text ? text.split(/\s+/).filter(word => word.length > 0) : [];
-                        const wordCount = words.length;
-                        
-                        // Calculate reading time
-                        const readingTime = Math.ceil(wordCount / 165);
-                        
-                        // Update display with color coding
-                        let colorClass = 'text-gray-500';
-                        if (wordCount > 0) {
-                            if (wordCount < 50) {
-                                colorClass = 'text-orange-600';
-                            } else if (wordCount > 400) {
-                                colorClass = 'text-red-600';
-                            } else {
-                                colorClass = 'text-green-600';
-                            }
-                        }
-                        
-                        wordCountElement.className = `text-sm font-medium ${colorClass}`;
-                        wordCountElement.innerHTML = `${wordCount} كلمة${wordCount > 0 ? ` • ${readingTime} ${readingTime === 1 ? 'دقيقة' : 'دقائق'}` : ''}`;
-                    }
-                }
-                
-                // Initialize on page load
-                document.addEventListener('DOMContentLoaded', function() {
-                    updateWordCount();
-                    
-                    // If passage content exists, calculate stats immediately
-                    const passageContent = document.getElementById('passage-content');
-                    if (passageContent && !passageContent.classList.contains('hidden')) {
-                        calculatePassageStats();
-                    }
-                });
-                </script>
-            </div>
-
-            <!-- Questions Section -->
+            <!-- Hidden field for correct answer (will be set by JavaScript) -->
+            <input type="hidden" name="correct_answer" id="correct_answer" value="{{ old('correct_answer') }}">
+            
             <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                            ❓ الأسئلة
-                        </h2>
-                        <button type="button" onclick="addQuestion()" 
-                                class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
-                            <i class="fas fa-plus"></i>
-                            إضافة سؤال
-                        </button>
+                <div class="p-8 space-y-8">
+                    
+                    <!-- Question Text -->
+                    <div class="animate-fade-in">
+                        <label for="question" class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                            <i class="fas fa-question-circle text-purple-600" aria-hidden="true"></i>
+                            نص السؤال *
+                        </label>
+                        <div class="relative">
+                            <textarea name="question" 
+                                      id="question"
+                                      class="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors resize-none"
+                                      rows="4"
+                                      placeholder="اكتب نص السؤال هنا..."
+                                      required
+                                      maxlength="1000"
+                                      aria-describedby="question-help question-error">{{ old('question') }}</textarea>
+                            @error('question')
+                            <p id="question-error" class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                {{ $message }}
+                            </p>
+                            @enderror
+                        </div>
+                        <div class="mt-2 flex justify-between text-sm text-gray-500">
+                            <span id="question-help">استخدم لغة واضحة ومفهومة للطلاب</span>
+                            <span id="char-counter" class="font-medium">0 / 1000 حرف</span>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="p-6">
-                    <div id="questions-container" class="space-y-8">
-                        <!-- Initial Question Template -->
-                        <div class="question-item" data-question="1">
-                            <div class="bg-gray-50 rounded-xl p-6 border-2 border-gray-200 hover:border-purple-300 transition">
-                                <!-- Question Header -->
-                                <div class="flex items-center justify-between mb-4">
-                                    <h3 class="text-lg font-bold text-gray-800">السؤال الأول</h3>
-                                    <button type="button" onclick="removeQuestion(1)" 
-                                            class="text-red-500 hover:text-red-700 transition hidden">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Question Text -->
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">نص السؤال *</label>
-                                    <textarea name="questions[1][question]" 
-                                              class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" 
-                                              rows="3"
-                                              placeholder="اكتب السؤال هنا..."
-                                              required></textarea>
-                                </div>
-
-                                <!-- Root Type and Depth -->
-                                <div class="grid md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">نوع الجذر *</label>
-                                        <select name="questions[1][root_type]" 
-                                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
-                                                required>
-                                            <option value="">اختر نوع الجذر</option>
-                                            <option value="jawhar">🎯 جَوهر (Jawhar) - الجوهر والماهية</option>
-                                            <option value="zihn">🧠 ذِهن (Zihn) - التحليل والتفكير</option>
-                                            <option value="waslat">🔗 وَصلات (Waslat) - الروابط والعلاقات</option>
-                                            <option value="roaya">👁️ رُؤية (Roaya) - الرؤية والتطبيق</option>
-                                        </select>
+                    
+                    <!-- Root Type and Depth Level -->
+                    <div class="grid md:grid-cols-2 gap-6 animate-fade-in" style="animation-delay: 0.1s">
+                        
+                        <!-- Root Type -->
+                        <div>
+                            <label for="root_type" class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <i class="fas fa-sitemap text-purple-600" aria-hidden="true"></i>
+                                نوع الجذر *
+                            </label>
+                            <select name="root_type" 
+                                    id="root_type"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                    required
+                                    aria-describedby="root-type-help root-type-error">
+                                <option value="">اختر نوع الجذر</option>
+                                <option value="jawhar" {{ old('root_type') == 'jawhar' ? 'selected' : '' }}>
+                                    🎯 جَوهر - الماهية (ما هو؟)
+                                </option>
+                                <option value="zihn" {{ old('root_type') == 'zihn' ? 'selected' : '' }}>
+                                    🧠 ذِهن - التحليل (كيف يعمل؟)
+                                </option>
+                                <option value="waslat" {{ old('root_type') == 'waslat' ? 'selected' : '' }}>
+                                    🔗 وَصلات - الربط (كيف يرتبط؟)
+                                </option>
+                                <option value="roaya" {{ old('root_type') == 'roaya' ? 'selected' : '' }}>
+                                    👁️ رُؤية - التطبيق (كيف نستخدمه؟)
+                                </option>
+                            </select>
+                            @error('root_type')
+                            <p id="root-type-error" class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                {{ $message }}
+                            </p>
+                            @enderror
+                            <p id="root-type-help" class="mt-1 text-sm text-gray-500">اختر الجذر المناسب حسب نوع التفكير المطلوب</p>
+                        </div>
+                        
+                        <!-- Depth Level -->
+                        <div>
+                            <label for="depth_level" class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                <i class="fas fa-layer-group text-purple-600" aria-hidden="true"></i>
+                                مستوى العمق *
+                            </label>
+                            <select name="depth_level" 
+                                    id="depth_level"
+                                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                    required
+                                    aria-describedby="depth-level-help depth-level-error">
+                                <option value="">اختر مستوى العمق</option>
+                                <option value="1" {{ old('depth_level') == '1' ? 'selected' : '' }}>
+                                    🟢 مستوى 1 - سطحي (فهم مباشر)
+                                </option>
+                                <option value="2" {{ old('depth_level') == '2' ? 'selected' : '' }}>
+                                    🟡 مستوى 2 - متوسط (تحليل وربط)
+                                </option>
+                                <option value="3" {{ old('depth_level') == '3' ? 'selected' : '' }}>
+                                    🔴 مستوى 3 - عميق (تقييم وابتكار)
+                                </option>
+                            </select>
+                            @error('depth_level')
+                            <p id="depth-level-error" class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                                <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                                {{ $message }}
+                            </p>
+                            @enderror
+                            <p id="depth-level-help" class="mt-1 text-sm text-gray-500">حدد مستوى التعقيد المطلوب للإجابة</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Answer Options -->
+                    <div class="animate-fade-in" style="animation-delay: 0.2s">
+                        <label class="block text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                            <i class="fas fa-list-ul text-purple-600" aria-hidden="true"></i>
+                            خيارات الإجابة *
+                        </label>
+                        
+                        <div class="space-y-4" id="options-container">
+                            <!-- Option A -->
+                            <div class="option-row border-2 border-gray-200 rounded-xl p-4 transition-colors hover:border-purple-300">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex-shrink-0">
+                                        <input type="radio" 
+                                               name="correct_answer_selector" 
+                                               value="0" 
+                                               id="correct_0"
+                                               class="w-5 h-5 text-purple-600 focus:ring-purple-500"
+                                               {{ old('correct_answer') && in_array(old('correct_answer'), old('options', [])) && array_search(old('correct_answer'), old('options', [])) === 0 ? 'checked' : '' }}>
+                                        <label for="correct_0" class="mr-3 text-lg font-bold text-gray-700 cursor-pointer">أ)</label>
                                     </div>
-                                    
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">مستوى العمق *</label>
-                                        <select name="questions[1][depth_level]" 
-                                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
-                                                required>
-                                            <option value="">اختر المستوى</option>
-                                            <option value="1">1 - سطحي</option>
-                                            <option value="2">2 - متوسط</option>
-                                            <option value="3">3 - عميق</option>
-                                        </select>
+                                    <div class="flex-1">
+                                        <input type="text" 
+                                               name="options[]" 
+                                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                               placeholder="الخيار الأول"
+                                               required
+                                               maxlength="500"
+                                               value="{{ old('options.0') }}">
                                     </div>
                                 </div>
-
-                                <!-- Answer Options -->
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-3">خيارات الإجابة *</label>
-                                    <div class="space-y-3">
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex-shrink-0">
-                                                <input type="radio" name="questions[1][correct_answer_index]" value="0" class="w-4 h-4 text-purple-600" required>
-                                                <label class="mr-2 text-sm font-medium text-gray-700">أ)</label>
-                                            </div>
-                                            <input type="text" name="questions[1][options][]" 
-                                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                                   placeholder="الخيار الأول"
-                                                   required>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex-shrink-0">
-                                                <input type="radio" name="questions[1][correct_answer_index]" value="1" class="w-4 h-4 text-purple-600" required>
-                                                <label class="mr-2 text-sm font-medium text-gray-700">ب)</label>
-                                            </div>
-                                            <input type="text" name="questions[1][options][]" 
-                                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                                   placeholder="الخيار الثاني"
-                                                   required>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex-shrink-0">
-                                                <input type="radio" name="questions[1][correct_answer_index]" value="2" class="w-4 h-4 text-purple-600" required>
-                                                <label class="mr-2 text-sm font-medium text-gray-700">ج)</label>
-                                            </div>
-                                            <input type="text" name="questions[1][options][]" 
-                                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                                   placeholder="الخيار الثالث"
-                                                   required>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex-shrink-0">
-                                                <input type="radio" name="questions[1][correct_answer_index]" value="3" class="w-4 h-4 text-purple-600" required>
-                                                <label class="mr-2 text-sm font-medium text-gray-700">د)</label>
-                                            </div>
-                                            <input type="text" name="questions[1][options][]" 
-                                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                                   placeholder="الخيار الرابع"
-                                                   required>
-                                        </div>
+                            </div>
+                            
+                            <!-- Option B -->
+                            <div class="option-row border-2 border-gray-200 rounded-xl p-4 transition-colors hover:border-purple-300">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex-shrink-0">
+                                        <input type="radio" 
+                                               name="correct_answer_selector" 
+                                               value="1" 
+                                               id="correct_1"
+                                               class="w-5 h-5 text-purple-600 focus:ring-purple-500"
+                                               {{ old('correct_answer') && in_array(old('correct_answer'), old('options', [])) && array_search(old('correct_answer'), old('options', [])) === 1 ? 'checked' : '' }}>
+                                        <label for="correct_1" class="mr-3 text-lg font-bold text-gray-700 cursor-pointer">ب)</label>
                                     </div>
-                                    <small class="text-gray-500 mt-2 block">حدد الإجابة الصحيحة بالنقر على الدائرة المجاورة للخيار</small>
+                                    <div class="flex-1">
+                                        <input type="text" 
+                                               name="options[]" 
+                                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                               placeholder="الخيار الثاني"
+                                               required
+                                               maxlength="500"
+                                               value="{{ old('options.1') }}">
+                                    </div>
                                 </div>
-
-                                <!-- Explanation (Optional) -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">شرح الإجابة (اختياري)</label>
-                                    <textarea name="questions[1][explanation]" 
-                                              class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" 
-                                              rows="2"
-                                              placeholder="اكتب شرحاً للإجابة الصحيحة (سيظهر للطلاب بعد الانتهاء من الاختبار)"></textarea>
+                            </div>
+                            
+                            <!-- Option C -->
+                            <div class="option-row border-2 border-gray-200 rounded-xl p-4 transition-colors hover:border-purple-300">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex-shrink-0">
+                                        <input type="radio" 
+                                               name="correct_answer_selector" 
+                                               value="2" 
+                                               id="correct_2"
+                                               class="w-5 h-5 text-purple-600 focus:ring-purple-500"
+                                               {{ old('correct_answer') && in_array(old('correct_answer'), old('options', [])) && array_search(old('correct_answer'), old('options', [])) === 2 ? 'checked' : '' }}>
+                                        <label for="correct_2" class="mr-3 text-lg font-bold text-gray-700 cursor-pointer">ج)</label>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="text" 
+                                               name="options[]" 
+                                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                               placeholder="الخيار الثالث"
+                                               required
+                                               maxlength="500"
+                                               value="{{ old('options.2') }}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Option D -->
+                            <div class="option-row border-2 border-gray-200 rounded-xl p-4 transition-colors hover:border-purple-300">
+                                <div class="flex items-center gap-4">
+                                    <div class="flex-shrink-0">
+                                        <input type="radio" 
+                                               name="correct_answer_selector" 
+                                               value="3" 
+                                               id="correct_3"
+                                               class="w-5 h-5 text-purple-600 focus:ring-purple-500"
+                                               {{ old('correct_answer') && in_array(old('correct_answer'), old('options', [])) && array_search(old('correct_answer'), old('options', [])) === 3 ? 'checked' : '' }}>
+                                        <label for="correct_3" class="mr-3 text-lg font-bold text-gray-700 cursor-pointer">د)</label>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="text" 
+                                               name="options[]" 
+                                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                               placeholder="الخيار الرابع"
+                                               required
+                                               maxlength="500"
+                                               value="{{ old('options.3') }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        @error('options')
+                        <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                            <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                            {{ $message }}
+                        </p>
+                        @enderror
+                        
+                        @error('correct_answer')
+                        <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                            <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                            {{ $message }}
+                        </p>
+                        @enderror
+                        
+                        <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div class="flex items-start gap-2">
+                                <i class="fas fa-info-circle text-blue-600 mt-0.5" aria-hidden="true"></i>
+                                <div class="text-sm text-blue-800">
+                                    <p class="font-medium mb-1">تعليمات مهمة:</p>
+                                    <ul class="list-disc list-inside space-y-1">
+                                        <li>حدد الإجابة الصحيحة بالنقر على الدائرة المجاورة للخيار</li>
+                                        <li>تأكد من أن جميع الخيارات واضحة ومختلفة</li>
+                                        <li>اجعل الخيارات الخاطئة معقولة لتحدي الطلاب</li>
+                                    </ul>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Add Question Button -->
-                    <div class="mt-6 text-center">
-                        <button type="button" onclick="addQuestion()" 
-                                class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-medium transition flex items-center gap-2 mx-auto">
-                            <i class="fas fa-plus"></i>
-                            إضافة سؤال آخر
-                        </button>
+                    
+                    <!-- Explanation (Optional) -->
+                    <div class="animate-fade-in" style="animation-delay: 0.3s">
+                        <label for="explanation" class="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+                            <i class="fas fa-lightbulb text-purple-600" aria-hidden="true"></i>
+                            شرح الإجابة (اختياري)
+                        </label>
+                        <textarea name="explanation" 
+                                  id="explanation"
+                                  class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors resize-none"
+                                  rows="3"
+                                  placeholder="اكتب شرحاً للإجابة الصحيحة (سيظهر للطلاب بعد الانتهاء من الاختبار)"
+                                  maxlength="1000"
+                                  aria-describedby="explanation-help">{{ old('explanation') }}</textarea>
+                        @error('explanation')
+                        <p class="mt-2 text-sm text-red-600 flex items-center gap-1" role="alert">
+                            <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                            {{ $message }}
+                        </p>
+                        @enderror
+                        <p id="explanation-help" class="mt-1 text-sm text-gray-500">الشرح يساعد الطلاب على فهم سبب الإجابة الصحيحة</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Form Actions -->
-            <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <a href="{{ route('quizzes.show', $quiz) }}" 
-                   class="w-full sm:w-auto bg-gray-300 hover:bg-gray-400 text-gray-700 px-6 py-3 rounded-xl font-medium transition text-center">
-                    <i class="fas fa-arrow-right ml-2"></i>
-                    العودة للاختبار
-                </a>
                 
-                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    <button type="button" onclick="saveDraft()" 
-                            class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-xl font-medium transition">
-                        <i class="fas fa-save ml-2"></i>
-                        حفظ كمسودة
-                    </button>
+                <!-- Form Actions -->
+                <div class="px-8 py-6 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between gap-4">
+                    <div class="flex gap-3">
+                        <a href="{{ route('quizzes.questions.index', $quiz) }}" 
+                           class="inline-flex items-center px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium">
+                            <i class="fas fa-arrow-right mr-2" aria-hidden="true"></i>
+                            العودة للأسئلة
+                        </a>
+                    </div>
                     
-                    <button type="submit" 
-                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium transition">
-                        <i class="fas fa-check ml-2"></i>
-                        حفظ الأسئلة
-                    </button>
+                    <div class="flex gap-3">
+                        <button type="button" 
+                                onclick="resetForm()"
+                                class="inline-flex items-center px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-colors font-medium">
+                            <i class="fas fa-undo mr-2" aria-hidden="true"></i>
+                            إعادة تعيين
+                        </button>
+                        
+                        <button type="submit" 
+                                id="submit-btn"
+                                class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all transform hover:scale-105 font-bold shadow-lg">
+                            <i class="fas fa-save mr-2" aria-hidden="true"></i>
+                            <span id="submit-text">حفظ السؤال</span>
+                            <i class="fas fa-spinner fa-spin mr-2 hidden" id="submit-spinner" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Loading Modal -->
-<div id="loading-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-2xl p-8 text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
-        <h3 class="text-lg font-bold text-gray-800 mb-2">جاري الحفظ...</h3>
-        <p class="text-gray-600">يرجى الانتظار</p>
-    </div>
-</div>
+@push('styles')
+<style>
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
+.animate-fade-in {
+    animation: fade-in 0.6s ease-out forwards;
+}
+
+.option-row.correct-answer {
+    border-color: #10b981;
+    background-color: #ecfdf5;
+}
+
+.option-row.correct-answer input[type="text"] {
+    border-color: #10b981;
+    background-color: #f0fdf4;
+}
+
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+</style>
+@endpush
+
+@push('scripts')
 <script>
-let questionCount = 1;
-
-// Toggle passage edit mode
-function togglePassageEdit() {
-    const display = document.getElementById('passage-display');
-    const edit = document.getElementById('passage-edit');
+document.addEventListener('DOMContentLoaded', function() {
+    // Character counter for question
+    const questionTextarea = document.getElementById('question');
+    const charCounter = document.getElementById('char-counter');
     
-    if (display && edit) {
-        display.classList.toggle('hidden');
-        edit.classList.toggle('hidden');
-    }
-}
-
-// Update word count
-function updateWordCount() {
-    const textarea = document.querySelector('textarea[name="passage"]');
-    const wordCount = document.getElementById('word-count');
-    
-    if (textarea && wordCount) {
-        const words = textarea.value.trim().split(/\s+/).filter(word => word.length > 0);
-        wordCount.textContent = words.length + ' كلمة';
-    }
-}
-
-// Add new question
-function addQuestion() {
-    questionCount++;
-    const container = document.getElementById('questions-container');
-    
-    const questionHTML = `
-        <div class="question-item" data-question="${questionCount}">
-            <div class="bg-gray-50 rounded-xl p-6 border-2 border-gray-200 hover:border-purple-300 transition">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">السؤال ${getArabicNumber(questionCount)}</h3>
-                    <button type="button" onclick="removeQuestion(${questionCount})" 
-                            class="text-red-500 hover:text-red-700 transition">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">نص السؤال *</label>
-                    <textarea name="questions[${questionCount}][question]" 
-                              class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" 
-                              rows="3"
-                              placeholder="اكتب السؤال هنا..."
-                              required></textarea>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">نوع الجذر *</label>
-                        <select name="questions[${questionCount}][root_type]" 
-                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
-                                required>
-                            <option value="">اختر نوع الجذر</option>
-                            <option value="jawhar">🎯 جَوهر (Jawhar) - الجوهر والماهية</option>
-                            <option value="zihn">🧠 ذِهن (Zihn) - التحليل والتفكير</option>
-                            <option value="waslat">🔗 وَصلات (Waslat) - الروابط والعلاقات</option>
-                            <option value="roaya">👁️ رُؤية (Roaya) - الرؤية والتطبيق</option>
-                        </select>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">مستوى العمق *</label>
-                        <select name="questions[${questionCount}][depth_level]" 
-                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
-                                required>
-                            <option value="">اختر المستوى</option>
-                            <option value="1">1 - سطحي</option>
-                            <option value="2">2 - متوسط</option>
-                            <option value="3">3 - عميق</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-3">خيارات الإجابة *</label>
-                    <div class="space-y-3">
-                        <div class="flex items-center gap-3">
-                            <div class="flex-shrink-0">
-                                <input type="radio" name="questions[${questionCount}][correct_answer_index]" value="0" class="w-4 h-4 text-purple-600" required>
-                                <label class="mr-2 text-sm font-medium text-gray-700">أ)</label>
-                            </div>
-                            <input type="text" name="questions[${questionCount}][options][]" 
-                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                   placeholder="الخيار الأول"
-                                   required>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex-shrink-0">
-                                <input type="radio" name="questions[${questionCount}][correct_answer_index]" value="1" class="w-4 h-4 text-purple-600" required>
-                                <label class="mr-2 text-sm font-medium text-gray-700">ب)</label>
-                            </div>
-                            <input type="text" name="questions[${questionCount}][options][]" 
-                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                   placeholder="الخيار الثاني"
-                                   required>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex-shrink-0">
-                                <input type="radio" name="questions[${questionCount}][correct_answer_index]" value="2" class="w-4 h-4 text-purple-600" required>
-                                <label class="mr-2 text-sm font-medium text-gray-700">ج)</label>
-                            </div>
-                            <input type="text" name="questions[${questionCount}][options][]" 
-                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                   placeholder="الخيار الثالث"
-                                   required>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex-shrink-0">
-                                <input type="radio" name="questions[${questionCount}][correct_answer_index]" value="3" class="w-4 h-4 text-purple-600" required>
-                                <label class="mr-2 text-sm font-medium text-gray-700">د)</label>
-                            </div>
-                            <input type="text" name="questions[${questionCount}][options][]" 
-                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                   placeholder="الخيار الرابع"
-                                   required>
-                        </div>
-                    </div>
-                    <small class="text-gray-500 mt-2 block">حدد الإجابة الصحيحة بالنقر على الدائرة المجاورة للخيار</small>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">شرح الإجابة (اختياري)</label>
-                    <textarea name="questions[${questionCount}][explanation]" 
-                              class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition" 
-                              rows="2"
-                              placeholder="اكتب شرحاً للإجابة الصحيحة"></textarea>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    container.insertAdjacentHTML('beforeend', questionHTML);
-    updateDeleteButtons();
-}
-
-// Remove question
-function removeQuestion(questionId) {
-    if (questionCount <= 1) {
-        alert('يجب أن يحتوي الاختبار على سؤال واحد على الأقل');
-        return;
+    function updateCharCounter() {
+        const length = questionTextarea.value.length;
+        charCounter.textContent = `${length} / 1000 حرف`;
+        
+        if (length > 900) {
+            charCounter.classList.add('text-red-600');
+        } else if (length > 700) {
+            charCounter.classList.add('text-yellow-600');
+        } else {
+            charCounter.classList.remove('text-red-600', 'text-yellow-600');
+        }
     }
     
-    const questionElement = document.querySelector(`[data-question="${questionId}"]`);
-    if (questionElement) {
-        questionElement.remove();
-        questionCount--;
-        updateDeleteButtons();
-        updateQuestionNumbers();
-    }
-}
-
-// Update delete button visibility
-function updateDeleteButtons() {
-    const questions = document.querySelectorAll('.question-item');
-    questions.forEach((question, index) => {
-        const deleteBtn = question.querySelector('button[onclick*="removeQuestion"]');
-        if (deleteBtn) {
-            if (questions.length <= 1) {
-                deleteBtn.classList.add('hidden');
-            } else {
-                deleteBtn.classList.remove('hidden');
+    questionTextarea.addEventListener('input', updateCharCounter);
+    updateCharCounter();
+    
+    // Handle correct answer selection
+    const correctAnswerSelectors = document.querySelectorAll('input[name="correct_answer_selector"]');
+    const correctAnswerHidden = document.getElementById('correct_answer');
+    const optionInputs = document.querySelectorAll('input[name="options[]"]');
+    const optionRows = document.querySelectorAll('.option-row');
+    
+    function updateCorrectAnswer() {
+        // Remove all correct-answer classes
+        optionRows.forEach(row => row.classList.remove('correct-answer'));
+        
+        // Find which radio is checked
+        const checkedRadio = document.querySelector('input[name="correct_answer_selector"]:checked');
+        if (checkedRadio) {
+            const optionIndex = parseInt(checkedRadio.value);
+            const optionInput = optionInputs[optionIndex];
+            
+            if (optionInput && optionInput.value.trim()) {
+                correctAnswerHidden.value = optionInput.value.trim();
+                // Add visual indicator
+                optionRows[optionIndex].classList.add('correct-answer');
             }
         }
-    });
-}
-
-// Update question numbers
-function updateQuestionNumbers() {
-    const questions = document.querySelectorAll('.question-item');
-    questions.forEach((question, index) => {
-        const header = question.querySelector('h3');
-        if (header) {
-            header.textContent = `السؤال ${getArabicNumber(index + 1)}`;
-        }
-    });
-}
-
-// Get Arabic number
-function getArabicNumber(num) {
-    const arabicNumbers = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر'];
-    return arabicNumbers[num] || `رقم ${num}`;
-}
-
-// Save as draft
-function saveDraft() {
-    // Implementation for saving as draft
-    alert('سيتم إضافة خاصية حفظ المسودة قريباً');
-}
-
-// Form validation
-document.getElementById('questions-form').addEventListener('submit', function(e) {
-    const questions = document.querySelectorAll('.question-item');
-    
-    if (questions.length === 0) {
-        e.preventDefault();
-        alert('يجب إضافة سؤال واحد على الأقل');
-        return;
     }
     
-    // Validate each question has a correct answer selected
-    let hasErrors = false;
-    questions.forEach((question, index) => {
-        const radios = question.querySelectorAll('input[type="radio"]');
-        const isChecked = Array.from(radios).some(radio => radio.checked);
+    // Listen for radio button changes
+    correctAnswerSelectors.forEach(radio => {
+        radio.addEventListener('change', updateCorrectAnswer);
+    });
+    
+    // Listen for option text changes to update correct answer if it's selected
+    optionInputs.forEach((input, index) => {
+        input.addEventListener('input', function() {
+            const correspondingRadio = document.querySelector(`input[name="correct_answer_selector"][value="${index}"]`);
+            if (correspondingRadio && correspondingRadio.checked) {
+                correctAnswerHidden.value = this.value.trim();
+            }
+        });
+    });
+    
+    // Form submission handling
+    const form = document.getElementById('question-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const submitText = document.getElementById('submit-text');
+    const submitSpinner = document.getElementById('submit-spinner');
+    
+    form.addEventListener('submit', function(e) {
+        // Validate correct answer is selected
+        if (!correctAnswerHidden.value.trim()) {
+            e.preventDefault();
+            alert('يرجى تحديد الإجابة الصحيحة بالنقر على الدائرة المجاورة للخيار الصحيح.');
+            return false;
+        }
         
-        if (!isChecked) {
-            hasErrors = true;
-            question.scrollIntoView({ behavior: 'smooth' });
-            question.style.borderColor = '#ef4444';
-            setTimeout(() => {
-                question.style.borderColor = '';
-            }, 3000);
-        }
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        submitText.textContent = 'جاري الحفظ...';
+        submitSpinner.classList.remove('hidden');
+        
+        // Optional: Add a timeout to re-enable the button if something goes wrong
+        setTimeout(() => {
+            if (submitBtn.disabled) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+                submitText.textContent = 'حفظ السؤال';
+                submitSpinner.classList.add('hidden');
+            }
+        }, 10000); // 10 seconds
     });
     
-    if (hasErrors) {
-        e.preventDefault();
-        alert('يرجى تحديد الإجابة الصحيحة لجميع الأسئلة');
-    } else {
-        // Show loading modal
-        document.getElementById('loading-modal').classList.remove('hidden');
+    // Initialize correct answer on page load (for old values)
+    updateCorrectAnswer();
+});
+
+// Reset form function
+function resetForm() {
+    if (confirm('هل أنت متأكد من إعادة تعيين جميع البيانات؟')) {
+        document.getElementById('question-form').reset();
+        document.getElementById('correct_answer').value = '';
+        document.querySelectorAll('.option-row').forEach(row => {
+            row.classList.remove('correct-answer');
+        });
+        document.getElementById('char-counter').textContent = '0 / 1000 حرف';
+    }
+}
+
+// Auto-save functionality (optional)
+let autoSaveTimer;
+function autoSave() {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+        // Save form data to localStorage
+        const formData = new FormData(document.getElementById('question-form'));
+        const data = {};
+        for (let [key, value] of formData.entries()) {
+            if (data[key]) {
+                if (Array.isArray(data[key])) {
+                    data[key].push(value);
+                } else {
+                    data[key] = [data[key], value];
+                }
+            } else {
+                data[key] = value;
+            }
+        }
+        localStorage.setItem('question_draft_quiz_{{ $quiz->id }}', JSON.stringify(data));
+    }, 2000);
+}
+
+// Add auto-save listeners to all form inputs
+document.querySelectorAll('#question-form input, #question-form textarea, #question-form select').forEach(input => {
+    input.addEventListener('input', autoSave);
+    input.addEventListener('change', autoSave);
+});
+
+// Load draft on page load
+window.addEventListener('load', function() {
+    const draft = localStorage.getItem('question_draft_quiz_{{ $quiz->id }}');
+    if (draft && !document.querySelector('input[name="question"]').value) {
+        if (confirm('تم العثور على مسودة محفوظة. هل تريد استعادتها؟')) {
+            const data = JSON.parse(draft);
+            Object.keys(data).forEach(key => {
+                const input = document.querySelector(`[name="${key}"]`);
+                if (input) {
+                    input.value = Array.isArray(data[key]) ? data[key][0] : data[key];
+                    if (input.type === 'radio' && input.value === data[key]) {
+                        input.checked = true;
+                    }
+                }
+            });
+            // Update correct answer
+            document.querySelector('input[name="correct_answer_selector"]:checked')?.dispatchEvent(new Event('change'));
+        }
     }
 });
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    updateWordCount();
-    updateDeleteButtons();
-});
+// Clear draft after successful submission
+if (window.location.search.includes('success')) {
+    localStorage.removeItem('question_draft_quiz_{{ $quiz->id }}');
+}
 </script>
-
-@error('questions')
-    <div class="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg">
-        {{ $message }}
-    </div>
-@enderror
-
-@if(session('success'))
-    <div class="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg">
-        {{ session('success') }}
-    </div>
-@endif
-
+@endpush
 @endsection

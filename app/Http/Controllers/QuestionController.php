@@ -8,6 +8,7 @@ use App\Services\ClaudeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class QuestionController extends Controller
 {
@@ -45,44 +46,176 @@ class QuestionController extends Controller
 
     public function store(Request $request, Quiz $quiz)
     {
+        // Log the incoming request for debugging
+        Log::info('Question store attempt started', [
+            'quiz_id' => $quiz->id,
+            'quiz_title' => $quiz->title,
+            'user_id' => Auth::id(),
+            'quiz_owner_id' => $quiz->user_id,
+            'has_submissions' => $quiz->has_submissions,
+            'request_data' => $request->all()
+        ]);
+
+        // Authorization check
         if ((int) $quiz->user_id !== Auth::id()) {
+            Log::warning('Authorization failed for question creation', [
+                'quiz_id' => $quiz->id,
+                'quiz_owner' => $quiz->user_id,
+                'current_user' => Auth::id()
+            ]);
             abort(403, 'غير مصرح لك بهذا الإجراء.');
         }
 
+        // Check if quiz has submissions
         if ($quiz->has_submissions) {
+            Log::info('Quiz has submissions - blocking question addition', [
+                'quiz_id' => $quiz->id
+            ]);
             return redirect()->route('quizzes.questions.index', $quiz)
                 ->with('error', 'لا يمكن إضافة أسئلة بعد أن بدأ الطلاب في الاختبار.');
         }
 
-        $validated = $request->validate([
-            'question' => 'required|string|max:1000',
-            'options' => 'required|array|min:2|max:4',
-            'options.*' => 'required|string|max:500',
-            'correct_answer' => 'required|string|max:500',
-            'root_type' => 'required|in:jawhar,zihn,waslat,roaya',
-            'depth_level' => 'required|integer|min:1|max:3',
-            'explanation' => 'nullable|string|max:1000'
-        ]);
+        // Validation with detailed error logging
+        try {
+            $validated = $request->validate([
+                'question' => 'required|string|max:1000',
+                'options' => 'required|array|min:2|max:4',
+                'options.*' => 'required|string|max:500',
+                'correct_answer' => 'required|string|max:500',
+                'root_type' => 'required|in:jawhar,zihn,waslat,roaya',
+                'depth_level' => 'required|integer|min:1|max:3',
+                'explanation' => 'nullable|string|max:1000'
+            ]);
+
+            Log::info('Validation passed', ['validated_data_keys' => array_keys($validated)]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors())
+                ->with('error', 'يرجى التحقق من البيانات المدخلة وإصلاح الأخطاء.');
+        }
 
         // Ensure correct answer exists in options
         if (!in_array($validated['correct_answer'], $validated['options'])) {
+            Log::warning('Correct answer not in options', [
+                'correct_answer' => $validated['correct_answer'],
+                'options' => $validated['options']
+            ]);
+
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'الإجابة الصحيحة يجب أن تكون من ضمن الخيارات المتاحة.');
         }
 
-        Question::create([
+        // Clean and prepare data
+        $questionData = [
             'quiz_id' => $quiz->id,
-            'question' => $validated['question'],
-            'options' => $validated['options'],
-            'correct_answer' => $validated['correct_answer'],
+            'question' => trim($validated['question']),
+            'options' => array_map('trim', $validated['options']), // Clean whitespace
+            'correct_answer' => trim($validated['correct_answer']),
             'root_type' => $validated['root_type'],
-            'depth_level' => $validated['depth_level'],
-            'explanation' => $validated['explanation']
+            'depth_level' => (int) $validated['depth_level'],
+            'explanation' => !empty($validated['explanation']) ? trim($validated['explanation']) : null
+        ];
+
+        Log::info('Prepared question data', [
+            'data' => $questionData,
+            'options_count' => count($questionData['options'])
         ]);
 
-        return redirect()->route('quizzes.questions.index', $quiz)
-            ->with('success', 'تم إضافة السؤال بنجاح.');
+        // Database transaction for safety
+        DB::beginTransaction();
+
+        try {
+            // Check if Question model exists and has correct fillable
+            $questionModel = new Question();
+            $fillable = $questionModel->getFillable();
+
+            Log::info('Question model fillable fields', ['fillable' => $fillable]);
+
+            // Verify all required fields are in fillable
+            $requiredFields = ['quiz_id', 'question', 'options', 'correct_answer', 'root_type', 'depth_level', 'explanation'];
+            $missingFields = array_diff($requiredFields, $fillable);
+
+            if (!empty($missingFields)) {
+                Log::error('Missing fillable fields in Question model', [
+                    'missing_fields' => $missingFields,
+                    'current_fillable' => $fillable
+                ]);
+
+                throw new \Exception('Question model configuration error: Missing fillable fields: ' . implode(', ', $missingFields));
+            }
+
+            // Create the question
+            Log::info('Attempting to create question in database');
+
+            $question = Question::create($questionData);
+
+            Log::info('Question created successfully', [
+                'question_id' => $question->id,
+                'question_preview' => substr($question->question, 0, 50) . '...'
+            ]);
+
+            // Refresh quiz to get updated question count
+            $quiz->refresh();
+            $newQuestionCount = $quiz->questions()->count();
+
+            Log::info('Quiz updated', [
+                'quiz_id' => $quiz->id,
+                'new_question_count' => $newQuestionCount
+            ]);
+
+            DB::commit();
+
+            // Success response
+            Log::info('Question store completed successfully');
+
+            return redirect()->route('quizzes.questions.index', $quiz)
+                ->with('success', 'تم إضافة السؤال بنجاح.');
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+
+            Log::error('Database error during question creation', [
+                'error' => $e->getMessage(),
+                'sql_state' => $e->errorInfo[0] ?? null,
+                'error_code' => $e->errorInfo[1] ?? null,
+                'error_message' => $e->errorInfo[2] ?? null,
+                'query_data' => $questionData
+            ]);
+
+            // Check for specific database errors
+            $errorMessage = 'حدث خطأ في قاعدة البيانات أثناء حفظ السؤال.';
+
+            if (str_contains($e->getMessage(), 'Unknown column')) {
+                $errorMessage = 'خطأ في تكوين قاعدة البيانات. يرجى التواصل مع المطور.';
+            } elseif (str_contains($e->getMessage(), 'Data too long')) {
+                $errorMessage = 'النص المدخل طويل جداً. يرجى تقليل حجم النص.';
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $errorMessage . ' (كود الخطأ: ' . ($e->errorInfo[1] ?? 'غير معروف') . ')');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Unexpected error during question creation', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'question_data' => $questionData
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'حدث خطأ غير متوقع: ' . $e->getMessage());
+        }
     }
 
     public function edit(Quiz $quiz, Question $question)
