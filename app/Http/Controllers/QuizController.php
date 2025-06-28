@@ -763,6 +763,8 @@ class QuizController extends Controller
             'shuffle_answers' => 'boolean',
             'max_attempts' => 'nullable|integer|min:1|max:10',
             'scoring_method' => 'required|in:latest,average,highest,first_only',
+            'passage' => 'nullable|string',
+            'passage_title' => 'nullable|string|max:255',
         ]);
 
         $quiz->update($validated);
@@ -869,7 +871,12 @@ class QuizController extends Controller
     public function take(Quiz $quiz)
     {
         if (!$quiz->is_active) {
-            abort(404, 'هذا الاختبار غير متاح حالياً.');
+            return view('quiz.inactive', [
+                'quiz' => $quiz,
+                'message' => 'هذا الاختبار غير مفعل حالياً',
+                'description' => 'يبدو أن المعلم قام بإلغاء تفعيل هذا الاختبار مؤقتاً. يرجى التواصل مع معلمك للحصول على مزيد من المعلومات.',
+                'back_url' => route('quiz.enter-pin')
+            ]);
         }
 
         // For guests: check if they have name in session OR if they want to use a different name

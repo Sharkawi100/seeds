@@ -95,8 +95,16 @@
                     @csrf
                     @method('PUT')
                     <input type="hidden" name="title" value="{{ $quiz->title }}">
-                    <input type="hidden" name="subject" value="{{ $quiz->subject }}">
+                    <input type="hidden" name="subject_id" value="{{ $quiz->subject_id }}">
                     <input type="hidden" name="grade_level" value="{{ $quiz->grade_level }}">
+                    <input type="hidden" name="description" value="{{ $quiz->description }}">
+                    <input type="hidden" name="time_limit" value="{{ $quiz->time_limit }}">
+                    <input type="hidden" name="passing_score" value="{{ $quiz->passing_score }}">
+                    <input type="hidden" name="show_results" value="{{ $quiz->show_results ? '1' : '0' }}">
+                    <input type="hidden" name="shuffle_questions" value="{{ $quiz->shuffle_questions ? '1' : '0' }}">
+                    <input type="hidden" name="shuffle_answers" value="{{ $quiz->shuffle_answers ? '1' : '0' }}">
+                    <input type="hidden" name="max_attempts" value="{{ $quiz->max_attempts }}">
+                    <input type="hidden" name="scoring_method" value="{{ $quiz->scoring_method }}">
                     
                     <div class="space-y-4">
                         <div>

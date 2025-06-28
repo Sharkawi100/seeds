@@ -84,7 +84,9 @@ class QuestionController extends Controller
                 'correct_answer' => 'required|string|max:500',
                 'root_type' => 'required|in:jawhar,zihn,waslat,roaya',
                 'depth_level' => 'required|integer|min:1|max:3',
-                'explanation' => 'nullable|string|max:1000'
+                'explanation' => 'nullable|string|max:1000',
+                'passage' => 'nullable|string',
+                'passage_title' => 'nullable|string|max:255'
             ]);
 
             Log::info('Validation passed', ['validated_data_keys' => array_keys($validated)]);
@@ -260,8 +262,33 @@ class QuestionController extends Controller
                 ->with('error', 'الإجابة الصحيحة يجب أن تكون من ضمن الخيارات المتاحة.');
         }
 
-        $question->update($validated);
+        // Update basic question fields (excluding passage for now)
+        $questionFields = collect($validated)->except(['passage', 'passage_title'])->toArray();
+        $question->update($questionFields);
 
+        // Handle passage update - only for the first question of the quiz
+        if ($request->has('passage') || $request->has('passage_title')) {
+            $firstQuestion = $quiz->questions()->orderBy('id')->first();
+
+            if ($firstQuestion && $question->id === $firstQuestion->id) {
+                // This is the first question, update passage
+                $question->update([
+                    'passage' => $validated['passage'] ?? null,
+                    'passage_title' => $validated['passage_title'] ?? null,
+                ]);
+
+                Log::info('Passage updated on first question', [
+                    'question_id' => $question->id,
+                    'passage_length' => strlen($validated['passage'] ?? ''),
+                    'passage_title' => $validated['passage_title'] ?? null
+                ]);
+            } else {
+                Log::info('Passage not updated - not first question', [
+                    'question_id' => $question->id,
+                    'first_question_id' => $firstQuestion ? $firstQuestion->id : 'none'
+                ]);
+            }
+        }
         return redirect()->route('quizzes.questions.index', $quiz)
             ->with('success', 'تم تحديث السؤال بنجاح.');
     }
