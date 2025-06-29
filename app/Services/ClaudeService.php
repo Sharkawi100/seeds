@@ -938,4 +938,236 @@ CRITICAL:
             $gradeLevel <= 9 => "Vocabulary: Advanced academic language | Sentences: Complex structures | Concepts: Abstract and theoretical"
         };
     }
+    /**
+     * Generate pedagogical AI report for quiz results
+     */
+    public function generatePedagogicalReport(
+        $quiz,
+        $results,
+        array $rootsPerformance,
+        array $questionStats
+    ): array {
+        try {
+            $prompt = $this->buildPedagogicalReportPrompt($quiz, $results, $rootsPerformance, $questionStats);
+
+            Log::info('Generating pedagogical report', [
+                'quiz_id' => $quiz->id,
+                'results_count' => $results->count(),
+                'prompt_length' => strlen($prompt)
+            ]);
+
+            $response = $this->sendRequest($prompt, [
+                'max_tokens' => 2000,
+                'temperature' => 0.3
+            ]);
+
+            $content = $this->extractContent($response);
+            $this->trackUsage('ai_report_generation', 1);
+
+            return [
+                'success' => true,
+                'report_sections' => $this->parsePedagogicalReport($content),
+                'raw_content' => $content
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Pedagogical report generation failed', [
+                'error' => $e->getMessage(),
+                'quiz_id' => $quiz->id
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Build the enhanced prompt for pedagogical report generation
+     */
+    private function buildPedagogicalReportPrompt($quiz, $results, array $rootsPerformance, array $questionStats): string
+    {
+        $studentCount = $results->count();
+        $subjectName = $quiz->subject->name ?? 'عام';
+        $gradeLevel = $quiz->grade_level;
+
+        // Get detailed answer analysis
+        $answerAnalysis = $this->getDetailedAnswerAnalysis($quiz);
+        $questionInsights = $this->getQuestionSpecificInsights($quiz);
+        $learningPatterns = $this->detectLearningPatterns($quiz, $results);
+
+        $prompt = "أنت خبير تربوي متخصص في تحليل أنماط التعلم وتشخيص الفجوات المفاهيمية. قم بتحليل البيانات التالية وتقديم رؤى عميقة وقابلة للتطبيق:\n\n";
+
+        $prompt .= "معلومات الاختبار:\n";
+        $prompt .= "- العنوان: {$quiz->title}\n";
+        $prompt .= "- المادة: {$subjectName}\n";
+        $prompt .= "- الصف: {$gradeLevel}\n";
+        $prompt .= "- عدد الطلاب: {$studentCount}\n\n";
+
+        $prompt .= "تحليل الأخطاء الشائعة:\n";
+        foreach ($questionInsights as $insight) {
+            $prompt .= "- السؤال {$insight['question_number']}: {$insight['common_mistakes']}\n";
+        }
+
+        $prompt .= "\nأنماط التعلم المكتشفة:\n";
+        foreach ($learningPatterns as $pattern) {
+            $prompt .= "- {$pattern}\n";
+        }
+
+        $prompt .= "\nتحليل تفصيلي للإجابات الخاطئة:\n";
+        foreach ($answerAnalysis as $analysis) {
+            $prompt .= $analysis . "\n";
+        }
+
+        $prompt .= "\nبناءً على هذا التحليل العميق، قم بإنشاء تقرير يركز على:\n";
+        $prompt .= "1. تشخيص المفاهيم الخاطئة المحددة\n";
+        $prompt .= "2. أنماط الأخطاء التي تكشف عن فجوات في التعلم\n";
+        $prompt .= "3. توصيات محددة لكل مجموعة من الطلاب\n";
+        $prompt .= "4. استراتيجيات تدريسية مخصصة لهذا الصف تحديداً\n\n";
+
+        $prompt .= "استخدم التنسيق التالي مع التركيز على الرؤى العملية:\n\n";
+        $prompt .= "[OVERVIEW]\n[تلخيص الاكتشافات الرئيسية والمفاهيم الخاطئة الأكثر شيوعاً]\n[/OVERVIEW]\n\n";
+
+        $prompt .= "[JAWHAR_ANALYSIS]\n[تحليل الأخطاء في المعرفة الأساسية مع أمثلة محددة من الإجابات]\n[/JAWHAR_ANALYSIS]\n\n";
+        $prompt .= "[ZIHN_ANALYSIS]\n[تحليل أخطاء التفكير النقدي مع أنماط الاستدلال الخاطئ]\n[/ZIHN_ANALYSIS]\n\n";
+        $prompt .= "[WASLAT_ANALYSIS]\n[تحليل فشل الربط بين المفاهيم مع أمثلة محددة]\n[/WASLAT_ANALYSIS]\n\n";
+        $prompt .= "[ROAYA_ANALYSIS]\n[تحليل ضعف التطبيق العملي مع اقتراحات لتحسين مهارات حل المشكلات]\n[/ROAYA_ANALYSIS]\n\n";
+
+        $prompt .= "[GROUP_TIPS]\n[تقسيم الطلاب لمجموعات حسب أنماط أخطائهم مع استراتيجيات لكل مجموعة]\n[/GROUP_TIPS]\n\n";
+        $prompt .= "[IMMEDIATE_ACTIONS]\n[3 إجراءات محددة للدرس القادم بناءً على الأخطاء المكتشفة]\n[/IMMEDIATE_ACTIONS]\n\n";
+        $prompt .= "[LONGTERM_STRATEGIES]\n[خطة تعديل المنهج بناءً على نقاط الضعف المحددة]\n[/LONGTERM_STRATEGIES]\n\n";
+        $prompt .= "[EDUCATIONAL_ALERTS]\n[تحذيرات من مفاهيم خاطئة قد تؤثر على التعلم المستقبلي]\n[/EDUCATIONAL_ALERTS]\n\n";
+        $prompt .= "[BRIGHT_SPOTS]\n[نقاط القوة غير المتوقعة وكيفية البناء عليها]\n[/BRIGHT_SPOTS]\n\n";
+
+        return $prompt;
+    }
+
+    /**
+     * Get detailed analysis of wrong answers
+     */
+    private function getDetailedAnswerAnalysis($quiz): array
+    {
+        $analysis = [];
+
+        foreach ($quiz->questions as $question) {
+            $wrongAnswers = \App\Models\Answer::where('question_id', $question->id)
+                ->where('is_correct', false)
+                ->get();
+
+            if ($wrongAnswers->count() > 0) {
+                $wrongChoices = $wrongAnswers->groupBy('selected_answer');
+                $mostCommonWrong = $wrongChoices->sortByDesc(function ($group) {
+                    return $group->count();
+                })->first();
+
+                if ($mostCommonWrong && $mostCommonWrong->count() > 1) {
+                    $analysis[] = "السؤال رقم {$question->id}: {$mostCommonWrong->count()} طلاب اختاروا '{$mostCommonWrong->first()->selected_answer}' بدلاً من الإجابة الصحيحة '{$question->correct_answer}'";
+                }
+            }
+        }
+
+        return $analysis;
+    }
+
+    /**
+     * Get question-specific insights
+     */
+    private function getQuestionSpecificInsights($quiz): array
+    {
+        $insights = [];
+        $questionNumber = 1;
+
+        foreach ($quiz->questions as $question) {
+            $totalAnswers = \App\Models\Answer::where('question_id', $question->id)->count();
+            $correctAnswers = \App\Models\Answer::where('question_id', $question->id)
+                ->where('is_correct', true)->count();
+
+            if ($totalAnswers > 0) {
+                $correctRate = ($correctAnswers / $totalAnswers) * 100;
+
+                if ($correctRate < 50) {
+                    $insights[] = [
+                        'question_number' => $questionNumber,
+                        'correct_rate' => round($correctRate),
+                        'common_mistakes' => "نسبة إجابة منخفضة ({$correctRate}%) تشير لصعوبة في فهم المفهوم"
+                    ];
+                }
+            }
+            $questionNumber++;
+        }
+
+        return $insights;
+    }
+
+    /**
+     * Detect learning patterns across questions
+     */
+    private function detectLearningPatterns($quiz, $results): array
+    {
+        $patterns = [];
+
+        // Analyze root performance patterns
+        foreach (['jawhar', 'zihn', 'waslat', 'roaya'] as $root) {
+            $rootQuestions = $quiz->questions->where('root_type', $root);
+            if ($rootQuestions->count() > 0) {
+                $rootCorrect = 0;
+                $rootTotal = 0;
+
+                foreach ($rootQuestions as $question) {
+                    $correctCount = \App\Models\Answer::where('question_id', $question->id)
+                        ->where('is_correct', true)->count();
+                    $totalCount = \App\Models\Answer::where('question_id', $question->id)->count();
+
+                    $rootCorrect += $correctCount;
+                    $rootTotal += $totalCount;
+                }
+
+                if ($rootTotal > 0) {
+                    $rootPercentage = ($rootCorrect / $rootTotal) * 100;
+
+                    if ($rootPercentage < 60) {
+                        $rootName = $this->getRootName($root);
+                        $patterns[] = "ضعف واضح في {$rootName} ({$rootPercentage}%) يتطلب تدخل تعليمي مركز";
+                    } elseif ($rootPercentage > 85) {
+                        $rootName = $this->getRootName($root);
+                        $patterns[] = "تميز في {$rootName} ({$rootPercentage}%) يمكن البناء عليه لتطوير جوانب أخرى";
+                    }
+                }
+            }
+        }
+
+        return $patterns;
+    }
+
+    /**
+     * Parse the AI response into structured report sections
+     */
+    private function parsePedagogicalReport(string $content): array
+    {
+        $sections = [];
+
+        $patterns = [
+            'overview' => '/\[OVERVIEW\](.*?)\[\/OVERVIEW\]/s',
+            'jawhar_analysis' => '/\[JAWHAR_ANALYSIS\](.*?)\[\/JAWHAR_ANALYSIS\]/s',
+            'zihn_analysis' => '/\[ZIHN_ANALYSIS\](.*?)\[\/ZIHN_ANALYSIS\]/s',
+            'waslat_analysis' => '/\[WASLAT_ANALYSIS\](.*?)\[\/WASLAT_ANALYSIS\]/s',
+            'roaya_analysis' => '/\[ROAYA_ANALYSIS\](.*?)\[\/ROAYA_ANALYSIS\]/s',
+            'group_tips' => '/\[GROUP_TIPS\](.*?)\[\/GROUP_TIPS\]/s',
+            'immediate_actions' => '/\[IMMEDIATE_ACTIONS\](.*?)\[\/IMMEDIATE_ACTIONS\]/s',
+            'longterm_strategies' => '/\[LONGTERM_STRATEGIES\](.*?)\[\/LONGTERM_STRATEGIES\]/s',
+            'educational_alerts' => '/\[EDUCATIONAL_ALERTS\](.*?)\[\/EDUCATIONAL_ALERTS\]/s',
+            'bright_spots' => '/\[BRIGHT_SPOTS\](.*?)\[\/BRIGHT_SPOTS\]/s'
+        ];
+
+        foreach ($patterns as $section => $pattern) {
+            if (preg_match($pattern, $content, $matches)) {
+                $sections[$section] = trim($matches[1]);
+            } else {
+                $sections[$section] = '';
+            }
+        }
+
+        return $sections;
+    }
 }

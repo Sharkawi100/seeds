@@ -187,10 +187,34 @@ $passedStudents = $finalScores->filter(function($score) {
         <!-- Detailed Results Table -->
         <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 overflow-hidden">
             <div class="p-6 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <i class="fas fa-table text-indigo-600"></i>
-                    النتائج التفصيلية
-                </h3>
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <i class="fas fa-table text-indigo-600"></i>
+                        النتائج التفصيلية
+                    </h3>
+                    
+                    <!-- AI Report Button -->
+                    <div class="flex items-center gap-3">
+                        @if(Auth::user()->canUseAI() && $results->count() >= 3)
+                            <a href="{{ route('results.ai-report', $quiz->id) }}" 
+                               class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all duration-300 shadow-md text-sm"
+                               title="إنشاء تقرير تربوي ذكي باستخدام الذكاء الاصطناعي">
+                                🤖 التقرير الذكي
+                            </a>
+                        @elseif(!Auth::user()->canUseAI())
+                            <a href="{{ route('subscription.upgrade') }}" 
+                               class="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-lg font-medium hover:from-orange-600 hover:to-red-600 transition-all duration-300 shadow-md text-sm"
+                               title="اشترك للحصول على التقارير الذكية">
+                                ⭐ اشترك للتقارير الذكية
+                            </a>
+                        @elseif($results->count() < 3)
+                            <div class="inline-flex items-center gap-2 bg-gray-400 text-white px-4 py-2 rounded-lg font-medium cursor-not-allowed text-sm"
+                                 title="يحتاج الاختبار على الأقل 3 نتائج لإنشاء التقرير">
+                                🤖 التقرير الذكي ({{ $results->count() }}/3)
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
             
             <div class="overflow-x-auto">

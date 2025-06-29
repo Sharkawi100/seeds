@@ -212,6 +212,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/quiz/{quiz}', 'quizResults')->name('quiz');
         Route::get('/{result}', 'show')->name('show');
+        Route::get('/quiz/{quiz}/ai-report', [ResultController::class, 'showAiReport'])->name('ai-report');
+        Route::post('/quiz/{quiz}/generate-ai-report', [ResultController::class, 'generateAiReport'])->name('generate-ai-report');
     });
 });
 

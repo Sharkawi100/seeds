@@ -43,4 +43,37 @@ class MonthlyQuota extends Model
     {
         $this->increment('ai_quiz_requests');
     }
+    /**
+     * Increment AI report requests count
+     */
+    public function incrementAiReportRequests(): void
+    {
+        $this->increment('ai_report_requests');
+    }
+
+    /**
+     * Check if user has remaining quota for AI reports
+     */
+    public function hasRemainingAiReportQuota(): bool
+    {
+        $user = User::find($this->user_id);
+        $limits = $user->getCurrentQuotaLimits();
+
+        $totalUsed = $this->quiz_count + $this->ai_text_requests + $this->ai_quiz_requests + $this->ai_report_requests;
+
+        return $totalUsed < $limits['monthly_quiz_limit'];
+    }
+
+    /**
+     * Get remaining quota count
+     */
+    public function getRemainingQuota(): int
+    {
+        $user = User::find($this->user_id);
+        $limits = $user->getCurrentQuotaLimits();
+
+        $totalUsed = $this->quiz_count + $this->ai_text_requests + $this->ai_quiz_requests + $this->ai_report_requests;
+
+        return max(0, $limits['monthly_quiz_limit'] - $totalUsed);
+    }
 }
