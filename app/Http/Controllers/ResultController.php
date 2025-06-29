@@ -4,131 +4,165 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Models\Result;
+use App\Models\Quiz;
+use App\Models\Answer;
+use App\Models\MonthlyQuota;
+use App\Models\QuizAiReport;
+use App\Services\ClaudeService;
 
 class ResultController extends Controller
 {
+    protected $claudeService;
+
+    public function __construct(ClaudeService $claudeService)
+    {
+        $this->claudeService = $claudeService;
+    }
+
+    /**
+     * Display a listing of results for authenticated users
+     */
+    public function index()
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        try {
+            // Get user's results with optimized eager loading
+            $results = Result::where('user_id', Auth::id())
+                ->with([
+                    'quiz:id,title,subject_id,grade_level,pin,created_at',
+                    'quiz.subject:id,name'
+                ])
+                ->latest('created_at')
+                ->paginate(20);
+
+            return view('results.index', compact('results'));
+
+        } catch (\Exception $e) {
+            Log::error('Failed to load user results', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return view('results.index', ['results' => collect()]);
+        }
+    }
+
+    /**
+     * Display a specific result for authenticated user
+     */
+    public function show(Result $result)
+    {
+        // Check ownership
+        if (!Auth::check() || (int) $result->user_id !== Auth::id()) {
+            abort(403, 'غير مصرح لك بعرض هذه النتيجة');
+        }
+
+        // Load necessary relationships
+        $result->load([
+            'quiz:id,title,subject_id,grade_level,max_attempts,scoring_method',
+            'quiz.subject:id,name',
+            'answers.question:id,question,root_type,depth_level,correct_answer,options'
+        ]);
+
+        // Get all attempts for this user on this quiz
+        $allAttempts = Result::where('quiz_id', $result->quiz_id)
+            ->where('user_id', Auth::id())
+            ->orderBy('attempt_number')
+            ->get(['id', 'attempt_number', 'total_score', 'created_at', 'is_latest_attempt']);
+
+        // Calculate final score based on scoring method
+        $finalScore = Result::getFinalScore($result->quiz_id, Auth::id());
+
+        return view('results.show', compact('result', 'allAttempts', 'finalScore'));
+    }
+
+    /**
+     * Display result for guest users using token
+     */
+    public function guestShow($token)
+    {
+        $result = Result::where('guest_token', $token)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (!$result) {
+            return view('quiz.inactive', [
+                'quiz' => null,
+                'message' => 'النتيجة غير موجودة أو منتهية الصلاحية',
+                'description' => 'قد تكون النتيجة قد انتهت صلاحيتها أو تم حذفها. يرجى التواصل مع معلمك.',
+                'back_url' => url('/')
+            ]);
+        }
+
+        // Load necessary relationships
+        $result->load([
+            'quiz:id,title,subject_id,grade_level',
+            'quiz.subject:id,name',
+            'answers.question:id,question,root_type,depth_level,correct_answer,options'
+        ]);
+
+        return view('results.guest-show', compact('result'));
+    }
+
     /**
      * Show AI pedagogical report page for a quiz
      */
     public function showAiReport($quizId)
     {
-        if (!Auth::check()) {
-            abort(403);
-        }
+        $this->authorizeQuizAccess($quizId);
 
-        $quiz = \App\Models\Quiz::with(['questions', 'subject'])->findOrFail($quizId);
-
-        // Check if user owns the quiz
-        if ((int) $quiz->user_id !== Auth::id() && !Auth::user()->is_admin) {
-            abort(403, 'غير مصرح لك بعرض تقرير هذا الاختبار');
-        }
-
-        // Get all results for this quiz
-        $results = \App\Models\Result::where('quiz_id', $quizId)->get();
+        $quiz = Quiz::with(['questions', 'subject'])->findOrFail($quizId);
+        $results = Result::where('quiz_id', $quizId)->get();
 
         if ($results->count() < 3) {
             return redirect()->route('results.quiz', $quiz->id)
                 ->with('error', 'يحتاج الاختبار على الأقل 3 نتائج لإنشاء التقرير التربوي');
         }
 
-        // Calculate statistics (SQL data - no AI needed)
-        $overallAverage = $results->avg('total_score');
-        $passRate = $results->where('total_score', '>=', 60)->count() / $results->count() * 100;
-        $excellentCount = $results->where('total_score', '>=', 90)->count();
-
-        // Calculate roots performance
+        // Calculate basic statistics
+        $statistics = $this->calculateQuizStatistics($results);
         $rootsPerformance = $this->calculateRootsPerformance($results, $quiz);
 
-        // Get current quota
-        $quota = \App\Models\MonthlyQuota::getOrCreateCurrent(Auth::id());
+        // Get quota information
+        $quota = MonthlyQuota::getOrCreateCurrent(Auth::id());
         $remainingQuota = $quota->getRemainingQuota();
 
-        // Get all completed reports for this quiz by this user
-        $allReports = \App\Models\QuizAiReport::where('quiz_id', $quizId)
-            ->where('user_id', Auth::id())
-            ->where('generation_status', 'completed')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // Get report navigation data
+        $reportData = $this->getReportNavigationData($quizId, request('report_index', 0));
 
-        // Get current report index from request (default to latest)
-        $reportIndex = (int) request('report_index', 0);
-        $reportIndex = max(0, min($reportIndex, $allReports->count() - 1));
-
-        // Prepare AI report data
-        $currentReport = $allReports->get($reportIndex);
-        $aiReportData = null;
-        $reportAge = null;
-        $hasExistingReport = false;
-        $reportNavigation = [
-            'total_reports' => $allReports->count(),
-            'current_index' => $reportIndex,
-            'current_number' => $reportIndex + 1,
-            'has_previous' => $reportIndex > 0,
-            'has_next' => $reportIndex < ($allReports->count() - 1),
-            'previous_index' => $reportIndex > 0 ? $reportIndex - 1 : null,
-            'next_index' => $reportIndex < ($allReports->count() - 1) ? $reportIndex + 1 : null,
-            'reports_list' => []
-        ];
-
-        if ($currentReport) {
-            $aiReportData = $currentReport->report_data;
-            $reportAge = $currentReport->created_at->diffForHumans();
-            $hasExistingReport = true;
-
-            // Build reports list for dropdown
-            foreach ($allReports as $index => $report) {
-                $reportNavigation['reports_list'][] = [
-                    'index' => $index,
-                    'number' => $index + 1,
-                    'date' => $report->created_at->format('Y-m-d'),
-                    'time' => $report->created_at->format('H:i'),
-                    'student_count' => $report->student_count,
-                    'age' => $report->created_at->diffForHumans(),
-                    'is_current' => $index === $reportIndex,
-                    'method' => $report->tokens_used > 0 ? 'ذكاء اصطناعي' : 'قالب تلقائي'
-                ];
-            }
-        }
-
-        return view('results.ai-report', compact(
-            'quiz',
-            'results',
-            'overallAverage',
-            'passRate',
-            'excellentCount',
-            'rootsPerformance',
-            'remainingQuota',
-            'aiReportData',
-            'reportAge',
-            'hasExistingReport',
-            'currentReport',
-            'reportNavigation',
-            'allReports'
-        ));
+        return view('results.ai-report', array_merge([
+            'quiz' => $quiz,
+            'results' => $results,
+            'rootsPerformance' => $rootsPerformance,
+            'remainingQuota' => $remainingQuota
+        ], $statistics, $reportData));
     }
+
     /**
      * Show results for a specific quiz (for quiz owners)
      */
     public function quizResults($quizId)
     {
-        if (!Auth::check()) {
-            abort(403);
-        }
+        $this->authorizeQuizAccess($quizId);
 
-        $quiz = \App\Models\Quiz::findOrFail($quizId);
+        $quiz = Quiz::findOrFail($quizId);
 
-        // Check if user owns the quiz
-        if ((int) $quiz->user_id !== Auth::id() && !Auth::user()->is_admin) {
-            abort(403, 'غير مصرح لك بعرض نتائج هذا الاختبار');
-        }
-
-        // Get ALL results for this specific quiz
-        $results = \App\Models\Result::where('quiz_id', $quizId)
-            ->with(['user'])
-            ->latest()
+        // Get results with optimized pagination
+        $results = Result::where('quiz_id', $quizId)
+            ->with(['user:id,name,email'])
+            ->latest('created_at')
             ->paginate(20);
 
-        return view('results.quiz-results', compact('quiz', 'results'));
+        // Calculate summary statistics
+        $statistics = $this->calculateQuizStatistics($results->getCollection());
+
+        return view('results.quiz-results', compact('quiz', 'results', 'statistics'));
     }
 
     /**
@@ -137,30 +171,9 @@ class ResultController extends Controller
     public function generateAiReport($quizId)
     {
         try {
-            // Authentication check
-            if (!Auth::check()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'يجب تسجيل الدخول أولاً'
-                ], 401);
-            }
+            $this->authorizeQuizAccess($quizId);
 
-            // Find quiz
-            $quiz = \App\Models\Quiz::with(['questions', 'subject'])->find($quizId);
-            if (!$quiz) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'الاختبار غير موجود'
-                ], 404);
-            }
-
-            // Check ownership
-            if ((int) $quiz->user_id !== Auth::id() && !Auth::user()->is_admin) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'غير مصرح لك بإنشاء تقرير لهذا الاختبار'
-                ], 403);
-            }
+            $quiz = Quiz::with(['questions', 'subject'])->findOrFail($quizId);
 
             // Check subscription
             if (!Auth::user()->canUseAI()) {
@@ -171,8 +184,8 @@ class ResultController extends Controller
                 ], 403);
             }
 
-            // Get quota
-            $quota = \App\Models\MonthlyQuota::getOrCreateCurrent(Auth::id());
+            // Check quota
+            $quota = MonthlyQuota::getOrCreateCurrent(Auth::id());
             if (!$quota->hasRemainingAiReportQuota()) {
                 return response()->json([
                     'success' => false,
@@ -181,8 +194,8 @@ class ResultController extends Controller
                 ], 429);
             }
 
-            // Get results
-            $results = \App\Models\Result::where('quiz_id', $quizId)->get();
+            // Validate data sufficiency
+            $results = Result::where('quiz_id', $quizId)->get();
             if ($results->count() < 3) {
                 return response()->json([
                     'success' => false,
@@ -191,87 +204,194 @@ class ResultController extends Controller
                 ], 400);
             }
 
-            // Check if recent report exists (within 1 hour to allow regeneration)
-            $existingReport = \App\Models\QuizAiReport::where('quiz_id', $quizId)
-                ->where('user_id', Auth::id())
-                ->where('created_at', '>=', now()->subHour())
-                ->where('generation_status', 'completed')
-                ->first();
-
+            // Check for recent report
+            $existingReport = $this->checkExistingReport($quizId);
             if ($existingReport) {
                 return response()->json([
                     'success' => true,
                     'message' => 'يوجد تقرير حديث لهذا الاختبار',
                     'report_exists' => true,
-                    'report_id' => $existingReport->id,
                     'report_data' => $existingReport->report_data,
                     'remaining_quota' => $quota->getRemainingQuota()
                 ]);
             }
 
-            // Calculate statistics
-            $rootsPerformance = $this->calculateRootsPerformance($results, $quiz);
-            $questionStats = $this->calculateQuestionStats($results, $quiz);
+            // Generate the report
+            $reportData = $this->processAiReportGeneration($quiz, $results, $quota);
 
-            // Create pending report record
-            $reportRecord = \App\Models\QuizAiReport::create([
-                'quiz_id' => $quiz->id,
-                'user_id' => Auth::id(),
-                'student_count' => $results->count(),
-                'generation_status' => 'pending',
-                'report_data' => []
-            ]);
-
-            // Generate AI report with fallback
-            $aiReportData = $this->generateAiReportWithFallback($quiz, $results, $rootsPerformance, $questionStats);
-
-            if ($aiReportData['success']) {
-                // Update report with generated content
-                $reportRecord->update([
-                    'report_data' => $aiReportData['sections'],
-                    'generation_status' => 'completed',
-                    'tokens_used' => $aiReportData['tokens_used'] ?? 1500
-                ]);
-
-                // Increment quota
-                $quota->incrementAiReportRequests();
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'تم إنشاء التقرير التربوي بنجاح',
-                    'report_id' => $reportRecord->id,
-                    'report_data' => $aiReportData['sections'],
-                    'remaining_quota' => $quota->getRemainingQuota()
-                ]);
-            } else {
-                // Update report as failed
-                $reportRecord->update(['generation_status' => 'failed']);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'فشل في إنشاء التقرير: ' . $aiReportData['error'],
-                    'debug_info' => $aiReportData
-                ], 500);
-            }
+            return response()->json($reportData);
 
         } catch (\Exception $e) {
-            \Log::error('AI Report generation exception', [
+            Log::error('AI Report generation exception', [
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'quiz_id' => $quizId ?? null,
-                'user_id' => Auth::id()
+                'quiz_id' => $quizId,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ أثناء إنشاء التقرير',
-                'debug_info' => [
-                    'error' => $e->getMessage(),
-                    'type' => get_class($e)
-                ]
+                'error_type' => get_class($e)
             ], 500);
         }
+    }
+
+    /**
+     * Process AI report generation with fallback
+     */
+    private function processAiReportGeneration($quiz, $results, $quota)
+    {
+        // Calculate performance data
+        $rootsPerformance = $this->calculateRootsPerformance($results, $quiz);
+        $questionStats = $this->calculateQuestionStats($results, $quiz);
+
+        // Create pending report record
+        $reportRecord = QuizAiReport::create([
+            'quiz_id' => $quiz->id,
+            'user_id' => Auth::id(),
+            'student_count' => $results->count(),
+            'generation_status' => 'pending',
+            'report_data' => []
+        ]);
+
+        // Generate report with fallback
+        $aiReportData = $this->generateAiReportWithFallback($quiz, $results, $rootsPerformance, $questionStats);
+
+        if ($aiReportData['success']) {
+            // Update successful report
+            $reportRecord->update([
+                'report_data' => $aiReportData['sections'],
+                'generation_status' => 'completed',
+                'tokens_used' => $aiReportData['tokens_used'] ?? 0
+            ]);
+
+            // Increment quota only for AI-generated reports
+            if ($aiReportData['method'] === 'ai') {
+                $quota->incrementAiReportRequests();
+            }
+
+            return [
+                'success' => true,
+                'message' => 'تم إنشاء التقرير التربوي بنجاح',
+                'report_data' => $aiReportData['sections'],
+                'generation_method' => $aiReportData['method'],
+                'remaining_quota' => $quota->getRemainingQuota()
+            ];
+        } else {
+            // Update failed report
+            $reportRecord->update(['generation_status' => 'failed']);
+
+            return [
+                'success' => false,
+                'message' => 'فشل في إنشاء التقرير: ' . ($aiReportData['error'] ?? 'خطأ غير معروف')
+            ];
+        }
+    }
+
+    /**
+     * Check for existing recent report
+     */
+    private function checkExistingReport($quizId)
+    {
+        return QuizAiReport::where('quiz_id', $quizId)
+            ->where('user_id', Auth::id())
+            ->where('created_at', '>=', now()->subHour())
+            ->where('generation_status', 'completed')
+            ->first();
+    }
+
+    /**
+     * Authorize quiz access for current user
+     */
+    private function authorizeQuizAccess($quizId)
+    {
+        if (!Auth::check()) {
+            abort(403, 'يجب تسجيل الدخول أولاً');
+        }
+
+        $quiz = Quiz::findOrFail($quizId);
+
+        if ((int) $quiz->user_id !== Auth::id() && !Auth::user()->is_admin) {
+            abort(403, 'غير مصرح لك بعرض نتائج هذا الاختبار');
+        }
+    }
+
+    /**
+     * Calculate basic quiz statistics
+     */
+    private function calculateQuizStatistics($results)
+    {
+        if ($results->isEmpty()) {
+            return [
+                'overallAverage' => 0,
+                'passRate' => 0,
+                'excellentCount' => 0,
+                'totalStudents' => 0
+            ];
+        }
+
+        $totalStudents = $results->count();
+        $overallAverage = round($results->avg('total_score'), 1);
+        $passCount = $results->where('total_score', '>=', 60)->count();
+        $excellentCount = $results->where('total_score', '>=', 90)->count();
+        $passRate = round(($passCount / $totalStudents) * 100, 1);
+
+        return [
+            'overallAverage' => $overallAverage,
+            'passRate' => $passRate,
+            'excellentCount' => $excellentCount,
+            'totalStudents' => $totalStudents
+        ];
+    }
+
+    /**
+     * Get report navigation data
+     */
+    private function getReportNavigationData($quizId, $reportIndex)
+    {
+        $allReports = QuizAiReport::where('quiz_id', $quizId)
+            ->where('user_id', Auth::id())
+            ->where('generation_status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $reportIndex = max(0, min($reportIndex, $allReports->count() - 1));
+        $currentReport = $allReports->get($reportIndex);
+
+        $navigation = [
+            'total_reports' => $allReports->count(),
+            'current_index' => $reportIndex,
+            'current_number' => $reportIndex + 1,
+            'has_previous' => $reportIndex > 0,
+            'has_next' => $reportIndex < ($allReports->count() - 1),
+            'previous_index' => $reportIndex > 0 ? $reportIndex - 1 : null,
+            'next_index' => $reportIndex < ($allReports->count() - 1) ? $reportIndex + 1 : null,
+            'reports_list' => []
+        ];
+
+        // Build reports list for dropdown
+        foreach ($allReports as $index => $report) {
+            $navigation['reports_list'][] = [
+                'index' => $index,
+                'number' => $index + 1,
+                'date' => $report->created_at->format('Y-m-d'),
+                'time' => $report->created_at->format('H:i'),
+                'student_count' => $report->student_count,
+                'age' => $report->created_at->diffForHumans(),
+                'is_current' => $index === $reportIndex,
+                'method' => $report->tokens_used > 0 ? 'ذكاء اصطناعي' : 'قالب تلقائي'
+            ];
+        }
+
+        return [
+            'aiReportData' => $currentReport ? $currentReport->report_data : null,
+            'reportAge' => $currentReport ? $currentReport->created_at->diffForHumans() : null,
+            'hasExistingReport' => (bool) $currentReport,
+            'currentReport' => $currentReport,
+            'reportNavigation' => $navigation,
+            'allReports' => $allReports
+        ];
     }
 
     /**
@@ -281,8 +401,7 @@ class ResultController extends Controller
     {
         try {
             // Try AI generation first
-            $claudeService = app(\App\Services\ClaudeService::class);
-            $aiReport = $claudeService->generatePedagogicalReport($quiz, $results, $rootsPerformance, $questionStats);
+            $aiReport = $this->claudeService->generatePedagogicalReport($quiz, $results, $rootsPerformance, $questionStats);
 
             if ($aiReport['success'] && isset($aiReport['report_sections'])) {
                 return [
@@ -293,7 +412,7 @@ class ResultController extends Controller
                 ];
             }
         } catch (\Exception $e) {
-            \Log::warning('AI generation failed, falling back to template', [
+            Log::warning('AI generation failed, falling back to template', [
                 'error' => $e->getMessage(),
                 'quiz_id' => $quiz->id
             ]);
@@ -308,34 +427,23 @@ class ResultController extends Controller
      */
     private function generateTemplateBasedReport($quiz, $results, $rootsPerformance, $questionStats)
     {
-        $studentCount = $results->count();
-        $averageScore = round($results->avg('total_score'));
-        $passRate = round(($results->where('total_score', '>=', 60)->count() / $studentCount) * 100);
+        $statistics = $this->calculateQuizStatistics($results);
 
         // Generate overview
-        $overview = "تم تحليل أداء {$studentCount} طالب في اختبار {$quiz->title}. ";
-        $overview .= "المعدل العام للصف {$averageScore}% ونسبة النجاح {$passRate}%. ";
-
-        if ($averageScore >= 80) {
-            $overview .= "يظهر الصف أداءً ممتازاً بشكل عام.";
-        } elseif ($averageScore >= 70) {
-            $overview .= "يظهر الصف أداءً جيداً مع إمكانية للتحسن.";
-        } else {
-            $overview .= "يحتاج الصف إلى تدخل تعليمي لتحسين الأداء.";
-        }
+        $overview = $this->buildOverviewSection($quiz, $statistics);
 
         // Generate root analyses
         $sections = [
             'overview' => $overview,
-            'jawhar_analysis' => $this->generateRootAnalysis('jawhar', 'الجوهر', $rootsPerformance['jawhar']),
-            'zihn_analysis' => $this->generateRootAnalysis('zihn', 'الذهن', $rootsPerformance['zihn']),
-            'waslat_analysis' => $this->generateRootAnalysis('waslat', 'الوصلات', $rootsPerformance['waslat']),
-            'roaya_analysis' => $this->generateRootAnalysis('roaya', 'الرؤية', $rootsPerformance['roaya']),
-            'group_tips' => $this->generateGroupTips($rootsPerformance, $averageScore),
+            'jawhar_analysis' => $this->generateRootAnalysis('jawhar', 'الجوهر', $rootsPerformance['jawhar'] ?? []),
+            'zihn_analysis' => $this->generateRootAnalysis('zihn', 'الذهن', $rootsPerformance['zihn'] ?? []),
+            'waslat_analysis' => $this->generateRootAnalysis('waslat', 'الوصلات', $rootsPerformance['waslat'] ?? []),
+            'roaya_analysis' => $this->generateRootAnalysis('roaya', 'الرؤية', $rootsPerformance['roaya'] ?? []),
+            'group_tips' => $this->generateGroupTips($rootsPerformance, $statistics['overallAverage']),
             'immediate_actions' => $this->generateImmediateActions($rootsPerformance),
-            'longterm_strategies' => $this->generateLongtermStrategies($rootsPerformance, $averageScore),
+            'longterm_strategies' => $this->generateLongtermStrategies($rootsPerformance, $statistics['overallAverage']),
             'educational_alerts' => $this->generateEducationalAlerts($rootsPerformance, $questionStats),
-            'bright_spots' => $this->generateBrightSpots($rootsPerformance, $averageScore)
+            'bright_spots' => $this->generateBrightSpots($rootsPerformance, $statistics['overallAverage'])
         ];
 
         return [
@@ -344,6 +452,25 @@ class ResultController extends Controller
             'method' => 'template',
             'tokens_used' => 0
         ];
+    }
+
+    /**
+     * Build overview section for template report
+     */
+    private function buildOverviewSection($quiz, $statistics)
+    {
+        $overview = "تم تحليل أداء {$statistics['totalStudents']} طالب في اختبار {$quiz->title}. ";
+        $overview .= "المعدل العام للصف {$statistics['overallAverage']}% ونسبة النجاح {$statistics['passRate']}%. ";
+
+        if ($statistics['overallAverage'] >= 80) {
+            $overview .= "يظهر الصف أداءً ممتازاً بشكل عام.";
+        } elseif ($statistics['overallAverage'] >= 70) {
+            $overview .= "يظهر الصف أداءً جيداً مع إمكانية للتحسن.";
+        } else {
+            $overview .= "يحتاج الصف إلى تدخل تعليمي لتحسين الأداء.";
+        }
+
+        return $overview;
     }
 
     /**
@@ -362,10 +489,10 @@ class ResultController extends Controller
 
             foreach ($questions as $question) {
                 // Get detailed answer statistics
-                $correctAnswers = \App\Models\Answer::where('question_id', $question->id)
+                $correctAnswers = Answer::where('question_id', $question->id)
                     ->where('is_correct', true)
                     ->count();
-                $totalAnswers = \App\Models\Answer::where('question_id', $question->id)->count();
+                $totalAnswers = Answer::where('question_id', $question->id)->count();
 
                 $percentage = $totalAnswers > 0 ? round(($correctAnswers / $totalAnswers) * 100) : 0;
 
@@ -412,10 +539,10 @@ class ResultController extends Controller
 
         foreach ($quiz->questions as $question) {
             // Basic statistics
-            $correctAnswers = \App\Models\Answer::where('question_id', $question->id)
+            $correctAnswers = Answer::where('question_id', $question->id)
                 ->where('is_correct', true)
                 ->count();
-            $totalAnswers = \App\Models\Answer::where('question_id', $question->id)->count();
+            $totalAnswers = Answer::where('question_id', $question->id)->count();
 
             $percentage = $totalAnswers > 0 ? round(($correctAnswers / $totalAnswers) * 100) : 0;
 
@@ -446,7 +573,7 @@ class ResultController extends Controller
         return $questionStats;
     }
 
-    // Helper methods
+    // Helper methods for analysis
     private function assessQuestionDifficulty($percentage): string
     {
         if ($percentage >= 85)
@@ -475,7 +602,7 @@ class ResultController extends Controller
 
     private function analyzeWrongAnswerPatterns($questionId): array
     {
-        $wrongAnswers = \App\Models\Answer::where('question_id', $questionId)
+        $wrongAnswers = Answer::where('question_id', $questionId)
             ->where('is_correct', false)
             ->get();
 
@@ -487,7 +614,8 @@ class ResultController extends Controller
                 $patterns[] = [
                     'wrong_answer' => $answer,
                     'student_count' => $group->count(),
-                    'percentage_of_wrong' => $wrongAnswers->count() > 0 ? round(($group->count() / $wrongAnswers->count()) * 100) : 0
+                    'percentage_of_wrong' => $wrongAnswers->count() > 0 ?
+                        round(($group->count() / $wrongAnswers->count()) * 100) : 0
                 ];
             }
         }
@@ -499,27 +627,15 @@ class ResultController extends Controller
     {
         $characteristics = [];
 
-        switch ($question->root_type) {
-            case 'jawhar':
-                if ($percentage < 60) {
-                    $characteristics[] = 'يحتاج تعزيز المعرفة الأساسية';
-                }
-                break;
-            case 'zihn':
-                if ($percentage < 60) {
-                    $characteristics[] = 'يحتاج تطوير مهارات التفكير النقدي';
-                }
-                break;
-            case 'waslat':
-                if ($percentage < 60) {
-                    $characteristics[] = 'يحتاج تدريب على ربط المفاهيم';
-                }
-                break;
-            case 'roaya':
-                if ($percentage < 60) {
-                    $characteristics[] = 'يحتاج المزيد من التطبيق العملي';
-                }
-                break;
+        $rootCharacteristics = [
+            'jawhar' => 'يحتاج تعزيز المعرفة الأساسية',
+            'zihn' => 'يحتاج تطوير مهارات التفكير النقدي',
+            'waslat' => 'يحتاج تدريب على ربط المفاهيم',
+            'roaya' => 'يحتاج المزيد من التطبيق العملي'
+        ];
+
+        if ($percentage < 60 && isset($rootCharacteristics[$question->root_type])) {
+            $characteristics[] = $rootCharacteristics[$question->root_type];
         }
 
         if ($question->depth_level == 3 && $percentage < 50) {
@@ -547,6 +663,7 @@ class ResultController extends Controller
         return $misconceptions;
     }
 
+    // Template generation methods
     private function generateRootAnalysis($rootKey, $rootName, $rootData)
     {
         $overall = $rootData['overall'] ?? 0;
@@ -621,7 +738,9 @@ class ResultController extends Controller
             }
         }
 
-        $actions .= "1. ركز على تحسين " . $this->getRootName($weakestRoot) . " (الدرجة الحالية: {$lowestScore}%)\n";
+        if ($weakestRoot) {
+            $actions .= "1. ركز على تحسين " . $this->getRootName($weakestRoot) . " (الدرجة الحالية: {$lowestScore}%)\n";
+        }
         $actions .= "2. راجع الأسئلة التي حصلت على أقل معدل إجابات صحيحة\n";
         $actions .= "3. اعمل أنشطة تفاعلية لتعزيز المفاهيم الضعيفة\n";
 
@@ -648,15 +767,17 @@ class ResultController extends Controller
     private function generateEducationalAlerts($rootsPerformance, $questionStats)
     {
         $alerts = "تنبيهات تربوية مهمة:\n\n";
+        $hasAlerts = false;
 
         foreach ($rootsPerformance as $root => $data) {
             $score = $data['overall'] ?? 0;
             if ($score < 50) {
                 $alerts .= "🚨 " . $this->getRootName($root) . ": أداء ضعيف جداً يتطلب تدخل فوري\n";
+                $hasAlerts = true;
             }
         }
 
-        if (empty(trim(str_replace("تنبيهات تربوية مهمة:\n\n", "", $alerts)))) {
+        if (!$hasAlerts) {
             $alerts .= "✅ لا توجد تنبيهات حرجة، الأداء العام مقبول.";
         }
 
@@ -666,19 +787,22 @@ class ResultController extends Controller
     private function generateBrightSpots($rootsPerformance, $averageScore)
     {
         $spots = "النقاط المضيئة:\n\n";
+        $hasSpots = false;
 
         foreach ($rootsPerformance as $root => $data) {
             $score = $data['overall'] ?? 0;
             if ($score >= 85) {
                 $spots .= "⭐ " . $this->getRootName($root) . ": أداء ممتاز ({$score}%)\n";
+                $hasSpots = true;
             }
         }
 
         if ($averageScore >= 75) {
             $spots .= "🎉 المعدل العام للصف مرتفع، مما يدل على جودة التعليم\n";
+            $hasSpots = true;
         }
 
-        if (empty(trim(str_replace("النقاط المضيئة:\n\n", "", $spots)))) {
+        if (!$hasSpots) {
             $spots .= "💪 الطلاب يبذلون جهداً جيداً، استمر في التشجيع والدعم.";
         }
 
