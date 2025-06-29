@@ -187,3 +187,26 @@ Last Updated: June 2025
 -   PATCH /quizzes/{quiz}/toggle-status # Toggle active status
 -   GET /quizzes/{quiz}/results # View quiz results
 -   POST /quizzes/{quiz}/duplicate # Copy quiz
+
+```markdown
+### Feature Coverage
+
+-   ✅ **User Management**: Registration, authentication, profiles
+-   ✅ **Quiz System**: Creation, management, taking, results
+-   ✅ **AI Integration**: Text generation, question creation, **NEW: Pedagogical reports**
+-   ✅ **Subscription System**: Plans, payments, usage tracking
+-   ✅ **Cancellation Management**: Advanced retention system
+-   ✅ **Admin Interface**: User, subscription, and contact management
+-   ✅ **Analytics**: Usage tracking, cancellation insights, **NEW: Educational analytics**
+-   ✅ **Multi-language**: Arabic (primary), English, Hebrew
+-   ✅ **NEW: AI Report System**: Advanced pedagogical analysis with versioning
+
+### NEW: AI Pedagogical Reports (June 2025)
+
+-   **Advanced Analytics**: Deep educational insights beyond basic statistics
+-   **Report Versioning**: Multiple reports per quiz with full navigation
+-   **Fallback System**: Template-based reports when AI unavailable
+-   **Quota Integration**: Unified monthly quota system (40 units)
+-   **Educational Value**: Misconception detection, learning pattern analysis
+-   **Professional UI**: Clean, printable reports with modern navigation
+```

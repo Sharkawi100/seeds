@@ -69,7 +69,7 @@ Route::prefix('quiz')->name('quiz.')->group(function () {
 });
 
 // Unified Quiz Taking (works for both PIN and direct access)
-Route::get('/quiz/{quiz}/take', [QuizController::class, 'take'])->name('quiz.take');
+Route::get('/quiz/{quizId}/take', [QuizController::class, 'take'])->name('quiz.take');
 Route::post('/quiz/{quiz}/submit', [QuizController::class, 'submit'])->name('quiz.submit');
 Route::post('/quiz/{quiz}/guest-start', [QuizController::class, 'guestStart'])->name('quiz.guest-start');
 

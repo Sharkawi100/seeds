@@ -224,18 +224,17 @@ class QuizController extends Controller
      */
     public function generateQuestions(Request $request, Quiz $quiz)
     {
-        // 🔍 DEBUG: Comprehensive logging
-        Log::info('generateQuestions method called', [
+        Log::info('=== FULL REQUEST DEBUG ===', [
             'quiz_id' => $quiz->id,
             'quiz_title' => $quiz->title,
-            'request_data' => $request->all(),
-            'text_source' => $request->text_source,
-            'has_educational_text' => !empty($request->educational_text),
-            'educational_text_length' => strlen($request->educational_text ?? ''),
-            'educational_text_preview' => substr($request->educational_text ?? '', 0, 100),
+            'request_method' => $request->method(),
+            'request_all_data' => $request->all(),
+            'roots_raw' => $request->input('roots'),
+            'roots_json' => json_encode($request->input('roots'), JSON_UNESCAPED_UNICODE),
+            'question_count' => $request->input('question_count'),
+            'text_source' => $request->input('text_source'),
             'user_id' => Auth::id(),
-            'user_can_use_ai' => Auth::user()->canUseAI(),
-            'current_passage_data' => $quiz->passage_data
+            'headers' => $request->headers->all()
         ]);
 
         $this->authorizeQuizManagement();
@@ -314,7 +313,9 @@ class QuizController extends Controller
             'educational_text' => 'nullable|required_unless:text_source,none|string|min:50',
             'text_source' => 'required|in:ai,manual,none',
             'roots' => 'required|array',
-            'roots.*' => 'integer|min:0|max:20',
+            'roots.*.levels' => 'required|array',
+            'roots.*.levels.*.depth' => 'required|integer|min:1|max:3',
+            'roots.*.levels.*.count' => 'required|integer|min:0|max:20',
             // Quiz Configuration Settings
             'time_limit' => 'nullable|integer|min:1|max:180',
             'passing_score' => 'required|integer|min:0|max:100',
@@ -338,7 +339,15 @@ class QuizController extends Controller
 
         try {
             // Validate root distribution matches question count
-            $totalRootQuestions = array_sum($request->roots);
+// Validate root distribution matches question count  
+            $totalRootQuestions = 0;
+            foreach ($request->roots as $rootData) {
+                if (isset($rootData['levels'])) {
+                    foreach ($rootData['levels'] as $levelData) {
+                        $totalRootQuestions += $levelData['count'] ?? 0;
+                    }
+                }
+            }
             if ($totalRootQuestions != $request->question_count) {
                 throw new \Exception('مجموع توزيع الأسئلة على الجذور لا يتطابق مع العدد الإجمالي');
             }
@@ -369,7 +378,7 @@ class QuizController extends Controller
 
             // Prepare roots structure for AI
             $rootsForAI = $this->prepareRootsForAI($request->roots);
-            $totalRequested = array_sum($request->roots);
+            $totalRequested = $totalRootQuestions; // Use the value we calculated above
 
             Log::info('Roots transformation completed', [
                 'original_roots' => $request->roots,
@@ -435,35 +444,67 @@ class QuizController extends Controller
     }
 
     /**
-     * Prepare roots structure for AI generation
+     * Prepare roots structure for AI generation with respect to selected depth levels
      */
     private function prepareRootsForAI(array $roots): array
     {
         $rootsForAI = [];
 
-        foreach ($roots as $rootKey => $count) {
-            if ($count > 0) {
-                if ($count <= 2) {
-                    // For small counts, put everything in level 1
-                    $rootsForAI[$rootKey] = [
-                        '1' => $count,
-                        '2' => 0,
-                        '3' => 0
-                    ];
-                } else {
-                    // For larger counts, distribute across levels
-                    $level1 = floor($count * 0.4);
-                    $level2 = floor($count * 0.4);
-                    $level3 = $count - $level1 - $level2; // Remainder goes to level 3
+        Log::info('DEBUG: Original roots data received', [
+            'roots_data' => $roots,
+            'roots_structure' => json_encode($roots, JSON_UNESCAPED_UNICODE)
+        ]);
 
-                    $rootsForAI[$rootKey] = [
-                        '1' => $level1,
-                        '2' => $level2,
-                        '3' => $level3
-                    ];
+        foreach ($roots as $rootKey => $rootData) {
+            $rootsForAI[$rootKey] = ['1' => 0, '2' => 0, '3' => 0];
+
+            // Handle different data formats
+            if (is_numeric($rootData)) {
+                // Simple count format - use automatic distribution for backward compatibility
+                $count = (int) $rootData;
+                if ($count > 0) {
+                    if ($count <= 2) {
+                        $rootsForAI[$rootKey]['1'] = $count;
+                    } else {
+                        $level1 = floor($count * 0.4);
+                        $level2 = floor($count * 0.4);
+                        $level3 = $count - $level1 - $level2;
+                        $rootsForAI[$rootKey] = ['1' => $level1, '2' => $level2, '3' => $level3];
+                    }
+                }
+            } elseif (is_array($rootData)) {
+                // New format with specific depth level selections
+                if (isset($rootData['levels'])) {
+                    // Handle levels array format
+                    foreach ($rootData['levels'] as $level => $levelData) {
+                        if (isset($levelData['count']) && $levelData['count'] > 0) {
+                            $depthLevel = $levelData['depth'] ?? $level;
+                            $count = (int) $levelData['count'];
+                            $rootsForAI[$rootKey][(string) $depthLevel] = $count;
+                        }
+                    }
+                } elseif (isset($rootData['depth']) && isset($rootData['count'])) {
+                    // Handle direct depth/count format
+                    $depth = (string) $rootData['depth'];
+                    $count = (int) $rootData['count'];
+                    if ($count > 0) {
+                        $rootsForAI[$rootKey][$depth] = $count;
+                    }
+                } else {
+                    // Handle direct level mapping (e.g., ['1' => 2, '2' => 1, '3' => 0])
+                    foreach (['1', '2', '3'] as $level) {
+                        if (isset($rootData[$level])) {
+                            $rootsForAI[$rootKey][$level] = (int) $rootData[$level];
+                        }
+                    }
                 }
             }
         }
+
+        Log::info('DEBUG: Transformed roots for AI', [
+            'transformed_roots' => $rootsForAI,
+            'total_questions_check' => array_sum(array_map('array_sum', $rootsForAI))
+        ]);
 
         return $rootsForAI;
     }
@@ -868,14 +909,26 @@ class QuizController extends Controller
     /**
      * Take quiz (public access with PIN or authenticated)
      */
-    public function take(Quiz $quiz)
+    public function take($quizId)  // ← Changed from Quiz $quiz to $quizId
     {
+        // Handle deleted quizzes gracefully
+        $quiz = Quiz::find($quizId);
+
+        if (!$quiz) {
+            return view('quiz.inactive', [
+                'quiz' => null,
+                'message' => 'الاختبار غير موجود',
+                'description' => 'هذا الاختبار قد تم حذفه أو لم يعد متاحاً. يرجى التأكد من الرابط أو التواصل مع معلمك للحصول على الرابط الصحيح.',
+                'back_url' => url('/')
+            ]);
+        }
+
         if (!$quiz->is_active) {
             return view('quiz.inactive', [
                 'quiz' => $quiz,
                 'message' => 'هذا الاختبار غير مفعل حالياً',
                 'description' => 'يبدو أن المعلم قام بإلغاء تفعيل هذا الاختبار مؤقتاً. يرجى التواصل مع معلمك للحصول على مزيد من المعلومات.',
-                'back_url' => route('quiz.enter-pin')
+                'back_url' => url('/')
             ]);
         }
 

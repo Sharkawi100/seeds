@@ -115,11 +115,21 @@ Answer
 -   CRUD operations for quiz questions
 -   **updateText()**: Inline editing via AJAX
 
-### ResultController
+### ResultController (ENHANCED - June 2025)
 
 -   **show()**: Display results for authenticated users
--   **guestShow()**: Display results for guests using token (FIXED: June 2025)
--   Handles both authenticated and guest access with proper route binding
+-   **guestShow()**: Display results for guests using token
+-   **quizResults()**: Display all results for specific quiz
+-   **showAiReport()**: Display AI pedagogical report with navigation
+-   **generateAiReport()**: Generate AI pedagogical report (Pro Teachers only)
+
+**NEW AI Report Features:**
+
+-   Multiple report navigation with history
+-   Template fallback when AI unavailable
+-   Comprehensive error handling and debugging
+-   Report versioning and metadata tracking
+-   Advanced educational analytics generation
 
 **Recent Fix (June 2025):**
 

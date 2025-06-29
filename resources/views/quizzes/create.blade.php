@@ -1179,20 +1179,34 @@ function handleNoTextOption() {
         
         showLoadingModal('جاري إنشاء الاختبار', 'يتم معالجة البيانات وإنشاء الأسئلة وحفظ الإعدادات...');
         
-        // Prepare roots data
-        const roots = {};
-        ['jawhar', 'zihn', 'waslat', 'roaya'].forEach(root => {
-            let total = 0;
-            for (let level = 1; level <= 3; level++) {
-                const input = document.getElementById(`${root}-${level}`);
-                if (input) {
-                    total += parseInt(input.value) || 0;
-                }
-            }
-            if (total > 0) {
-                roots[root] = total;
-            }
-        });
+        // Prepare roots data with depth levels preserved
+const roots = {};
+['jawhar', 'zihn', 'waslat', 'roaya'].forEach(root => {
+    const rootData = {
+        levels: {}
+    };
+    
+    let hasQuestions = false;
+    
+    for (let level = 1; level <= 3; level++) {
+        const input = document.getElementById(`${root}-${level}`);
+        const count = parseInt(input?.value || 0);
+        
+        if (count > 0) {
+            rootData.levels[level] = {
+                depth: level,
+                count: count
+            };
+            hasQuestions = true;
+        }
+    }
+    
+    if (hasQuestions) {
+        roots[root] = rootData;
+    }
+});
+
+console.log('DEBUG: Roots data being sent:', roots); // Add this for debugging
         
         const requestData = {
             topic: document.getElementById('topic').value,

@@ -103,7 +103,7 @@ class ClaudeService
 
             $questions = $this->parseQuizResponse($response);
             $distributionValidated = $this->validateQuestionDistribution($questions, $roots);
-            $qualityValidated = $distributionValidated; // Temporarily disable quality validation
+            $qualityValidated = $this->validateQuestionsQuality($distributionValidated);
             $this->trackUsage('questions_from_text', count($qualityValidated));
             Log::info('Questions generated successfully', [
                 'total_generated' => count($questions),
@@ -719,58 +719,116 @@ CRITICAL:
     }
     private function validateQuestionsQuality(array $questions): array
     {
-        $validationPrompt = "Review these questions for quality issues:
-    
-    " . json_encode($questions, JSON_UNESCAPED_UNICODE) . "
-    
-    Check for:
-    1. Clear Arabic language formulation
-    2. Accurate Juzoor root classification  
-    3. Quality distractors (wrong options should be plausible)
-    4. Appropriate difficulty level
-    5. Diverse question patterns
-    
-    Return improved questions in same JSON format. Fix any issues found.
-    
-    Required JSON output:
-    {
-      \"questions\": [
-    {
-      \"question\": \"نص السؤال\",
-      \"options\": [\"خيار1\", \"خيار2\", \"خيار3\", \"خيار4\"],
-      \"correct_answer\": \"الخيار الصحيح\",
-      \"root_type\": \"jawhar|zihn|waslat|roaya\",
-      \"depth_level\": 1|2|3,
-      \"explanation\": \"توضيح مختصر للإجابة\"
-    }
-      ]
-    }
-    CRITICAL: 
-- Return only valid JSON
-- No additional text before or after JSON
-- Exact 4 options per question
-- correct_answer must match one option exactly  
-    ";
+        $validatedQuestions = [];
+        $filteredCount = 0;
 
-        try {
-            $response = $this->sendRequest($validationPrompt, [
-                'temperature' => 0.2,
-                'max_tokens' => 3000
-            ]);
+        foreach ($questions as $index => $question) {
+            $isValid = true;
+            $issues = [];
 
-            $validatedData = $this->parseJsonResponse($response);
-            Log::info('Quality validation results', [
-                'input_count' => count($questions),
-                'output_count' => count($validatedData['questions'] ?? []),
-                'validation_response_preview' => substr(json_encode($validatedData), 0, 200)
-            ]);
-            return $validatedData['questions'] ?? $questions;
-        } catch (\Exception $e) {
-            Log::warning('Question validation failed, using original questions', [
-                'error' => $e->getMessage()
-            ]);
-            return $questions;
+            // 1. Check required fields
+            if (empty($question['question']) || strlen(trim($question['question'])) < 10) {
+                $issues[] = 'Question text too short or missing';
+                $isValid = false;
+            }
+
+            if (empty($question['options']) || !is_array($question['options'])) {
+                $issues[] = 'Options missing or invalid';
+                $isValid = false;
+            }
+
+            if (empty($question['correct_answer'])) {
+                $issues[] = 'Correct answer missing';
+                $isValid = false;
+            }
+
+            // 2. Check options quality
+            if ($isValid && is_array($question['options'])) {
+                // Must have exactly 4 options
+                if (count($question['options']) !== 4) {
+                    $issues[] = 'Must have exactly 4 options';
+                    $isValid = false;
+                } else {
+                    // Check for duplicate options
+                    $uniqueOptions = array_unique($question['options']);
+                    if (count($uniqueOptions) < 4) {
+                        $issues[] = 'Duplicate options found';
+                        $isValid = false;
+                    }
+
+                    // Check option length (not too short, not too long)
+                    foreach ($question['options'] as $option) {
+                        if (strlen(trim($option)) < 2) {
+                            $issues[] = 'Option too short';
+                            $isValid = false;
+                            break;
+                        }
+                        if (strlen(trim($option)) > 200) {
+                            $issues[] = 'Option too long';
+                            $isValid = false;
+                            break;
+                        }
+                    }
+
+                    // Check correct answer exists in options
+                    if (!in_array($question['correct_answer'], $question['options'])) {
+                        $issues[] = 'Correct answer not found in options';
+                        $isValid = false;
+                    }
+                }
+            }
+
+            // 3. Check root type validity
+            $validRoots = ['jawhar', 'zihn', 'waslat', 'roaya'];
+            if (empty($question['root_type']) || !in_array($question['root_type'], $validRoots)) {
+                $issues[] = 'Invalid root type';
+                $isValid = false;
+            }
+
+            // 4. Check depth level validity
+            if (empty($question['depth_level']) || !in_array($question['depth_level'], [1, 2, 3])) {
+                $issues[] = 'Invalid depth level';
+                $isValid = false;
+            }
+
+            // 5. Arabic text quality checks
+            if ($isValid) {
+                $questionText = $question['question'];
+
+                // Check for basic Arabic content
+                if (!preg_match('/[\x{0600}-\x{06FF}]/u', $questionText)) {
+                    $issues[] = 'No Arabic text detected';
+                    $isValid = false;
+                }
+
+                // Check question ends with question mark
+                if (!str_ends_with(trim($questionText), '؟') && !str_ends_with(trim($questionText), '?')) {
+                    // Auto-fix: add question mark
+                    $question['question'] = trim($questionText) . '؟';
+                }
+            }
+
+            // 6. Log and decide
+            if ($isValid) {
+                $validatedQuestions[] = $question;
+            } else {
+                $filteredCount++;
+                Log::info('Question filtered out', [
+                    'question_index' => $index,
+                    'issues' => $issues,
+                    'question_preview' => substr($question['question'] ?? 'N/A', 0, 50)
+                ]);
+            }
         }
+
+        Log::info('Rule-based quality validation complete', [
+            'input_count' => count($questions),
+            'valid_count' => count($validatedQuestions),
+            'filtered_count' => $filteredCount,
+            'validation_method' => 'rule_based'
+        ]);
+
+        return $validatedQuestions;
     }
     private function isQuestionValid(array $question): bool
     {

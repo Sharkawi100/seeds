@@ -301,3 +301,55 @@
 
 **Current Status**: ✅ Production Ready with Complete Subscription System  
 **Next Milestone**: 1000+ Active Teacher Subscriptions by Q4 2025
+
+## 🎓 NEW: AI Pedagogical Report System (June 2025)
+
+### Advanced Educational Analytics (Pro Teachers Only)
+
+**Comprehensive Class Analysis:**
+
+-   **4-Roots Performance Breakdown**: Detailed analysis across جَوهر, ذِهن, وَصلات, رُؤية
+-   **Misconception Detection**: AI identifies common student errors and learning gaps
+-   **Learning Pattern Analysis**: Cross-question error correlations and student clustering
+-   **Question-Level Insights**: Specific analysis of why students chose wrong answers
+
+**Smart Report Generation:**
+
+-   **AI-Powered Analysis**: Advanced pedagogical insights using Claude API
+-   **Template Fallback**: Intelligent fallback to structured templates if AI unavailable
+-   **Report Versioning**: Multiple reports per quiz with navigation and comparison
+-   **Historical Tracking**: Progress monitoring across different time periods
+
+### Report Features
+
+**Educational Content:**
+
+-   **نظرة عامة سريعة**: Executive summary of class performance
+-   **Root-Specific Analysis**: Detailed breakdown per cognitive dimension with depth levels
+-   **Group Management Tips**: Tailored strategies for this specific class profile
+-   **Immediate Actions**: Next-week action items based on identified weaknesses
+-   **Long-term Strategies**: Curriculum adjustments and teaching method recommendations
+-   **Educational Alerts**: Critical learning gaps requiring immediate attention
+-   **Bright Spots**: Strengths to build upon and celebrate
+
+**Navigation & Usability:**
+
+-   **Report History**: Navigate between multiple reports for same quiz
+-   **Metadata Display**: Creation date, student count, generation method
+-   **Keyboard Navigation**: Arrow keys for quick report switching
+-   **Print Support**: Clean, professional printing layout
+-   **Mobile Responsive**: Full functionality on all devices
+
+### Technical Implementation
+
+**Quota Integration:**
+
+-   **Unified 40-Unit System**: AI reports count toward monthly Pro Teacher quota
+-   **Smart Caching**: 24-hour cooldown prevents duplicate generation costs
+-   **Fallback Strategy**: Template-based reports when AI quota exhausted
+
+**Performance Optimized:**
+
+-   **Background Processing**: Non-blocking report generation
+-   **Error Recovery**: Comprehensive fallback and retry mechanisms
+-   **Database Efficiency**: Optimized queries for large result sets

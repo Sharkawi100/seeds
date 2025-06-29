@@ -34,6 +34,13 @@ Last Updated: June 16, 2025
 
 ## Database Schema
 
+#### quiz_ai_reports (NEW - June 2025)
+
+````sql
+id, quiz_id (FK to quizzes), user_id (FK to users)
+report_data (JSON), student_count, tokens_used
+generation_status (enum: pending|completed|failed)
+created_at, updated_at
 ### Core Tables
 
 #### users
@@ -45,7 +52,7 @@ user_type (student|teacher|admin), is_admin, is_active, is_approved
 school_name, grade_level, subjects_taught, experience_years
 last_login_at, last_login_ip, login_count
 deleted_at, created_at, updated_at
-```
+````
 
 #### quizzes
 
@@ -443,6 +450,11 @@ id, user_id, year, month
 quiz_count, ai_text_requests, ai_quiz_requests
 created_at, updated_at
 ```
+
+-- ADDED: ai_report_requests column
+id, user_id, year, month
+quiz_count, ai_text_requests, ai_quiz_requests, ai_report_requests
+created_at, updated_at
 
 #### ai_usage_logs
 

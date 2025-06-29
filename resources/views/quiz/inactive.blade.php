@@ -13,7 +13,7 @@
             <div class="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-8 text-center">
                 <div class="text-6xl mb-4">⏸️</div>
                 <h1 class="text-2xl font-bold text-white mb-2">{{ $message }}</h1>
-                <p class="text-orange-100 text-sm">{{ $quiz->title }}</p>
+                <p class="text-orange-100 text-sm">{{ $quiz ? $quiz->title : 'اختبار محذوف' }}</p>
             </div>
             
             <!-- Content -->
@@ -29,11 +29,16 @@
                             <span class="font-medium">معلومة مفيدة</span>
                         </div>
                         <p class="text-blue-600 text-sm mt-1">
-                            يمكن للمعلم إعادة تفعيل الاختبار في أي وقت. احتفظ برمز الاختبار للعودة لاحقاً.
+                            @if($quiz)
+                                يمكن للمعلم إعادة تفعيل الاختبار في أي وقت. احتفظ برمز الاختبار للعودة لاحقاً.
+                            @else
+                                تأكد من الرابط أو اطلب رابطاً جديداً من معلمك.
+                            @endif
                         </p>
                     </div>
                 </div>
                 
+                @if($quiz)
                 <!-- Quiz Info -->
                 <div class="bg-gray-50 rounded-lg p-4 space-y-2">
                     <div class="flex justify-between items-center">
@@ -43,7 +48,7 @@
                     @if($quiz->subject)
                     <div class="flex justify-between items-center">
                         <span class="text-gray-500 text-sm">المادة:</span>
-                        <span class="text-gray-700">{{ $quiz->subject_name }}</span>
+                        <span class="text-gray-700">{{ $quiz->subject_name ?? $quiz->subject }}</span>
                     </div>
                     @endif
                     @if($quiz->grade_level)
@@ -53,6 +58,7 @@
                     </div>
                     @endif
                 </div>
+                @endif
                 
                 <!-- Actions -->
                 <div class="space-y-3">
@@ -62,11 +68,13 @@
                         تجربة اختبار آخر
                     </a>
                     
+                    @if($quiz)
                     <button onclick="copyPin()" 
                             class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2">
                         <i class="fas fa-copy"></i>
                         نسخ رمز الاختبار
                     </button>
+                    @endif
                 </div>
                 
             </div>
@@ -75,6 +83,7 @@
     </div>
 </div>
 
+@if($quiz)
 <script>
 function copyPin() {
     const pin = '{{ $quiz->pin }}';
@@ -94,4 +103,5 @@ function copyPin() {
     });
 }
 </script>
+@endif
 @endsection

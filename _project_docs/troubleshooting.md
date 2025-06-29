@@ -826,3 +826,37 @@ php artisan migrate:status
 -   Individual vs. bulk question editing
 -   Authenticated vs. guest user access
 -   Different user roles (teacher vs. student vs. admin)
+
+````markdown
+## AI Reports System (NEW - June 2025)
+
+### Common Issues
+
+#### Report Generation Fails
+
+```php
+// Check subscription status
+if (!Auth::user()->canUseAI()) {
+    // User needs active subscription
+}
+
+// Check quota
+$quota = MonthlyQuota::getOrCreateCurrent(Auth::id());
+if (!$quota->hasRemainingAiReportQuota()) {
+    // User exceeded monthly quota
+}
+
+// Check minimum results
+if ($results->count() < 3) {
+    // Need at least 3 student results
+}
+
+// AI generation failure handling
+try {
+    $aiReport = $claudeService->generatePedagogicalReport(...);
+} catch (\Exception $e) {
+    // Falls back to template-based report
+    return $this->generateTemplateBasedReport(...);
+}
+```
+````
