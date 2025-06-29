@@ -23,7 +23,7 @@ class ResultController extends Controller
     }
 
     /**
-     * Display a listing of results for authenticated users
+     * Display recent quiz activity dashboard for teachers
      */
     public function index()
     {
@@ -32,25 +32,146 @@ class ResultController extends Controller
         }
 
         try {
-            // Get user's results with optimized eager loading
-            $results = Result::where('user_id', Auth::id())
-                ->with([
-                    'quiz:id,title,subject_id,grade_level,pin,created_at',
-                    'quiz.subject:id,name'
-                ])
-                ->latest('created_at')
-                ->paginate(20);
+            $user = Auth::user();
 
-            return view('results.index', compact('results'));
+            if ($this->isTeacherOrAdmin($user)) {
+                return $this->getTeacherDashboard($user);
+            } else {
+                return $this->getStudentResults($user);
+            }
 
         } catch (\Exception $e) {
-            Log::error('Failed to load user results', [
-                'user_id' => Auth::id(),
-                'error' => $e->getMessage()
-            ]);
-
-            return view('results.index', ['results' => collect()]);
+            return $this->handleIndexError($e);
         }
+    }
+
+    /**
+     * Check if user is teacher or admin
+     */
+    private function isTeacherOrAdmin($user): bool
+    {
+        return $user->user_type === 'teacher' || $user->is_admin;
+    }
+
+    /**
+     * Get teacher dashboard with recent activity
+     */
+    private function getTeacherDashboard($user)
+    {
+        // Get recent results for teacher's quizzes
+        $allResults = Result::whereHas('quiz', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+            ->with([
+                'quiz:id,title,subject_id,grade_level,pin,created_at',
+                'quiz.subject:id,name',
+                'user:id,name'
+            ])
+            ->latest('created_at')
+            ->limit(100)
+            ->get();
+
+        // Group by quiz and get the latest activity for each quiz
+        $uniqueResults = $allResults->groupBy('quiz_id')
+            ->map(function ($quizResults) {
+                // Return the most recent result for this quiz
+                return $quizResults->first();
+            })
+            ->sortByDesc('created_at')
+            ->take(15);
+
+        $results = $uniqueResults->values();
+
+        // Update recent_activity count in stats
+        $dashboardStats = $this->getTeacherStats($user);
+        $dashboardStats['recent_activity'] = $results->count();
+
+        return view('results.index', compact('results', 'dashboardStats'));
+    }
+
+    /**
+     * Get teacher dashboard statistics
+     */
+    private function getTeacherStats($user): array
+    {
+        $totalQuizzes = Quiz::where('user_id', $user->id)->count();
+        $activeQuizzes = Quiz::where('user_id', $user->id)->where('is_active', true)->count();
+        $totalResults = Result::whereHas('quiz', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->count();
+
+        $uniqueStudents = Result::whereHas('quiz', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+            ->select(DB::raw('COALESCE(user_id, guest_name) as student_identifier'))
+            ->distinct()
+            ->count();
+
+        $todayResults = Result::whereHas('quiz', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+            ->whereDate('created_at', today())
+            ->count();
+
+        return [
+            'total_quizzes' => $totalQuizzes,
+            'active_quizzes' => $activeQuizzes,
+            'total_results' => $totalResults,
+            'unique_students' => $uniqueStudents,
+            'today_results' => $todayResults,
+            'recent_activity' => 15 // Will be updated with actual count
+        ];
+    }
+
+    /**
+     * Get student results with pagination
+     */
+    private function getStudentResults($user)
+    {
+        $results = Result::where('user_id', $user->id)
+            ->whereHas('quiz')
+            ->with([
+                'quiz:id,title,subject_id,grade_level,pin,created_at',
+                'quiz.subject:id,name'
+            ])
+            ->latest('created_at')
+            ->paginate(20);
+
+        $studentStats = $this->getStudentStats($user);
+
+        return view('results.index', compact('results', 'studentStats'));
+    }
+
+    /**
+     * Get student statistics
+     */
+    private function getStudentStats($user): array
+    {
+        return [
+            'total_attempts' => Result::where('user_id', $user->id)->whereHas('quiz')->count(),
+            'quizzes_taken' => Result::where('user_id', $user->id)->whereHas('quiz')->distinct('quiz_id')->count(),
+            'average_score' => round(Result::where('user_id', $user->id)->whereHas('quiz')->avg('total_score') ?? 0),
+            'best_score' => Result::where('user_id', $user->id)->whereHas('quiz')->max('total_score') ?? 0
+        ];
+    }
+
+    /**
+     * Handle errors in index method
+     */
+    private function handleIndexError(\Exception $e)
+    {
+        Log::error('Failed to load user results', [
+            'user_id' => Auth::id(),
+            'user_type' => Auth::user()->user_type ?? 'unknown',
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        $emptyData = $this->isTeacherOrAdmin(Auth::user())
+            ? ['results' => collect(), 'dashboardStats' => []]
+            : ['results' => collect(), 'studentStats' => []];
+
+        return view('results.index', $emptyData);
     }
 
     /**
@@ -58,8 +179,30 @@ class ResultController extends Controller
      */
     public function show(Result $result)
     {
-        // Check ownership
-        if (!Auth::check() || (int) $result->user_id !== Auth::id()) {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        $user = Auth::user();
+
+        // Authorization check: Allow if user is:
+        // 1. The quiz taker (for students viewing their own results)
+        // 2. The quiz creator (for teachers viewing student results)  
+        // 3. An admin (can view all results)
+        $canView = false;
+
+        if ($user->is_admin) {
+            // Admin can view all results
+            $canView = true;
+        } elseif ($result->user_id && (int) $result->user_id === $user->id) {
+            // User can view their own results
+            $canView = true;
+        } elseif ($result->quiz && (int) $result->quiz->user_id === $user->id) {
+            // Teacher can view results for their own quizzes
+            $canView = true;
+        }
+
+        if (!$canView) {
             abort(403, 'غير مصرح لك بعرض هذه النتيجة');
         }
 
@@ -70,44 +213,57 @@ class ResultController extends Controller
             'answers.question:id,question,root_type,depth_level,correct_answer,options'
         ]);
 
-        // Get all attempts for this user on this quiz
-        $allAttempts = Result::where('quiz_id', $result->quiz_id)
-            ->where('user_id', Auth::id())
-            ->orderBy('attempt_number')
-            ->get(['id', 'attempt_number', 'total_score', 'created_at', 'is_latest_attempt']);
-
-        // Calculate final score based on scoring method
-        $finalScore = Result::getFinalScore($result->quiz_id, Auth::id());
-
-        return view('results.show', compact('result', 'allAttempts', 'finalScore'));
+        return view('results.show', compact('result'));
     }
 
     /**
-     * Display result for guest users using token
+     * Display a specific result for guest using token
      */
     public function guestShow($token)
     {
-        $result = Result::where('guest_token', $token)
-            ->where('expires_at', '>', now())
-            ->first();
+        try {
+            // Find result by guest token
+            $result = Result::where('guest_token', $token)
+                ->with([
+                    'quiz:id,title,subject_id,grade_level,pin,created_at',
+                    'quiz.subject:id,name'
+                ])
+                ->first();
 
-        if (!$result) {
-            return view('quiz.inactive', [
-                'quiz' => null,
-                'message' => 'النتيجة غير موجودة أو منتهية الصلاحية',
-                'description' => 'قد تكون النتيجة قد انتهت صلاحيتها أو تم حذفها. يرجى التواصل مع معلمك.',
-                'back_url' => url('/')
+            if (!$result) {
+                return view('quiz.error', [
+                    'title' => 'نتيجة غير موجودة',
+                    'message' => 'لم يتم العثور على النتيجة المطلوبة',
+                    'description' => 'ربما انتهت صلاحية الرابط أو تم حذف النتيجة. يرجى التواصل مع معلمك للحصول على مزيد من المعلومات.',
+                    'back_url' => route('home')
+                ]);
+            }
+
+            // Check if token is expired (7 days)
+            if ($result->created_at->addDays(7)->isPast()) {
+                return view('quiz.error', [
+                    'title' => 'انتهت صلاحية الرابط',
+                    'message' => 'انتهت صلاحية رابط النتيجة',
+                    'description' => 'روابط النتائج تنتهي صلاحيتها بعد 7 أيام لأغراض الأمان. يرجى التواصل مع معلمك للحصول على النتيجة.',
+                    'back_url' => route('home')
+                ]);
+            }
+
+            return view('results.guest-show', compact('result'));
+
+        } catch (\Exception $e) {
+            Log::error('Failed to load guest result', [
+                'token' => $token,
+                'error' => $e->getMessage()
+            ]);
+
+            return view('quiz.error', [
+                'title' => 'خطأ في النظام',
+                'message' => 'حدث خطأ أثناء تحميل النتيجة',
+                'description' => 'نعتذر عن هذا الخطأ. يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني.',
+                'back_url' => route('home')
             ]);
         }
-
-        // Load necessary relationships
-        $result->load([
-            'quiz:id,title,subject_id,grade_level',
-            'quiz.subject:id,name',
-            'answers.question:id,question,root_type,depth_level,correct_answer,options'
-        ]);
-
-        return view('results.guest-show', compact('result'));
     }
 
     /**
@@ -149,9 +305,17 @@ class ResultController extends Controller
      */
     public function quizResults($quizId)
     {
-        $this->authorizeQuizAccess($quizId);
-
         $quiz = Quiz::findOrFail($quizId);
+
+        // Check authorization
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
+        $user = Auth::user();
+        if (!$user->is_admin && (int) $quiz->user_id !== $user->id) {
+            abort(403, 'غير مصرح لك بعرض نتائج هذا الاختبار');
+        }
 
         // Get results with optimized pagination
         $results = Result::where('quiz_id', $quizId)
@@ -820,4 +984,5 @@ class ResultController extends Controller
 
         return $names[$rootKey] ?? $rootKey;
     }
+
 }
